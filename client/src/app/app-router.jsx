@@ -3,27 +3,31 @@ import {
   RouterProvider,
 } from 'react-router-dom';
 import {
-HomeLayout,
-AuthLayout,
+  HomeLayout,
+  AuthLayout,
+  MenuListLayout
 
 
 
-}from '@/components/layouts'
+} from '@/components/layouts'
 
 
 import {
   LoginForm,
   RegisterForm,
-  ForgotPasswordForm
+  ForgotPasswordForm,
+  MenuListPage
+
+  
 
 } from '@/pages'
 
 const router = createBrowserRouter([
-   {
+  {
     path: '',
-    element: <HomeLayout/>,
+    element: <HomeLayout />,
   },
-   {
+  {
     path: 'auth',
     element: <AuthLayout />,
     children: [
@@ -37,11 +41,22 @@ const router = createBrowserRouter([
       },
       {
         path: 'forgot-password',
-        element: < ForgotPasswordForm/>,
+        element: < ForgotPasswordForm />,
       },
-     
+
 
     ],
+
+  },
+  {
+    path: 'menu',
+    element: <MenuListLayout/>,
+    children:[
+      {
+        path: 'list/:category',
+        element: <MenuListPage/>,
+      }
+    ]
   },
 ]);
 
