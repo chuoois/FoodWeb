@@ -1,6 +1,6 @@
-import { useState } from "react"
-import { Star, Plus, Minus, ShoppingCart } from "lucide-react"
-import { useNavigate } from "react-router-dom" // nếu bạn dùng react-router
+import { useState } from "react";
+import { Star, Plus, Minus, ShoppingCart } from "lucide-react";
+import { useNavigate } from "react-router-dom"; // nếu bạn dùng react-router
 
 const menuItems = [
   {
@@ -60,40 +60,40 @@ const menuItems = [
     rating: 4.9,
     category: "Sushi",
   },
-]
+];
 
-const categories = ["Tất cả", "Pizza", "Sushi", "Burgers", "Salads"]
+const categories = ["Tất cả", "Pizza", "Sushi", "Burgers", "Salads"];
 
 export const FoodCategoriesHome = () => {
-  const [selectedCategory, setSelectedCategory] = useState("Tất cả")
-  const [cart, setCart] = useState({})
-  const navigate = useNavigate()
+  const [selectedCategory, setSelectedCategory] = useState("Tất cả");
+  const [cart, setCart] = useState({});
+  const navigate = useNavigate();
 
   const filteredItems =
     selectedCategory === "Tất cả"
       ? menuItems
-      : menuItems.filter((item) => item.category === selectedCategory)
+      : menuItems.filter((item) => item.category === selectedCategory);
 
   const addToCart = (itemId) => {
     setCart((prev) => ({
       ...prev,
       [itemId]: (prev[itemId] || 0) + 1,
-    }))
-  }
+    }));
+  };
 
   const removeFromCart = (itemId) => {
     setCart((prev) => ({
       ...prev,
       [itemId]: Math.max((prev[itemId] || 0) - 1, 0),
-    }))
-  }
+    }));
+  };
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
-    }).format(price)
-  }
+    }).format(price);
+  };
 
   return (
     <section className="py-16 px-4 bg-[#F7EFDF]">
@@ -104,7 +104,8 @@ export const FoodCategoriesHome = () => {
             Thực đơn YummyGo
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Khám phá những món ăn ngon được chế biến từ nguyên liệu tươi ngon nhất
+            Khám phá những món ăn ngon được chế biến từ nguyên liệu tươi ngon
+            nhất
           </p>
         </div>
 
@@ -129,6 +130,7 @@ export const FoodCategoriesHome = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredItems.map((item) => (
             <div
+              onClick={() => navigate(`/detail/${item.id}`)}
               key={item.id}
               className="group hover:shadow-xl transition-all duration-300 bg-white border rounded-xl overflow-hidden"
             >
@@ -212,12 +214,12 @@ export const FoodCategoriesHome = () => {
           <div className="fixed bottom-6 right-6 z-50">
             <button className="flex items-center bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-lg px-6 py-3 text-lg transition-colors">
               <ShoppingCart className="w-5 h-5 mr-2" />
-              Giỏ hàng (
-              {Object.values(cart).reduce((sum, qty) => sum + qty, 0)})
+              Giỏ hàng ({Object.values(cart).reduce((sum, qty) => sum + qty, 0)}
+              )
             </button>
           </div>
         )}
       </div>
     </section>
-  )
-}
+  );
+};
