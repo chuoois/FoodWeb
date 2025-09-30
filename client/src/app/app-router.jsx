@@ -6,7 +6,7 @@ import {
 HomeLayout,
 AuthLayout,
 FoodDetail,
-
+Staff,
 
 
 }from '@/components/layouts'
@@ -48,6 +48,10 @@ const router = createBrowserRouter([
   {
     path: 'detail/:id',   // 👈 route detail, nhận param id
     element: <FoodDetail />, 
+  },
+  {
+    path: 'staff',   // 👈 route detail, nhận param id
+    element: <Staff />, 
   },
 ]);
 
