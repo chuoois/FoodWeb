@@ -79,7 +79,7 @@ const CartItem = ({ item, onDecrease, onIncrease }) => (
   </div>
 );
 
-export default function FoodDetailHome() {
+export const FoodDetailHome = () => {
   const [cartItems, setCartItems] = useState([
     {
       id: 1,
