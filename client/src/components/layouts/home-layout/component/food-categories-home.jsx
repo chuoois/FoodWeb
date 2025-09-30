@@ -1,225 +1,179 @@
-import { useState } from "react";
-import { Star, Plus, Minus, ShoppingCart } from "lucide-react";
-import { useNavigate } from "react-router-dom"; // nếu bạn dùng react-router
 
-const menuItems = [
+import { useState } from "react"
+import { Link } from "react-router-dom"
+import { Star, Heart, Clock, MapPin } from "lucide-react"
+
+const foodCategories = [
   {
-    id: "1",
-    name: "Pizza Margherita",
-    description: "Cà chua tươi, phô mai mozzarella, lá húng quế",
-    price: 189000,
-    image: "public/img-home/pizza-margherita.png",
+    id: 1,
+    name: "Đồ uống",
+    slug: "do-uong",
+    image: "/img-home/drinks.jpg",
+    color: "from-blue-400 to-blue-600",
+  },
+  {
+    id: 2,
+    name: "Thức Ăn",
+    slug: "do-an",
+    image: "/img-home/fast-food.jpg",
+    color: "from-orange-400 to-orange-600",
+  },
+]
+
+const popularRestaurants = [
+  {
+    id: 1,
+    name: "Bún Thịt Nướng Xuân Mai - Bún Mắm & Ăn Vặt - Chợ Bến Thành",
+    image: "/img-home/restaurant-1.jpg",
+    rating: 4.2,
+    reviews: 29,
+    address: "Sạp 1066/1090 Chợ Bến Thành, Lê Lợi...",
+    isPromo: true,
+    deliveryTime: "25-35 phút",
+    category: "Bún, Mắm",
+  },
+  {
+    id: 2,
+    name: "Cua Bắc - Juice & Fruit - Lê Thánh Tôn",
+    image: "/img-home/restaurant-2.jpg",
     rating: 4.8,
-    category: "Pizza",
-    isPopular: true,
+    reviews: 156,
+    address: "164 Lê Thánh Tôn, Phường Bến Thành...",
+    isPromo: true,
+    deliveryTime: "15-25 phút",
+    category: "Nước ép, Trái cây",
   },
   {
-    id: "2",
-    name: "Sushi Combo Deluxe",
-    description: "12 miếng sushi tươi ngon với cá hồi, cá ngừ",
-    price: 299000,
-    image: "public/img-home/sushi-combo-platter.jpg",
-    rating: 4.9,
-    category: "Sushi",
-    isNew: true,
-  },
-  {
-    id: "3",
-    name: "Burger Bò Úc",
-    description: "Thịt bò Úc 200g, phô mai cheddar, rau tươi",
-    price: 159000,
-    image: "public/img-home/beef-cheeseburger.png",
-    rating: 4.7,
-    category: "Burgers",
-  },
-  {
-    id: "4",
-    name: "Salad Caesar",
-    description: "Rau xà lách, gà nướng, phô mai parmesan, sốt caesar",
-    price: 129000,
-    image: "public/img-home/caesar-salad-with-chicken.png",
+    id: 3,
+    name: "Pin Wei - Bánh Cuốn Tươi - Phan Bội Châu",
+    image: "/img-home/restaurant-3.jpg",
     rating: 4.6,
-    category: "Salads",
+    reviews: 89,
+    address: "14 Phan Bội Châu, Phường Bến Thành...",
+    isPromo: true,
+    deliveryTime: "20-30 phút",
+    category: "Bánh cuốn",
   },
   {
-    id: "5",
-    name: "Pizza Pepperoni",
-    description: "Xúc xích pepperoni, phô mai mozzarella, sốt cà chua",
-    price: 209000,
-    image: "public/img-home/pepperoni-pizza.png",
-    rating: 4.8,
-    category: "Pizza",
-    isPopular: true,
+    id: 4,
+    name: "Trà Sữa, Sinh Tố & Bánh Ngọt Dung - Lê Thánh Tôn",
+    image: "/img-home/restaurant-4.jpg",
+    rating: 5.0,
+    reviews: 17,
+    address: "195 - 197 Lê Thánh Tôn, Phường Bến T...",
+    isPromo: true,
+    deliveryTime: "10-20 phút",
+    category: "Trà sữa, Bánh ngọt",
   },
-  {
-    id: "6",
-    name: "Sashimi Cá Hồi",
-    description: "Cá hồi tươi sống thái lát mỏng, wasabi, gừng",
-    price: 249000,
-    image: "public/img-home/salmon-sashimi.png",
-    rating: 4.9,
-    category: "Sushi",
-  },
-];
+]
 
-const categories = ["Tất cả", "Pizza", "Sushi", "Burgers", "Salads"];
+export function FoodCategoriesHome() {
+  const [favorites, setFavorites] = useState([])
 
-export const FoodCategoriesHome = () => {
-  const [selectedCategory, setSelectedCategory] = useState("Tất cả");
-  const [cart, setCart] = useState({});
-  const navigate = useNavigate();
-
-  const filteredItems =
-    selectedCategory === "Tất cả"
-      ? menuItems
-      : menuItems.filter((item) => item.category === selectedCategory);
-
-  const addToCart = (itemId) => {
-    setCart((prev) => ({
-      ...prev,
-      [itemId]: (prev[itemId] || 0) + 1,
-    }));
-  };
-
-  const removeFromCart = (itemId) => {
-    setCart((prev) => ({
-      ...prev,
-      [itemId]: Math.max((prev[itemId] || 0) - 1, 0),
-    }));
-  };
-
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
-  };
+  const toggleFavorite = (id) => {
+    setFavorites((prev) =>
+      prev.includes(id) ? prev.filter((fav) => fav !== id) : [...prev, id]
+    )
+  }
 
   return (
-    <section className="py-16 px-4 bg-[#F7EFDF]">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-foreground mb-4">
-            Thực đơn YummyGo
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Khám phá những món ăn ngon được chế biến từ nguyên liệu tươi ngon
-            nhất
-          </p>
-        </div>
+    <div className=" bg-[#F7EFDF]">
 
-        {/* Category Filter */}
-        <div className="flex flex-wrap justify-center gap-3 mb-12">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-6 py-2 rounded-full transition-all duration-300 ${
-                selectedCategory === category
-                  ? "bg-orange-500 text-white shadow-lg"
-                  : "bg-white border hover:bg-orange-100"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
 
-        {/* Menu Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredItems.map((item) => (
-            <div
-              onClick={() => navigate(`/detail/${item.id}`)}
-              key={item.id}
-              className="group hover:shadow-xl transition-all duration-300 bg-white border rounded-xl overflow-hidden"
-            >
-              <div className="relative">
-                <img
-                  src={item.image || "/placeholder.svg"}
-                  alt={item.name}
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute top-3 left-3 flex gap-2">
-                  {item.isPopular && (
-                    <span className="px-2 py-1 text-xs font-medium rounded bg-orange-500 text-white">
-                      Phổ biến
-                    </span>
-                  )}
-                  {item.isNew && (
-                    <span className="px-2 py-1 text-xs font-medium rounded bg-green-500 text-white">
-                      Mới
-                    </span>
-                  )}
+      <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* Bộ sưu tập món ăn */}
+        <section>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Bộ sưu tập món ăn</h2>
+          <div className="grid grid-cols-2 gap-4">
+            {foodCategories.map((category) => (
+              <Link
+                key={category.id}
+                to={`/menu/list/${category.slug}`}   // 👈 dùng slug để tạo link
+                className="relative overflow-hidden cursor-pointer group hover:shadow-lg transition-all duration-300 rounded-lg bg-white"
+              >
+                <div className="aspect-[3/2] relative">
+                  <img
+                    src={category.image || "/placeholder.svg"}
+                    alt={category.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className={`absolute inset-0 bg-gradient-to-r ${category.color} opacity-60`} />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <h3 className="text-white text-xl font-bold text-center px-4">
+                      {category.name}
+                    </h3>
+                  </div>
                 </div>
-                <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-                  <Star className="w-4 h-4 fill-orange-400 text-orange-400" />
-                  <span className="text-sm font-medium">{item.rating}</span>
+              </Link>
+            ))}
+
+          </div>
+        </section>
+
+        {/* Quán ngon quanh đây */}
+        <section>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Quán ngon hot</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {popularRestaurants.map((restaurant) => (
+              <div
+                key={restaurant.id}
+                className="overflow-hidden hover:shadow-lg transition-all duration-300 group rounded-lg bg-white"
+              >
+                <div className="relative">
+                  <img
+                    src={restaurant.image || "/placeholder.svg"}
+                    alt={restaurant.name}
+                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  {restaurant.isPromo && (
+                    <div className="absolute top-3 left-3">
+                      <span className="bg-green-500 text-white text-xs font-medium px-2 py-1 rounded">PROMO</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => toggleFavorite(restaurant.id)}
+                    className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors"
+                  >
+                    <Heart
+                      className={`w-4 h-4 ${favorites.includes(restaurant.id) ? "fill-red-500 text-red-500" : "text-gray-600"
+                        }`}
+                    />
+                  </button>
                 </div>
-              </div>
 
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-foreground mb-2">
-                  {item.name}
-                </h3>
-                <p className="text-muted-foreground mb-4 line-clamp-2">
-                  {item.description}
-                </p>
+                <div className="p-4">
+                  <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">{restaurant.name}</h3>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold text-orange-500">
-                    {formatPrice(item.price)}
-                  </span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-1">
+                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                      <span className="text-sm font-medium">{restaurant.rating}</span>
+                      <span className="text-xs text-gray-500">({restaurant.reviews})</span>
+                    </div>
+                  </div>
 
-                  <div className="flex items-center gap-2">
-                    {cart[item.id] > 0 && (
-                      <>
-                        <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="w-8 h-8 flex items-center justify-center border rounded-full hover:bg-orange-100"
-                        >
-                          <Minus className="w-4 h-4 text-orange-500" />
-                        </button>
-                        <span className="w-8 text-center font-medium">
-                          {cart[item.id]}
-                        </span>
-                      </>
-                    )}
-                    <button
-                      onClick={() => addToCart(item.id)}
-                      className="flex items-center bg-orange-500 hover:bg-orange-600 text-white rounded-full px-4 py-2 transition-colors"
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      {cart[item.id] > 0 ? "Thêm" : "Đặt món"}
-                    </button>
+                  <p className="text-xs text-gray-600 mb-2 line-clamp-1">{restaurant.address}</p>
+
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      <span>{restaurant.deliveryTime}</span>
+                    </div>
+                    <span className="text-orange-600 font-medium">{restaurant.category}</span>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Xem tất cả */}
-        <div className="text-center mt-12">
-          <button
-            onClick={() => navigate("/menu")}
-            className="px-6 py-3 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-medium shadow-md transition-colors"
-          >
-            Xem tất cả
-          </button>
-        </div>
-
-        {/* Cart Summary */}
-        {Object.values(cart).some((qty) => qty > 0) && (
-          <div className="fixed bottom-6 right-6 z-50">
-            <button className="flex items-center bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-lg px-6 py-3 text-lg transition-colors">
-              <ShoppingCart className="w-5 h-5 mr-2" />
-              Giỏ hàng ({Object.values(cart).reduce((sum, qty) => sum + qty, 0)}
-              )
-            </button>
+            ))}
           </div>
-        )}
+        </section>
+
+        {/* Xem thêm */}
+        {/* <div className="text-center">
+          <button className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-medium transition-colors">
+            Xem thêm quán ngon
+          </button>
+        </div> */}
       </div>
-    </section>
-  );
-};
+    </div>
+  )
+}
