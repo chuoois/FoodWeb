@@ -1,2 +1,2 @@
 export * from './auth'
-export * from './menu-list'
+export * from './home'

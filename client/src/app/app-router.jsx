@@ -1,71 +1,43 @@
-import {
-  createBrowserRouter,
-  RouterProvider,
-} from 'react-router-dom';
-import {
-  HomeLayout,
-  AuthLayout,
-  MenuListLayout,
-  FoodDetail,
-  Staff,
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { AuthLayout } from "@/components/layouts";
 
-
-} from '@/components/layouts'
-
-
-import {
-  LoginForm,
-  RegisterForm,
-  ForgotPasswordForm,
-  MenuListPage
-
-} from '@/pages'
+import { LoginForm, RegisterForm, ForgotPasswordForm, HomePage, AdminLoginForm, DetailPage, CheckOutPage } from "@/pages";
 
 const router = createBrowserRouter([
   {
-    path: '',
-    element: <HomeLayout />,
+    path: "/",
+    element: <HomePage />,
   },
-
   {
-    path: 'auth',
+    path: "/detail/:id",
+    element: <DetailPage />,
+  },
+  {
+    path: "/checkout",
+    element: <CheckOutPage />,
+  },
+  {
+    path: "auth",
     element: <AuthLayout />,
     children: [
       {
-        path: 'login',
+        path: "login",
         element: <LoginForm />,
       },
       {
-        path: 'register',
+        path: "login2",
+        element: <AdminLoginForm />,
+      },
+      {
+        path: "register",
         element: <RegisterForm />,
       },
       {
-        path: 'forgot-password',
-        element: < ForgotPasswordForm />,
+        path: "forgot-password",
+        element: <ForgotPasswordForm />,
       },
-
-
     ],
   },
-  {
-    path: 'menu',
-    element: <MenuListLayout />,
-    children: [
-      {
-        path: 'list/:category',
-        element: <MenuListPage />,
-      }
-    ],
-  },
-  {
-    path: 'detail/:id',   // 👈 route detail, nhận param id
-    element: <FoodDetail />,
-  },
-  {
-    path: 'staff',   // 👈 route detail, nhận param id
-    element: <Staff />,
-  },
-
 ]);
 
 export const AppRouter = () => {
