@@ -7,13 +7,16 @@ import {
   Clock,
   LogOut,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";  // Thêm useEffect
 import { useNavigate, Link } from "react-router-dom";
 
 export const HeaderHome = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Sửa: Khởi tạo isLoggedIn từ localStorage
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem("isLoggedIn") === "true";
+  });
   const [recentSearches] = useState(["gà ủ muối", "bún bò huế"]);
   const navigate = useNavigate();
 
@@ -43,7 +46,20 @@ export const HeaderHome = () => {
     "cơm rang",
   ];
 
+  // Thêm: Lắng nghe thay đổi localStorage (hỗ trợ multi-tab)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === "isLoggedIn") {
+        setIsLoggedIn(e.newValue === "true");
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  // Sửa: handleLogout xóa localStorage
   const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
     setIsLoggedIn(false);
     setShowUserMenu(false);
   };

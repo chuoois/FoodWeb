@@ -1,12 +1,16 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { AuthLayout } from "@/components/layouts";
 
-import { LoginForm, RegisterForm, ForgotPasswordForm, HomePage, AdminLoginForm, DetailPage, CheckOutPage } from "@/pages";
+import { LoginForm, RegisterForm, ForgotPasswordForm, HomePage, AdminLoginForm, DetailPage, CheckOutPage, FilterPage } from "@/pages";
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <HomePage />,
+  },
+  {
+    path: "/filter",
+    element: <FilterPage />,
   },
   {
     path: "/detail/:id",
