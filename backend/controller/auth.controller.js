@@ -2,14 +2,14 @@ const { OAuth2Client } = require("google-auth-library");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { generateOtp } = require("../utils/generateOtp");
-const { sendOtpEmail } = require("../services/mail.service");
+const { generateTempPassword } = require("../utils/generateTempPassword");
+const { sendOtpEmail, sendResetPasswordEmail } = require("../services/mail.service");
 const Account = require("../models/accout.model");
 const User = require("../models/user.model");
 const Role = require("../models/role.model");
 const Otp = require("../models/otp.model");
 
 const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
-
 
 // Đăng ký (tạo account + gửi OTP)
 const register = async (req, res) => {
@@ -35,8 +35,15 @@ const register = async (req, res) => {
         });
         await newAccount.save();
 
-        const newUser = new User({ account_id: newAccount._id });
-        await newUser.save();
+        const user = new User({
+            account_id: newAccount._id,
+            full_name: null,
+            phone: null,
+            avatar_url: null,
+            date_of_birth: null,
+            gender: null,
+        });
+        await user.save();
 
         // Sinh OTP
         const otpCode = generateOtp();
@@ -49,7 +56,7 @@ const register = async (req, res) => {
         );
         // Gửi email
         await sendOtpEmail(email, otpCode);
-        
+
 
         res.status(201).json({ message: "Đăng ký thành công, OTP đã gửi" });
     } catch (error) {
@@ -88,13 +95,7 @@ const verifyOtp = async (req, res) => {
 
         await Otp.deleteOne({ _id: otp._id });
 
-        const token = jwt.sign(
-            { id: account._id },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
-        );
-
-        res.json({ message: "Xác thực thành công", token });
+        res.json({ message: "Xác thực thành công" });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -146,8 +147,113 @@ const registerGoogle = async (req, res) => {
     }
 };
 
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const account = await Account.findOne({ email });
+        if (!account) {
+            return res.status(404).json({ message: "Không tìm thấy account" });
+        }
+
+        // Tạo mật khẩu mới tạm thời
+        const tempPassword = generateTempPassword();
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+        account.password_hash = hashedPassword;
+        await account.save();
+
+        // Gửi email
+        await sendResetPasswordEmail(email, tempPassword);
+
+        // Trả kết quả cho client
+        return res.status(200).json({ 
+            message: "Mật khẩu tạm thời đã được gửi đến email của bạn" 
+        });
+
+    } catch (error) {
+        console.error("Error in forgotPassword:", error);
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+const login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        const account = await Account.findOne({ email });
+        if (!account) {
+            return res.status(404).json({ message: "Email không tồn tại" });
+        }
+
+        // Chỉ cho login khi ACTIVE + email_verified
+        if (account.status !== "ACTIVE" || !account.email_verified) {
+            return res.status(403).json({ message: "Tài khoản chưa được kích hoạt" });
+        }
+
+        // Kiểm tra mật khẩu
+        const isMatch = await bcrypt.compare(password, account.password_hash);
+        if (!isMatch) {
+            return res.status(400).json({ message: "Sai mật khẩu" });
+        }
+
+        // Sinh JWT token
+        const token = jwt.sign(
+            { accountId: account._id, roleId: account.role_id },
+            process.env.JWT_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        res.json({ 
+            message: "Đăng nhập thành công", 
+            token 
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const loginGoogle = async (req, res) => {
+    try {
+        const { tokenId } = req.body;
+
+        const ticket = await client.verifyIdToken({
+            idToken: tokenId,
+            audience: process.env.VITE_GOOGLE_CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+        const { email } = payload;
+
+        let account = await Account.findOne({ email });
+        if (!account) {
+            return res.status(404).json({ message: "Tài khoản Google chưa được đăng ký" });
+        }
+
+        // Kiểm tra trạng thái
+        if (account.status !== "ACTIVE" || !account.email_verified) {
+            return res.status(403).json({ message: "Tài khoản chưa được kích hoạt" });
+        }
+
+        const token = jwt.sign(
+            { accountId: account._id, roleId: account.role_id },
+            process.env.JWT_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        return res.json({
+            message: "Đăng nhập Google thành công",
+            token,
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+
 module.exports = {
     register,
     verifyOtp,
     registerGoogle,
+    forgotPassword,
+    login,
+    loginGoogle
 };
