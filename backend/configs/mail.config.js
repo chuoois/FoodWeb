@@ -1,6 +1,6 @@
-const nodemailer = require("nodemailer")
+const nodemailer = require("nodemailer");
 
-const sendMail = async ({ email, subject, html }) => {
+const sendMail = async ({ to, subject, html }) => {
     const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: process.env.SMTP_PORT,
@@ -12,18 +12,18 @@ const sendMail = async ({ email, subject, html }) => {
     });
 
     const mailOptions = {
-        from: process.env.EMAIL_USERNAME,
-        to: email,
+        from: `"Hệ thống" <${process.env.EMAIL_USERNAME}>`,
+        to,
         subject,
         html,
-    }
+    };
 
     try {
-        await transporter.sendMail(mailOptions)
-        return { success: true }
+        const info = await transporter.sendMail(mailOptions);
+        return { success: true, info };
     } catch (error) {
-        return { success: false, error: error.message }
+        return { success: false, error: error.message };
     }
-}
+};
 
-module.exports = { sendMail }
+module.exports = { sendMail };
