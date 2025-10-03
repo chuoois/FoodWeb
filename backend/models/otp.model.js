@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const otpSchema = mongoose.Schema(
   {
     account_id: {
-      type: mongoose.Schema.Types.ObjectId, 
+      type: mongoose.Schema.Types.ObjectId,
       ref: "Account",
       required: true,
       unique: true // 1 account chỉ có 1 OTP còn hiệu lực
@@ -22,7 +22,7 @@ const otpSchema = mongoose.Schema(
       required: true
     }
   },
-    { timestamps: true }    
+  { timestamps: true }
 );
 
 otpSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
