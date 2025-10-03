@@ -5,7 +5,10 @@ import {
 } from "@/components/layouts";
 
 import {
-  HomePage
+  HomePage,
+  LoginForm,
+  RegisterForm,
+  ForgotPasswordForm
 } from "@/pages";
 
 const router = createBrowserRouter([
@@ -15,15 +18,15 @@ const router = createBrowserRouter([
     children: [
       {
         path: "login",
-        element: <div>Login Page</div>,
+        element: <LoginForm/>,
       },
       {
         path: "register",
-        element: <div>Register Page</div>,
+        element: <RegisterForm/>,
       },
       {
         path: "forgot-password",
-        element: <div>Forgot Password Page</div>,
+        element: <ForgotPasswordForm/>,
       },
     ],
   },
