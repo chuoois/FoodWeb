@@ -14,9 +14,14 @@ const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
 // Đăng ký (tạo account + gửi OTP)
 const register = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, confirmPassword } = req.body;
 
-        // Kiểm tra email
+        // Kiểm tra confirm password
+        if (password !== confirmPassword) {
+            return res.status(400).json({ message: "Mật khẩu xác nhận không khớp" });
+        }
+
+        // Kiểm tra email đã tồn tại
         const existingAccount = await Account.findOne({ email });
         if (existingAccount) {
             return res.status(400).json({ message: "Email đã tồn tại" });
@@ -54,15 +59,16 @@ const register = async (req, res) => {
             { otp_code: otpCode, attempts: 0, expires_at: expiresAt },
             { upsert: true, new: true }
         );
+
         // Gửi email
         await sendOtpEmail(email, otpCode);
-
 
         res.status(201).json({ message: "Đăng ký thành công, OTP đã gửi" });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
+
 
 // Xác thực OTP
 const verifyOtp = async (req, res) => {
