@@ -3,6 +3,7 @@ import {
   AuthLayout,
   HomeMainLayout,
   MenuListMainLayout
+  DetailMainLayout
 } from "@/components/layouts";
 
 import {
@@ -58,6 +59,20 @@ const router = createBrowserRouter([
         element: <MenuListPage/>,
       },
       
+    ],
+  },
+  {
+    path: "detail",
+    element: <DetailMainLayout />,
+    children: [
+      {
+        path: "",
+        element: <div>Đây là ... page</div>,
+      },
+      {
+        path: "product",
+        element: <div>Đây là product page</div>,
+      },
     ],
   },
 ]);
