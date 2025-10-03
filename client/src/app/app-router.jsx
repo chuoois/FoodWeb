@@ -1,44 +1,22 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { AuthLayout } from "@/components/layouts";
 
-import { LoginForm, RegisterForm, ForgotPasswordForm, HomePage, AdminLoginForm, DetailPage, CheckOutPage, FilterPage } from "@/pages";
-
 const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <HomePage />,
-  },
-  {
-    path: "/filter",
-    element: <FilterPage />,
-  },
-  {
-    path: "/detail/:id",
-    element: <DetailPage />,
-  },
-  {
-    path: "/checkout",
-    element: <CheckOutPage />,
-  },
   {
     path: "auth",
     element: <AuthLayout />,
     children: [
       {
         path: "login",
-        element: <LoginForm />,
-      },
-      {
-        path: "login2",
-        element: <AdminLoginForm />,
+        element: <div>Login Page</div>,
       },
       {
         path: "register",
-        element: <RegisterForm />,
+        element: <div>Register Page</div>,
       },
       {
         path: "forgot-password",
-        element: <ForgotPasswordForm />,
+        element: <div>Forgot Password Page</div>,
       },
     ],
   },
