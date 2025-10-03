@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
+import { MapPin, Crosshair } from "lucide-react";
 import { Star, Heart, Clock } from "lucide-react"
 
 const foodCategories = [
@@ -68,6 +69,22 @@ const popularRestaurants = [
 
 export const HomePage = () => {
   const [favorites, setFavorites] = useState([])
+   const [address, setAddress] = useState("");
+
+  const handleGetLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const coords = `Lat: ${pos.coords.latitude}, Lng: ${pos.coords.longitude}`;
+          console.log("Vị trí hiện tại:", coords);
+          setAddress(coords); // ✅ đưa vào input
+        },
+        (err) => alert("Không lấy được vị trí: " + err.message)
+      );
+    } else {
+      alert("Trình duyệt không hỗ trợ định vị!");
+    }
+  };
 
   const toggleFavorite = (id) => {
     setFavorites((prev) =>
@@ -91,18 +108,24 @@ export const HomePage = () => {
                 Đặt món ăn yêu thích từ các nhà hàng tốt nhất trong thành phố.
                 Giao hàng nhanh chóng, đảm bảo chất lượng.
               </p>
+              
             </div>
 
-            <div className="flex items-center gap-4">
-              <button className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-3 rounded-full text-lg transition-colors duration-300">
-                Khám phá ngay
-              </button>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                <span>Giao hàng trong 30 phút</span>
-              </div>
-            </div>
+              {/* Thanh nhập địa chỉ */}
+          <div className="flex items-center w-full max-w-lg border border-blue-400 rounded-lg px-3 py-2 bg-white shadow-sm">
+            <MapPin className="w-5 h-5 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Nhập địa chỉ của bạn"
+              value={address}             // ✅ gắn value từ state
+              onChange={(e) => setAddress(e.target.value)}
+              className="flex-1 px-2 py-1 outline-none text-gray-700"
+            />
+            <button onClick={handleGetLocation}>
+              <Crosshair className="w-5 h-5 text-gray-500 hover:text-orange-500" />
+            </button>
           </div>
+        </div>
 
           {/* Right Illustration */}
           <div className="relative">

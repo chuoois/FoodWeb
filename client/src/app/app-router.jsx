@@ -1,14 +1,18 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import {
   AuthLayout,
-  HomeMainLayout
+  HomeMainLayout,
+  MenuListMainLayout
 } from "@/components/layouts";
 
 import {
   HomePage,
   LoginForm,
   RegisterForm,
-  ForgotPasswordForm
+  ForgotPasswordForm,
+  MenuListPage,
+  VerifyOtpForm
+
 } from "@/pages";
 
 const router = createBrowserRouter([
@@ -28,6 +32,10 @@ const router = createBrowserRouter([
         path: "forgot-password",
         element: <ForgotPasswordForm/>,
       },
+      {
+        path: "verify-otp",
+        element: <VerifyOtpForm/>,
+      },
     ],
   },
   {
@@ -38,10 +46,18 @@ const router = createBrowserRouter([
         path: "",
         element: <HomePage />,
       },
+      
+    ],
+  },
+    {
+    path: "menu",
+    element: <MenuListMainLayout />,
+    children: [
       {
-        path: "product",
-        element: <div>Đây là product page</div>,
+        path: "list/:category",
+        element: <MenuListPage/>,
       },
+      
     ],
   },
 ]);

@@ -1,27 +1,46 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
-import { Eye, EyeOff, Mail, Lock, User, Phone } from "lucide-react"
+import { Link,useNavigate } from "react-router-dom"
+import { Eye, EyeOff, Mail, Lock } from "lucide-react"
+import { toast, Toaster } from "sonner"
 
 export function RegisterForm() {
+  const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
-    fullName: "",
     email: "",
-    phone: "",
     password: "",
     confirmPassword: "",
     agreeToTerms: false,
   })
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsLoading(true)
+const handleSubmit = async (e) => {
+  e.preventDefault()
+  setIsLoading(true)
+
+  try {
     await new Promise((resolve) => setTimeout(resolve, 1500))
     console.log("Register attempt:", formData)
+
+    const isSuccess = true // ví dụ: 70% success
+
+    if (isSuccess) {
+      toast.success("Đăng ký thành công. Vui lòng kiểm tra email để lấy mã OTP!", {
+        duration: 1000, 
+        onAutoClose: () => {
+          navigate("/auth/verify-otp") 
+        },
+      })
+    } else {
+      toast.error("Đăng ký thất bại. Vui lòng thử lại.")
+    }
+  } catch (error) {
+    toast.error("Đăng ký thất bại. Vui lòng thử lại.")
+  } finally {
     setIsLoading(false)
   }
+}
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -29,28 +48,25 @@ export function RegisterForm() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-orange-50 px-4">
+      {/* Toast Container */}
+      <Toaster richColors position="top-center" />
 
       <Link to="/" className="flex flex-col items-center mb-6">
-        {/* Circle with Y */}
         <div className="w-16 h-16 rounded-full bg-orange-500 flex items-center justify-center text-white text-2xl font-bold">
           Y
         </div>
-        {/* Brand name */}
         <div className="mt-2 text-2xl font-bold text-gray-900">
           Yummy<span className="text-orange-500">Go</span>
         </div>
       </Link>
 
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
-
-        {/* Title */}
         <h2 className="text-2xl font-semibold text-center mb-1">Đăng ký tài khoản</h2>
         <p className="text-center text-gray-600 mb-8">
           Tạo tài khoản để bắt đầu đặt món ngon
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-
           {/* Email */}
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium text-gray-700">
@@ -153,6 +169,7 @@ export function RegisterForm() {
             {isLoading ? "Đang tạo tài khoản..." : "Đăng ký"}
           </button>
 
+
           {/* Divider */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -177,8 +194,6 @@ export function RegisterForm() {
               </svg>
               Đăng ký với Google
             </button>
-
-           
           </div>
 
           {/* Login link */}
