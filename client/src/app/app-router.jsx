@@ -1,7 +1,8 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import {
   AuthLayout,
-  HomeMainLayout
+  HomeMainLayout,
+  DetailMainLayout
 } from "@/components/layouts";
 
 import {
@@ -34,6 +35,20 @@ const router = createBrowserRouter([
       {
         path: "",
         element: <HomePage />,
+      },
+      {
+        path: "product",
+        element: <div>Đây là product page</div>,
+      },
+    ],
+  },
+  {
+    path: "detail",
+    element: <DetailMainLayout />,
+    children: [
+      {
+        path: "",
+        element: <div>Đây là ... page</div>,
       },
       {
         path: "product",
