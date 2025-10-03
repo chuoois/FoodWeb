@@ -2,7 +2,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import {
   AuthLayout,
   HomeMainLayout,
-  MenuListMainLayout
+  MenuListMainLayout,
   DetailMainLayout
 } from "@/components/layouts";
 
