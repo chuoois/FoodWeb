@@ -1,5 +1,4 @@
-// models/Shop.js
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const shopSchema = new mongoose.Schema({
   owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -26,4 +25,4 @@ const shopSchema = new mongoose.Schema({
 // index geospatial
 shopSchema.index({ gps: "2dsphere" });
 
-export default mongoose.model("Shop", shopSchema);
+module.exports = mongoose.model("Shop", shopSchema);
