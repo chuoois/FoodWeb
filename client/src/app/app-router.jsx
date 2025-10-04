@@ -66,7 +66,7 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: "detail",
+    path: "detail/:id",
     element: <DetailMainLayout />,
     children: [
       {
