@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Star,
   Heart,
@@ -10,8 +10,9 @@ import {
   MapPin,
   Clock,
   Phone,
+  X,
+  ChevronLeft,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -70,6 +71,60 @@ const products = [
   },
 ];
 
+const similarRestaurants = [
+  {
+    id: 1,
+    name: "Mỳ Quảng Cô Hai - KĐT Đại Kim",
+    address: "147 Lô A4, KĐT Đại Kim, Phường Định Công...",
+    distance: "1.4 km",
+    rating: 4.9,
+    reviews: 81,
+    img: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1",
+    badge: "PROMO"
+  },
+  {
+    id: 2,
+    name: "Bún Riêu Bà Hải - Giải Phóng",
+    address: "805 Giải Phóng, Phường Giáp Bát, Quận...",
+    distance: "0.2 km",
+    rating: 4.9,
+    reviews: 911,
+    img: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43",
+    badge: "PROMO",
+    subtitle: "Đóng cửa trong 48 phút nữa"
+  },
+  {
+    id: 3,
+    name: "Cô Ngân - Cháo Sườn Sụn & Đồ Ăn Vặt",
+    address: "13B Ngõ 663/112 Trường Định, Phường...",
+    distance: "1.1 km",
+    rating: 4.9,
+    reviews: 668,
+    img: "https://images.unsplash.com/photo-1504674900247-0877df9cc836",
+    badge: "PROMO"
+  },
+  {
+    id: 4,
+    name: "Mỳ Vằn Thắn Thành Vy",
+    address: "157A, Trường Định, Trường Định, Hai...",
+    distance: "1.1 km",
+    rating: 4.8,
+    reviews: 999,
+    img: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624",
+    badge: "PROMO"
+  }
+];
+
+const openingHours = [
+  { day: "Chủ nhật", time: "06:30 - 21:00", isToday: false },
+  { day: "Thứ hai", time: "06:30 - 21:00", isToday: false },
+  { day: "Thứ ba", time: "06:30 - 21:00", isToday: false },
+  { day: "Thứ tư", time: "06:30 - 21:00", isToday: false },
+  { day: "Thứ năm", time: "06:30 - 21:00", isToday: false },
+  { day: "Thứ sáu", time: "06:30 - 21:00", isToday: false },
+  { day: "Thứ bảy", time: "06:30 - 21:00", isToday: true },
+];
+
 const CartItem = ({ item, onDecrease, onIncrease }) => (
   <div className="flex items-center gap-3 py-3 border-b border-orange-100 last:border-b-0">
     <img
@@ -89,7 +144,7 @@ const CartItem = ({ item, onDecrease, onIncrease }) => (
       <Button
         variant="outline"
         size="icon"
-        className="w-7 h-7 h-7 border-orange-300 hover:bg-orange-50"
+        className="w-7 h-7 border-orange-300 hover:bg-orange-50"
         onClick={() => onDecrease(item.id)}
       >
         <Minus className="w-4 h-4 text-orange-500" />
@@ -109,32 +164,11 @@ const CartItem = ({ item, onDecrease, onIncrease }) => (
 );
 
 export const DetailPage = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const loggedIn = localStorage.getItem("isLoggedIn") === "true";
-    setIsLoggedIn(loggedIn);
-  }, []);
-
-  const [cartItems, setCartItems] = useState([
-    // {
-    //   id: 1,
-    //   qty: 1,
-    //   title: products[0].title,
-    //   price: products[0].price,
-    //   img: products[0].img,
-    // },
-    // {
-    //   id: 2,
-    //   qty: 1,
-    //   title: products[1].title,
-    //   price: products[1].price,
-    //   img: products[1].img,
-    // },
-  ]);
+  const [cartItems, setCartItems] = useState([]);
   const [liked, setLiked] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("CAFE VIỆT NAM");
+  const [showSimilar, setShowSimilar] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
 
   const categories = [
     { name: "TONKIN SIGNATURE", count: 4 },
@@ -187,22 +221,21 @@ export const DetailPage = () => {
         <CardContent className="p-0">
           <div className="px-4 py-6">
             <div className="flex gap-6">
-              {/* Restaurant Image */}
               <div className="w-80 h-52 rounded-xl overflow-hidden shadow-md flex-shrink-0">
                 <img
                   src="https://images.unsplash.com/photo-1554118811-1e0d58224f24"
-                  alt="Cafe Tonkin Cottage"
+                  alt="Bún Bò Huế 72 - Dường 72"
                   className="w-full h-full object-cover"
                 />
               </div>
 
-              {/* Restaurant Info */}
               <div className="flex-1">
-                {/* Title and Like Button */}
                 <div className="flex justify-between items-start mb-3">
-                  <CardTitle className="text-3xl font-bold text-gray-900 leading-tight">
-                    Cafe Tonkin Cottage - Lý Tự Trọng
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-3xl font-bold text-gray-900 leading-tight">
+                      Bún Bò Huế 72 - Dường 72
+                    </CardTitle>
+                  </div>
                   <Button
                     variant={liked ? "destructive" : "outline"}
                     size="sm"
@@ -214,15 +247,13 @@ export const DetailPage = () => {
                   </Button>
                 </div>
 
-                {/* Address */}
                 <div className="flex items-center gap-2 text-gray-600 mb-3">
                   <MapPin className="w-4 h-4 text-orange-500" />
                   <p className="text-sm">
-                    91 Lý Tự Trọng, Bến Thành, Quận 1, Hồ Chí Minh, Việt Nam
+                    318 Dương 72, Xã An Khánh, H. Nghi
                   </p>
                 </div>
 
-                {/* Rating and Info */}
                 <div className="flex items-center gap-4 mb-4">
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="flex items-center gap-1 bg-orange-50 text-orange-500 px-3 py-1">
@@ -232,10 +263,18 @@ export const DetailPage = () => {
                     <Button variant="link" className="text-sm text-orange-500 hover:underline p-0 h-auto">
                       (63 Đánh giá)
                     </Button>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="h-auto p-0 text-orange-500 hover:underline text-base"
+                      onClick={() => setShowInfo(true)}
+                    >
+                      Thông tin quán
+                    </Button>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600 text-sm">
                     <Clock className="w-4 h-4 text-orange-500" />
-                    <span>8:00 - 22:00</span>
+                    <span>13.9 km • 41 phút</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600 text-sm">
                     <Phone className="w-4 h-4 text-orange-500" />
@@ -243,11 +282,15 @@ export const DetailPage = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex items-center gap-3 mb-4">
-                  <Button variant="outline" size="sm" className="flex items-center gap-2 border-orange-300 text-gray-700 hover:bg-orange-50">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex items-center gap-2 border-orange-300 text-gray-700 hover:bg-orange-50"
+                    onClick={() => setShowSimilar(!showSimilar)}
+                  >
                     <span>Nhà hàng tương tự</span>
-                    <span className="text-xs">▼</span>
+                    <span className={`text-xs transition-transform duration-200 ${showSimilar ? 'rotate-180' : ''}`}>▼</span>
                   </Button>
                   <Button variant="outline" size="sm" className="flex items-center gap-2 border-orange-300 text-gray-700 hover:bg-orange-50">
                     <User className="w-4 h-4" />
@@ -255,7 +298,6 @@ export const DetailPage = () => {
                   </Button>
                 </div>
 
-                {/* Search Bar */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                   <Input
@@ -269,6 +311,138 @@ export const DetailPage = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Restaurant Info Modal */}
+      {showInfo && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowInfo(false);
+          }}
+        >
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            {/* Top Bar */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 sticky top-0">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-8 h-8 p-0"
+                  onClick={() => setShowInfo(false)}
+                >
+                  <ChevronLeft className="w-5 h-5 text-gray-500" />
+                </Button>
+                <span className="text-sm font-medium text-gray-600">
+                  THCS Giáp Bát – Điện Đồng Tả, 35
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-8 h-8 p-0"
+                onClick={() => setShowInfo(false)}
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </Button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Thông tin quán</h3>
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="text-base font-semibold text-gray-900 mb-2">
+                  Bún Bò Huế 72 - Dường 72
+                </h4>
+                <div className="flex items-center gap-2 text-gray-600 text-sm mb-2">
+                  <MapPin className="w-4 h-4 text-orange-500" />
+                  <span>318 Dương 72, Xã An Khánh, H. Nghi</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600 text-sm">
+                  <Clock className="w-4 h-4 text-orange-500" />
+                  <span>13.9 km - 41 phút</span>
+                </div>
+              </div>
+
+              <div>
+                <h5 className="text-base font-semibold mb-3 text-gray-900">Giờ hoạt động</h5>
+                <div className="space-y-2">
+                  {openingHours.map((hour) => (
+                    <div
+                      key={hour.day}
+                      className={`flex justify-between items-center p-3 rounded-lg border ${
+                        hour.isToday
+                          ? "bg-yellow-50 border-yellow-200"
+                          : "bg-gray-50 border-gray-100"
+                      }`}
+                    >
+                      <span className="text-sm text-gray-700">{hour.day}</span>
+                      <span className="text-sm text-gray-600 font-medium">{hour.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Similar Restaurants Section */}
+      {showSimilar && (
+        <Card className="border-orange-200 mx-auto max-w-7xl border-b bg-white">
+          <CardContent className="p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Nhà hàng tương tự</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {similarRestaurants.map((restaurant) => (
+                <Card key={restaurant.id} className="overflow-hidden border-orange-100 hover:shadow-lg transition cursor-pointer">
+                  <div className="relative">
+                    <img
+                      src={restaurant.img}
+                      alt={restaurant.name}
+                      className="w-full h-40 object-cover"
+                    />
+                    {restaurant.badge && (
+                      <Badge className="absolute top-2 left-2 bg-green-500 text-white text-xs">
+                        {restaurant.badge}
+                      </Badge>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 bg-white/80 hover:bg-white rounded-full w-8 h-8"
+                    >
+                      <Heart className="w-4 h-4 text-gray-600" />
+                    </Button>
+                    {restaurant.subtitle && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-orange-500 text-white text-xs py-1 px-2 text-center">
+                        {restaurant.subtitle}
+                      </div>
+                    )}
+                  </div>
+                  <CardContent className="p-3">
+                    <h4 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">
+                      {restaurant.name}
+                    </h4>
+                    <p className="text-xs text-gray-500 mb-2 line-clamp-1">
+                      {restaurant.address}
+                    </p>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-gray-400" />
+                        <span className="text-gray-600">{restaurant.distance}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-orange-400 text-orange-400" />
+                        <span className="font-semibold text-gray-900">{restaurant.rating}</span>
+                        <span className="text-gray-500">({restaurant.reviews}+)</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Category Filter */}
       <Card className="border-orange-200 border-b sticky top-0 z-10 bg-white">
@@ -300,7 +474,6 @@ export const DetailPage = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex gap-8">
-          {/* Products Grid */}
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">
               CAFE VIỆT NAM – ROBUSTA CHẤT LƯỢNG CAO
@@ -349,7 +522,6 @@ export const DetailPage = () => {
             </div>
           </div>
 
-          {/* Cart Sidebar */}
           <div className="w-96 flex-shrink-0">
             <Card className="border-orange-200 shadow-lg sticky top-24 max-h-[calc(100vh-120px)] flex flex-col">
               <CardHeader className="border-b border-orange-100 p-6">
@@ -405,14 +577,8 @@ export const DetailPage = () => {
                 </div>
                 <Button
                   className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-3 rounded-full shadow-md transition"
-                  onClick={
-                    () =>
-                      isLoggedIn
-                        ? navigate("/check-out-page")
-                        : navigate("/auth/login")
-                  }
                 >
-                  {isLoggedIn ? "Tiếp tục" : "Đăng nhập để đặt đơn"}
+                  Đăng nhập để đặt đơn
                 </Button>
                 <p className="text-xs text-gray-500 text-center">
                   Xem phí áp dụng và dùng mã khuyến mại ở bước tiếp theo

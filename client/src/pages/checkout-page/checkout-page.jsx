@@ -24,7 +24,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-export const CheckoutPage = () => {
+export const CheckOutPage = () => {
   const [selectedPayment, setSelectedPayment] = useState("cake");
   const [deliveryAddress, setDeliveryAddress] = useState(
     "Giải Phóng, Giải Phóng, P.Giáp Bát, Q.Hoàng Mai, Hà Nội"

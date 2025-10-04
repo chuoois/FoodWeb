@@ -3,13 +3,18 @@ import {
   AuthLayout,
   HomeMainLayout,
   DetailMainLayout,
-  DashboardMainLayout
+  DashboardMainLayout,
+  CheckOutMainLayout
+  
 } from "@/components/layouts";
 
 import {
   HomePage,
   DetailPage,
-  AdminPage
+  AdminPage,
+  CheckOutPage,
+  HistoryPage,
+  FavoritePage
 } from "@/pages";
 
 const router = createBrowserRouter([
@@ -33,7 +38,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/",
-    element: <DashboardMainLayout />,
+    element: <HomeMainLayout />,
     children: [
       {
         path: "",
@@ -54,8 +59,12 @@ const router = createBrowserRouter([
         element: <DetailPage/>,
       },
       {
-        path: "product",
-        element: <div>Đây là product page</div>,
+        path: "history",
+        element: <HistoryPage/>,
+      },
+      {
+        path: "favorite",
+        element: <FavoritePage/>,
       },
     ],
   },
@@ -66,6 +75,20 @@ const router = createBrowserRouter([
       {
         path: "admin",
         element: <AdminPage/>,
+      },
+      {
+        path: "product",
+        element: <div>Đây là product page</div>,
+      },
+    ],
+  },
+  {
+    path: "checkout",
+    element: <CheckOutMainLayout />,
+    children: [
+      {
+        path: "",
+        element: <CheckOutPage/>,
       },
       {
         path: "product",

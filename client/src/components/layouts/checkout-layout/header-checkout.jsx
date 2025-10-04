@@ -17,32 +17,6 @@ export const HeaderCheckOut = ({ searchQuery, setSearchQuery }) => {
             </Link>
           </div>
 
-          {/* Center section - Delivery location */}
-          <div className="flex items-center w-full max-w-lg border border-blue-400 rounded-lg px-3 py-2 bg-white shadow-sm">
-            <MapPin className="w-5 h-5 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Nhập địa chỉ của bạn"
-              className="flex-1 px-2 py-1 outline-none text-gray-700"
-            />
-            <button
-              onClick={() => {
-                if (navigator.geolocation) {
-                  navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                      console.log("Vị trí hiện tại:", pos.coords)
-                      alert(`Lat: ${pos.coords.latitude}, Lng: ${pos.coords.longitude}`)
-                    },
-                    (err) => alert("Không lấy được vị trí: " + err.message)
-                  )
-                } else {
-                  alert("Trình duyệt không hỗ trợ định vị!")
-                }
-              }}
-            >
-              <Crosshair className="w-5 h-5 text-gray-500 hover:text-orange-500" />
-            </button>
-          </div>
 
           {/* Center section - Search Bar */}
           <div className="flex-1 max-w-md mx-6">
