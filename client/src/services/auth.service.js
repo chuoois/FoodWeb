@@ -29,3 +29,8 @@ export const login = (data) => {
 export const loginGoogle = (tokenId) => {
     return api.post("/auth/login/google", { tokenId });
 };
+
+// Gửi lại OTP
+export const resendOtp = (email) => {
+    return api.post("/auth/resend-otp", { email });
+};

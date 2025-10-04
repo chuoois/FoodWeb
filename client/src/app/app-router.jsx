@@ -11,8 +11,7 @@ import {
   LoginForm,
   RegisterForm,
   ForgotPasswordForm,
-  MenuListPage,
-  VerifyOtpForm
+  MenuListPage
 
 } from "@/pages";
 
@@ -32,11 +31,7 @@ const router = createBrowserRouter([
       {
         path: "forgot-password",
         element: <ForgotPasswordForm/>,
-      },
-      {
-        path: "verify-otp",
-        element: <VerifyOtpForm/>,
-      },
+      }
     ],
   },
   {
