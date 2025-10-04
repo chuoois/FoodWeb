@@ -322,7 +322,7 @@ export const DetailPage = () => {
         >
           <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             {/* Top Bar */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 sticky top-0">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 ">
               <div className="flex items-center gap-3">
                 <Button
                   variant="ghost"
@@ -445,7 +445,7 @@ export const DetailPage = () => {
       )}
 
       {/* Category Filter */}
-      <Card className="border-orange-200 border-b sticky top-0 z-10 bg-white">
+      <Card className="border-orange-200 border-b z-10 bg-white">
         <CardContent className="p-0">
           <ScrollArea className="whitespace-nowrap py-4">
             <div className="max-w-7xl mx-auto px-4 flex gap-3">
