@@ -52,7 +52,7 @@ const register = async (req, res) => {
 
         // Sinh OTP
         const otpCode = generateOtp();
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + 1 * 60 * 1000);
 
         await Otp.findOneAndUpdate(
             { account_id: newAccount._id },
@@ -103,6 +103,40 @@ const verifyOtp = async (req, res) => {
 
         res.json({ message: "Xác thực thành công" });
     } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// resend otp
+const resendOtp = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        const account = await Account.findOne({ email });
+        if (!account) {
+            return res.status(404).json({ message: "Không tìm thấy account" });
+        }
+
+        if (account.status !== "PENDING") {
+            return res.status(400).json({ message: "Tài khoản đã được kích hoạt, không cần OTP" });
+        }
+
+        // Sinh OTP mới
+        const otpCode = generateOtp();
+        const expiresAt = new Date(Date.now() + 1 * 60 * 1000); // 1 phút
+
+        await Otp.findOneAndUpdate(
+            { account_id: account._id },
+            { otp_code: otpCode, attempts: 0, expires_at: expiresAt },
+            { upsert: true, new: true }
+        );
+
+        // Gửi email
+        await sendOtpEmail(email, otpCode);
+
+        return res.json({ message: "OTP mới đã được gửi" });
+    } catch (error) {
+        console.error("Error in resendOtp:", error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -161,6 +195,13 @@ const forgotPassword = async (req, res) => {
             return res.status(404).json({ message: "Không tìm thấy account" });
         }
 
+        // Chỉ áp dụng khi đã kích hoạt và email đã xác thực
+        if (account.status !== "ACTIVE" || !account.email_verified) {
+            return res.status(400).json({
+                message: "Tài khoản chưa được kích hoạt hoặc chưa xác thực email"
+            });
+        }
+
         // Tạo mật khẩu mới tạm thời
         const tempPassword = generateTempPassword();
         const hashedPassword = await bcrypt.hash(tempPassword, 10);
@@ -171,8 +212,8 @@ const forgotPassword = async (req, res) => {
         await sendResetPasswordEmail(email, tempPassword);
 
         // Trả kết quả cho client
-        return res.status(200).json({ 
-            message: "Mật khẩu tạm thời đã được gửi đến email của bạn" 
+        return res.status(200).json({
+            message: "Mật khẩu tạm thời đã được gửi đến email của bạn"
         });
 
     } catch (error) {
@@ -208,9 +249,9 @@ const login = async (req, res) => {
             { expiresIn: "7d" }
         );
 
-        res.json({ 
-            message: "Đăng nhập thành công", 
-            token 
+        res.json({
+            message: "Đăng nhập thành công",
+            token
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -261,5 +302,6 @@ module.exports = {
     registerGoogle,
     forgotPassword,
     login,
-    loginGoogle
+    loginGoogle,
+    resendOtp
 };

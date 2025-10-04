@@ -1,5 +1,19 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { AuthLayout } from "@/components/layouts";
+import {
+  AuthLayout,
+  HomeMainLayout,
+  MenuListMainLayout,
+  DetailMainLayout
+} from "@/components/layouts";
+
+import {
+  HomePage,
+  LoginForm,
+  RegisterForm,
+  ForgotPasswordForm,
+  MenuListPage
+
+} from "@/pages";
 
 const router = createBrowserRouter([
   {
@@ -8,15 +22,51 @@ const router = createBrowserRouter([
     children: [
       {
         path: "login",
-        element: <div>Login Page</div>,
+        element: <LoginForm/>,
       },
       {
         path: "register",
-        element: <div>Register Page</div>,
+        element: <RegisterForm/>,
       },
       {
         path: "forgot-password",
-        element: <div>Forgot Password Page</div>,
+        element: <ForgotPasswordForm/>,
+      }
+    ],
+  },
+  {
+    path: "/",
+    element: <HomeMainLayout />,
+    children: [
+      {
+        path: "",
+        element: <HomePage />,
+      },
+      
+    ],
+  },
+    {
+    path: "menu",
+    element: <MenuListMainLayout />,
+    children: [
+      {
+        path: "list/:category",
+        element: <MenuListPage/>,
+      },
+      
+    ],
+  },
+  {
+    path: "detail",
+    element: <DetailMainLayout />,
+    children: [
+      {
+        path: "",
+        element: <div>Đây là ... page</div>,
+      },
+      {
+        path: "product",
+        element: <div>Đây là product page</div>,
       },
     ],
   },
