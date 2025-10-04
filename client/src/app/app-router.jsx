@@ -73,10 +73,6 @@ const router = createBrowserRouter([
     element: <DashboardMainLayout />,
     children: [
       {
-        path: "admin",
-        element: <AdminPage/>,
-      },
-      {
         path: "product",
         element: <div>Đây là product page</div>,
       },
