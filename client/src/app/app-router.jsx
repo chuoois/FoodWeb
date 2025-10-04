@@ -3,7 +3,11 @@ import {
   AuthLayout,
   HomeMainLayout,
   MenuListMainLayout,
-  DetailMainLayout
+  DetailMainLayout,
+  DashboardMainLayout,
+  CheckOutMainLayout
+  
+
 } from "@/components/layouts";
 
 import {
@@ -11,7 +15,12 @@ import {
   LoginForm,
   RegisterForm,
   ForgotPasswordForm,
-  MenuListPage
+  MenuListPage,
+  DetailPage,
+  AdminPage,
+  CheckOutPage,
+  HistoryPage,
+  FavoritePage
 
 } from "@/pages";
 
@@ -62,7 +71,39 @@ const router = createBrowserRouter([
     children: [
       {
         path: "",
-        element: <div>Đây là ... page</div>,
+        element: <DetailPage/>,
+      },
+      {
+        path: "history",
+        element: <HistoryPage/>,
+      },
+      {
+        path: "favorite",
+        element: <FavoritePage/>,
+      },
+    ],
+  },
+  {
+    path: "dashboard",
+    element: <DashboardMainLayout />,
+    children: [
+      {
+        path: "admin",
+        element: <AdminPage/>,
+      },
+      {
+        path: "product",
+        element: <div>Đây là product page</div>,
+      },
+    ],
+  },
+  {
+    path: "checkout",
+    element: <CheckOutMainLayout />,
+    children: [
+      {
+        path: "",
+        element: <CheckOutPage/>,
       },
       {
         path: "product",
