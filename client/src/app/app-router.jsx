@@ -2,11 +2,14 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import {
   AuthLayout,
   HomeMainLayout,
-  DetailMainLayout
+  DetailMainLayout,
+  DashboardMainLayout
 } from "@/components/layouts";
 
 import {
-  HomePage
+  HomePage,
+  DetailPage,
+  AdminPage
 } from "@/pages";
 
 const router = createBrowserRouter([
@@ -30,7 +33,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/",
-    element: <HomeMainLayout />,
+    element: <DashboardMainLayout />,
     children: [
       {
         path: "",
@@ -48,7 +51,21 @@ const router = createBrowserRouter([
     children: [
       {
         path: "",
-        element: <div>Đây là ... page</div>,
+        element: <DetailPage/>,
+      },
+      {
+        path: "product",
+        element: <div>Đây là product page</div>,
+      },
+    ],
+  },
+  {
+    path: "dashboard",
+    element: <DashboardMainLayout />,
+    children: [
+      {
+        path: "admin",
+        element: <AdminPage/>,
       },
       {
         path: "product",

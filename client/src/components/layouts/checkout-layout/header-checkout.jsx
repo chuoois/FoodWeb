@@ -2,7 +2,7 @@ import { Link } from "react-router-dom"
 import { Search, MapPin, Crosshair } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
-export const HeaderDetail = ({ searchQuery, setSearchQuery }) => {
+export const HeaderCheckOut = ({ searchQuery, setSearchQuery }) => {
   return (
     <div className="bg-white shadow-sm sticky top-0 z-10">
       <div className="max-w-7xl mx-auto px-4 py-3">
