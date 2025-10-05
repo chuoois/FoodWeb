@@ -4,9 +4,9 @@ import { SidebarAdmin } from "./sidebar-layout";
 
 export const DashboardMainLayout = () => {
   return (
-    <div className="min-h-screen bg-[#F7EFDF] flex">
+    <div className="min-h-screen flex">
       <SidebarAdmin />
-      <main className="flex-1 p-6">
+      <main className="flex-1">
         <Outlet />
       </main>
     </div>

@@ -1,4 +1,4 @@
-export * from './admin-page'
+export * from './admin-list-account-page'
 export * from './checkout-page'
 export * from './home-page';
 export * from './detail-page'

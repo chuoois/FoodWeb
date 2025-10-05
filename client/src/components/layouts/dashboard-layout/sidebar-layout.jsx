@@ -1,7 +1,6 @@
 // src/components/admin/SidebarAdmin.jsx
 import { NavLink } from "react-router-dom";
 import { Home, ShoppingBag, Users, Settings, TrendingUp, Package } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export const SidebarAdmin = () => {

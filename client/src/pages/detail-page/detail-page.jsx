@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Star,
   Heart,
@@ -26,7 +26,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const products = [
   {
@@ -101,6 +109,24 @@ const products = [
     img: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735",
     category: "COLD BREW",
   },
+    {
+    id: 9,
+    title: "COLD BREW MILK - Cà phê ủ lạnh sữa tươi",
+    desc: "Sự kết hợp hoàn hảo giữa cold brew và sữa tươi",
+    sold: 22,
+    price: 59000,
+    img: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735",
+    category: "COLD BREW",
+  },
+    {
+    id: 10,
+    title: "COLD BREW MILK - Cà phê ủ lạnh sữa tươi",
+    desc: "Sự kết hợp hoàn hảo giữa cold brew và sữa tươi",
+    sold: 22,
+    price: 59000,
+    img: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735",
+    category: "COLD BREW",
+  },
 ];
 
 const similarRestaurants = [
@@ -157,52 +183,6 @@ const openingHours = [
   { day: "Thứ bảy", time: "06:30 - 21:00", isToday: true },
 ];
 
-const CartItem = ({ item, onDecrease, onIncrease, onRemove }) => (
-  <div className="flex items-start gap-3 py-4 border-b border-gray-100 last:border-b-0 group hover:bg-gray-50/50 px-2 -mx-2 rounded-lg transition-colors">
-    <img
-      src={item.img || "/placeholder.svg"}
-      alt={item.title}
-      className="w-20 h-20 rounded-xl object-cover shadow-sm"
-    />
-    <div className="flex-1 min-w-0">
-      <div className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">
-        {item.title}
-      </div>
-      <div className="text-base font-bold text-orange-600 mb-2">
-        {item.price.toLocaleString()}đ
-      </div>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="icon"
-          className="w-8 h-8 border-gray-300 hover:bg-gray-100 hover:border-gray-400 rounded-lg bg-transparent"
-          onClick={() => onDecrease(item.id)}
-        >
-          <Minus className="w-4 h-4 text-gray-700" />
-        </Button>
-        <span className="w-10 text-center font-semibold text-gray-900 text-base">
-          {item.qty}
-        </span>
-        <Button
-          size="icon"
-          className="w-8 h-8 bg-orange-500 hover:bg-orange-600 rounded-lg shadow-sm"
-          onClick={() => onIncrease(item.id)}
-        >
-          <Plus className="w-4 h-4 text-white" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="w-8 h-8 ml-auto text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
-          onClick={() => onRemove(item.id)}
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
-      </div>
-    </div>
-  </div>
-);
-
 export const DetailPage = () => {
   const [cartItems, setCartItems] = useState([]);
   const [liked, setLiked] = useState(false);
@@ -210,6 +190,9 @@ export const DetailPage = () => {
   const [showSimilar, setShowSimilar] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1); // State mới cho trang hiện tại
+
+  const itemsPerPage = 9; // Tối đa 9 sản phẩm/trang
 
   const categories = useMemo(() => {
     const allCategories = ["Tất cả"];
@@ -241,28 +224,33 @@ export const DetailPage = () => {
     });
   }, [selectedCategory, searchQuery]);
 
+  // useMemo cho sản phẩm phân trang
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredProducts, currentPage]);
+
+  // Tính tổng số trang
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+
+  // Reset về trang 1 khi thay đổi category hoặc search
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, searchQuery]);
+
+  // Hàm xử lý thay đổi trang
+  const handlePageChange = (pageNumber) => {
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+    }
+  };
+
   const handleIncrease = (id) => {
     setCartItems((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, qty: item.qty + 1 } : item
       )
     );
-  };
-
-  const handleDecrease = (id) => {
-    setCartItems((prev) => {
-      const item = prev.find((i) => i.id === id);
-      if (item && item.qty === 1) {
-        return prev.filter((i) => i.id !== id);
-      }
-      return prev.map((item) =>
-        item.id === id ? { ...item, qty: item.qty - 1 } : item
-      );
-    });
-  };
-
-  const handleRemove = (id) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== id));
   };
 
   const addToCart = (product) => {
@@ -283,13 +271,10 @@ export const DetailPage = () => {
     }
   };
 
-  const total = cartItems.reduce((sum, i) => sum + i.qty * i.price, 0);
-  const totalItems = cartItems.reduce((sum, i) => sum + i.qty, 0);
-
   return (
-    <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 min-h-screen">
+    <main className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 min-h-screen pt-4">
       {/* Restaurant Header */}
-      <Card className="border-0 shadow-md mx-auto max-w-7xl rounded-none sm:rounded-2xl sm:mt-4">
+      <Card className="border-0 shadow-md mx-auto max-w-7xl rounded-none sm:rounded-2xl">
         <CardContent className="p-0">
           <div className="px-6 py-8">
             <div className="flex flex-col lg:flex-row gap-6">
@@ -452,7 +437,6 @@ export const DetailPage = () => {
           }}
         >
           <div className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            {/* Top Bar */}
             <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-amber-50">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Button
@@ -477,7 +461,6 @@ export const DetailPage = () => {
               </Button>
             </div>
 
-            {/* Content */}
             <ScrollArea className="max-h-[calc(90vh-80px)]">
               <div className="p-6">
                 <h3 className="text-xl font-bold mb-5 text-gray-900">
@@ -537,7 +520,7 @@ export const DetailPage = () => {
 
       {/* Similar Restaurants Section */}
       {showSimilar && (
-        <Card className="border-0 shadow-md mx-auto max-w-7xl mt-4 rounded-none sm:rounded-2xl animate-in slide-in-from-top duration-300">
+        <Card className="border-0 shadow-md mx-auto max-w-7xl rounded-none sm:rounded-2xl">
           <CardContent className="p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-5">
               Nhà hàng tương tự
@@ -604,11 +587,6 @@ export const DetailPage = () => {
         </Card>
       )}
 
-      {/* Category Filter */}
-      <Card className="border-0 shadow-sm z-20 bg-white/95 backdrop-blur-md rounded-none">
-        
-      </Card>
-
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
@@ -627,142 +605,126 @@ export const DetailPage = () => {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map((product) => (
-                  <Card
-                    key={product.id}
-                    className="overflow-hidden border-gray-200 shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group"
-                  >
-                    <div className="relative overflow-hidden">
-                      <img
-                        src={product.img || "/placeholder.svg"}
-                        alt={product.title}
-                        className="w-full h-52 object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                      {product.sold > 20 && (
-                        <Badge className="absolute top-3 left-3 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold px-3 py-1 shadow-lg">
-                          Bán chạy
-                        </Badge>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    </div>
-                    <CardContent className="p-5">
-                      <CardTitle className="font-bold text-gray-900 mb-2 line-clamp-2 text-base leading-snug min-h-[3rem]">
-                        {product.title}
-                      </CardTitle>
-                      <CardDescription className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.5rem]">
-                        {product.desc}
-                      </CardDescription>
-                      <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
-                        <ShoppingCart className="w-4 h-4 text-orange-500" />
-                        <span className="font-medium">
-                          {product.sold}+ đã bán
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                          {product.price.toLocaleString()}đ
-                        </span>
-                        <Button
-                          size="icon"
-                          className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-xl shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300"
-                          onClick={() => addToCart(product)}
-                        >
-                          <Plus className="w-5 h-5 text-white" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Cart Sidebar */}
-          <div className="w-full lg:w-[420px] flex-shrink-0">
-            <Card className="border-gray-200 shadow-2xl max-h-[calc(100vh-120px)] flex flex-col rounded-2xl overflow-hidden">
-              <CardHeader className="border-b border-gray-200 p-6 bg-gradient-to-r from-orange-50 to-amber-50">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl font-bold text-gray-900">
-                    Giỏ hàng
-                  </CardTitle>
-                  <Badge
-                    variant="secondary"
-                    className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 shadow-md"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    <span className="text-sm font-bold">{totalItems} món</span>
-                  </Badge>
-                </div>
-              </CardHeader>
-
-              <CardContent className="flex-1 p-0 overflow-hidden">
-                <ScrollArea className="h-[calc(100vh-480px)] px-6 py-2">
-                  {cartItems.length === 0 ? (
-                    <div className="py-16 text-center">
-                      <ShoppingCart className="w-20 h-20 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 font-medium">
-                        Giỏ hàng trống
-                      </p>
-                      <p className="text-gray-400 text-sm mt-2">
-                        Thêm món để bắt đầu đặt hàng
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {cartItems.map((item) => (
-                        <CartItem
-                          key={item.id}
-                          item={item}
-                          onDecrease={handleDecrease}
-                          onIncrease={handleIncrease}
-                          onRemove={handleRemove}
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {paginatedProducts.map((product) => (
+                    <Card
+                      key={product.id}
+                      className="overflow-hidden border-gray-200 shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group"
+                    >
+                      <div className="relative overflow-hidden">
+                        <img
+                          src={product.img || "/placeholder.svg"}
+                          alt={product.title}
+                          className="w-full h-52 object-cover group-hover:scale-110 transition-transform duration-500"
                         />
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
+                        {product.sold > 20 && (
+                          <Badge className="absolute top-3 left-3 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold px-3 py-1 shadow-lg">
+                            Bán chạy
+                          </Badge>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      </div>
+                      <CardContent className="p-5">
+                        <CardTitle className="font-bold text-gray-900 mb-2 line-clamp-2 text-base leading-snug min-h-[3rem]">
+                          {product.title}
+                        </CardTitle>
+                        <CardDescription className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.5rem]">
+                          {product.desc}
+                        </CardDescription>
+                        <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
+                          <ShoppingCart className="w-4 h-4 text-orange-500" />
+                          <span className="font-medium">
+                            {product.sold}+ đã bán
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                            {product.price.toLocaleString()}đ
+                          </span>
+                          <Button
+                            size="icon"
+                            className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-xl shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300"
+                            onClick={() => addToCart(product)}
+                          >
+                            <Plus className="w-5 h-5 text-white" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
 
-              <CardFooter className="p-6 border-t border-gray-200 space-y-4 flex flex-col bg-white">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 font-medium">Tạm tính</span>
-                  <span className="font-bold text-gray-900 text-lg">
-                    {total.toLocaleString()}đ
-                  </span>
-                </div>
-                <Separator className="border-gray-200" />
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 font-medium">
-                    Phí giao hàng
-                  </span>
-                  <span className="font-bold text-gray-900 text-lg">
-                    15.000đ
-                  </span>
-                </div>
-                <Separator className="border-gray-200" />
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-lg font-bold text-gray-900">
-                    Tổng cộng
-                  </span>
-                  <span className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                    {(total + 15000).toLocaleString()}đ
-                  </span>
-                </div>
-                <Button
-                  disabled={cartItems.length === 0}
-                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-base"
-                >
-                  Đăng nhập để đặt đơn
-                </Button>
-                <p className="text-xs text-gray-500 text-center leading-relaxed">
-                  Xem phí áp dụng và dùng mã khuyến mại ở bước tiếp theo
-                </p>
-              </CardFooter>
-            </Card>
+                {/* Pagination Component */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center mt-8">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            className={
+                              currentPage === 1
+                                ? "pointer-events-none opacity-50"
+                                : "cursor-pointer"
+                            }
+                          />
+                        </PaginationItem>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                          if (totalPages <= 7) {
+                            // Hiển thị tất cả nếu ít trang
+                            return (
+                              <PaginationItem key={page}>
+                                <PaginationLink
+                                  isActive={currentPage === page}
+                                  onClick={() => handlePageChange(page)}
+                                  className="cursor-pointer"
+                                >
+                                  {page}
+                                </PaginationLink>
+                              </PaginationItem>
+                            );
+                          } else {
+                            // Sử dụng ellipsis cho nhiều trang
+                            if (page <= 3 || page >= totalPages - 2 || page === currentPage) {
+                              return (
+                                <PaginationItem key={page}>
+                                  <PaginationLink
+                                    isActive={currentPage === page}
+                                    onClick={() => handlePageChange(page)}
+                                    className="cursor-pointer"
+                                  >
+                                    {page}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              );
+                            } else if (page === 4 && currentPage > 4) {
+                              return <PaginationItem key="ellipsis-1"><PaginationEllipsis /></PaginationItem>;
+                            } else if (page === totalPages - 3 && currentPage < totalPages - 3) {
+                              return <PaginationItem key="ellipsis-2"><PaginationEllipsis /></PaginationItem>;
+                            }
+                            return null;
+                          }
+                        })}
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            className={
+                              currentPage === totalPages
+                                ? "pointer-events-none opacity-50"
+                                : "cursor-pointer"
+                            }
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
