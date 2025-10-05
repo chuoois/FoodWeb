@@ -17,10 +17,10 @@ import {
   ForgotPasswordForm,
   MenuListPage,
   DetailPage,
-  AdminPage,
+  AccountManagement,
   CheckOutPage,
   HistoryPage,
-  FavoritePage
+  FavoritePage,
 
 } from "@/pages";
 
@@ -66,11 +66,11 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: "detail/:id",
+    path: "detail",
     element: <DetailMainLayout />,
     children: [
       {
-        path: "",
+        path: ":id",
         element: <DetailPage/>,
       },
       {
@@ -84,12 +84,12 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: "dashboard",
+    path: "admin",
     element: <DashboardMainLayout />,
     children: [
       {
-        path: "product",
-        element: <div>Đây là product page</div>,
+        path: "list-user",
+        element: <AccountManagement/>,
       },
     ],
   },
