@@ -57,7 +57,7 @@ const updateProfile = async (req, res) => {
       { account_id: accountId },
       { $set: updates },
       { new: true }
-    ).populate("account_id", "email provider");
+    )
 
     if (!updatedUser) return res.status(404).json({ message: "Không tìm thấy user" });
 
