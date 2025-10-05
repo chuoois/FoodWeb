@@ -8,3 +8,4 @@ router.get("/admin/accounts",authenticate,authorize("ADMIN"), listAccounts);
 router.patch("/admin/accounts/:accountId",authenticate,authorize("ADMIN"), updateAccountStatus);
 
 module.exports = router;
+ 
