@@ -1,16 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Search, X, User, ChevronDown, UserCog, Heart, Clock, LogOut } from "lucide-react";
 
 export const HeaderHome = () => {
   const [openSearch, setOpenSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // ✅ Kiểm tra token khi load component
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsLoggedIn(!!token);
+  }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("token");
+    setIsLoggedIn(false);
     setShowUserMenu(false);
-    // Optionally, redirect to home or login page
     window.location.href = "/";
   };
 
@@ -118,7 +124,7 @@ export const HeaderHome = () => {
                     </Link>
                     <hr className="my-2" />
                     <Link
-                      to="/auth2"
+                      to="/store-director/login"
                       className="w-full px-4 py-3 text-left text-sm hover:bg-orange-50 flex items-center gap-3 transition"
                       onClick={() => setShowUserMenu(false)}
                     >

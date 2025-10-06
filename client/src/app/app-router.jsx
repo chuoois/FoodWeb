@@ -5,8 +5,9 @@ import {
   MenuListMainLayout,
   DetailMainLayout,
   DashboardMainLayout,
-  CheckOutMainLayout
-  
+  CheckOutMainLayout,
+  StoreDirectorAuthLayout,
+  StoreDirectorLayout
 
 } from "@/components/layouts";
 
@@ -21,6 +22,10 @@ import {
   CheckOutPage,
   HistoryPage,
   FavoritePage,
+  StoreDirectorLogin,
+  StoreDirectorRegister,
+  StoreDirectorForgotPassword,
+  CreateShopPage
 
 } from "@/pages";
 
@@ -41,6 +46,42 @@ const router = createBrowserRouter([
         path: "forgot-password",
         element: <ForgotPasswordForm/>,
       }
+    ],
+  },
+  {
+    path: "store-director",
+    element: <StoreDirectorAuthLayout />,
+    children: [
+      {
+        path: "login",
+        element: <StoreDirectorLogin/>,
+      },
+      {
+        path: "register",
+        element: <StoreDirectorRegister/>,
+      },
+      {
+        path: "forgot-password",
+        element: < StoreDirectorForgotPassword/>,
+      }
+    ],
+  },
+  {
+    path: "store-director-manage",
+    element: < StoreDirectorLayout />,
+    children: [
+      {
+        path: "create-shop",
+        element: < CreateShopPage/>,
+      },
+      // {
+      //   path: "register",
+      //   element: <StoreDirectorRegister/>,
+      // },
+      // {
+      //   path: "forgot-password",
+      //   element: < StoreDirectorForgotPassword/>,
+      // }
     ],
   },
   {
