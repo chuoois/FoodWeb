@@ -21,6 +21,8 @@ import {
   CheckOutPage,
   HistoryPage,
   FavoritePage,
+  ShopManagement,
+  AdminSettings,
 
 } from "@/pages";
 
@@ -90,6 +92,14 @@ const router = createBrowserRouter([
       {
         path: "list-user",
         element: <AccountManagement/>,
+      },
+      {
+        path: "list-shop",
+        element: <ShopManagement/>,
+      },
+      {
+        path: "setting",
+        element: <AdminSettings/>,
       },
     ],
   },
