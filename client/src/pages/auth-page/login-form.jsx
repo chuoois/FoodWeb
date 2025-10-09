@@ -39,10 +39,17 @@ export function LoginForm() {
         toast.success("Đăng nhập thành công!");
 
         // ✅ Lưu token và role
-        
+
         localStorage.setItem("token", res.data.token);
         localStorage.setItem("role", res.data.role);
-        
+        localStorage.setItem(
+          "userInfo",
+          JSON.stringify({
+            name: res.data.name, // hoặc res.data.user.name tùy API
+            email: res.data.email, // hoặc res.data.user.email
+            // thêm các field khác nếu cần
+          })
+        );
 
         // ✅ Điều hướng theo role
         switch (res.data.role) {
@@ -66,31 +73,37 @@ export function LoginForm() {
 
   // Xử lý Google Login
   const handleGoogleLogin = async (credentialResponse) => {
-  try {
-    const tokenId = credentialResponse.credential;
-    const res = await loginGoogle(tokenId);
+    try {
+      const tokenId = credentialResponse.credential;
+      const res = await loginGoogle(tokenId);
 
-    toast.success("Đăng nhập Google thành công!");
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("role", res.data.role);
-  
+      toast.success("Đăng nhập Google thành công!");
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("role", res.data.role);
+      localStorage.setItem(
+        "userInfo",
+        JSON.stringify({
+          name: res.data.name, // hoặc res.data.user.name tùy API
+          email: res.data.email, // hoặc res.data.user.email
+          // thêm các field khác nếu cần
+        })
+      );
 
-    switch (res.data.role) {
-      case "ADMIN":
-        navigate("/admin/list-user");
-        break;
-      case "MANAGER_STAFF":
-        navigate("/manager/dashboard");
-        break;
-      default:
-        navigate("/");
-        break;
+      switch (res.data.role) {
+        case "ADMIN":
+          navigate("/admin/list-user");
+          break;
+        case "MANAGER_STAFF":
+          navigate("/manager/dashboard");
+          break;
+        default:
+          navigate("/");
+          break;
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Đăng nhập Google thất bại");
     }
-  } catch (error) {
-    toast.error(error.response?.data?.message || "Đăng nhập Google thất bại");
-  }
-};
-
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-orange-50 px-4">

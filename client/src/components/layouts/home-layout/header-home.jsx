@@ -43,6 +43,10 @@ export const HeaderHome = () => {
     localStorage.removeItem("userInfo");
     localStorage.removeItem("token");
     localStorage.removeItem("role");
+    localStorage.removeItem("userRole");  // ✅ Thêm
+    localStorage.removeItem("userData");
+
+    setUserInfo(null);
     setShowUserMenu(false);
     window.location.href = "/"; // chuyển về trang chủ
   };
