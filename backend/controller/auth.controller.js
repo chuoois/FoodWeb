@@ -226,37 +226,31 @@ const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        const account = await Account.findOne({ email });
-        if (!account) {
-            return res.status(404).json({ message: "Email không tồn tại" });
-        }
+        const account = await Account.findOne({ email }).populate("role_id"); // ✅ thêm populate
+        if (!account) return res.status(404).json({ message: "Email không tồn tại" });
 
-        // Chỉ cho login khi ACTIVE + email_verified
-        if (account.status !== "ACTIVE" || !account.email_verified) {
+        if (account.status !== "ACTIVE" || !account.email_verified)
             return res.status(403).json({ message: "Tài khoản chưa được kích hoạt" });
-        }
 
-        // Kiểm tra mật khẩu
         const isMatch = await bcrypt.compare(password, account.password_hash);
-        if (!isMatch) {
-            return res.status(400).json({ message: "Sai mật khẩu" });
-        }
+        if (!isMatch) return res.status(400).json({ message: "Sai mật khẩu" });
 
-        // Sinh JWT token
         const token = jwt.sign(
-            { accountId: account._id, roleId: account.role_id },
+            { accountId: account._id, role: account.role_id.name }, // ✅ gắn role name
             process.env.JWT_SECRET,
             { expiresIn: "7d" }
         );
 
         res.json({
             message: "Đăng nhập thành công",
-            token
+            token,
+            role: account.role_id.name, // ✅ gửi role ra cho frontend
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
+
 
 const loginGoogle = async (req, res) => {
     try {
@@ -270,18 +264,14 @@ const loginGoogle = async (req, res) => {
         const payload = ticket.getPayload();
         const { email } = payload;
 
-        let account = await Account.findOne({ email });
-        if (!account) {
-            return res.status(404).json({ message: "Tài khoản Google chưa được đăng ký" });
-        }
+        const account = await Account.findOne({ email }).populate("role_id");
+        if (!account) return res.status(404).json({ message: "Tài khoản Google chưa được đăng ký" });
 
-        // Kiểm tra trạng thái
-        if (account.status !== "ACTIVE" || !account.email_verified) {
+        if (account.status !== "ACTIVE" || !account.email_verified)
             return res.status(403).json({ message: "Tài khoản chưa được kích hoạt" });
-        }
 
         const token = jwt.sign(
-            { accountId: account._id, roleId: account.role_id },
+            { accountId: account._id, role: account.role_id.name },
             process.env.JWT_SECRET,
             { expiresIn: "7d" }
         );
@@ -289,11 +279,13 @@ const loginGoogle = async (req, res) => {
         return res.json({
             message: "Đăng nhập Google thành công",
             token,
+            role: account.role_id.name, // ✅ thêm dòng này
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
+
 
 
 module.exports = {

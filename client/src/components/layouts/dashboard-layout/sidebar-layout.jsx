@@ -1,21 +1,47 @@
-// src/components/admin/SidebarAdmin.jsx
+// src/components/common/Sidebar.jsx
 import { NavLink, useNavigate } from "react-router-dom";
-import { Home, ShoppingBag, Settings, LogOut } from "lucide-react";
+import { Home, ShoppingBag, Settings, LogOut, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-export const SidebarAdmin = () => {
+export const Sidebar = () => {
   const navigate = useNavigate();
+  const role = localStorage.getItem("role"); // 👉 Lấy role hiện tại
 
   const handleLogout = () => {
-    localStorage.removeItem("token"); // hoặc sessionStorage tùy bạn lưu token ở đâu
-    navigate("/auth/login"); // điều hướng về trang đăng nhập
+  // ✅ Xóa tất cả thông tin đăng nhập lưu trong localStorage
+  localStorage.removeItem("token");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("role");
+  localStorage.removeItem("userId");
+  localStorage.removeItem("username");
+
+  // Hoặc xóa toàn bộ luôn (nếu không lưu gì khác ngoài login)
+  // localStorage.clear();
+
+  // ✅ Chuyển về trang đăng nhập
+  navigate("/auth/login");
+};
+
+
+  // 👉 Menu theo từng role
+  const menuByRole = {
+    ADMIN: [
+      { to: "list-user", label: "List Account", icon: Users },
+      { to: "list-shop", label: "List Shop", icon: ShoppingBag },
+      { to: "setting", label: "Settings", icon: Settings },
+    ],
+    MANAGER_STAFF: [
+      { to: "manage-shop", label: "Manage Shop", icon: ShoppingBag },
+      { to: "report", label: "Reports", icon: Home },
+    ],
+    CUSTOMER: [
+      { to: "profile", label: "My Profile", icon: Users },
+      { to: "orders", label: "My Orders", icon: ShoppingBag },
+    ],
   };
 
-  const menuItems = [
-    { to: "list-user", label: "List Account", icon: Home },
-    { to: "list-shop", label: "List Shop", icon: ShoppingBag, badge: 3 },
-    { to: "setting", label: "Settings", icon: Settings },
-  ];
+  // 👉 Lấy danh sách menu tương ứng role
+  const menuItems = menuByRole[role] || [];
 
   return (
     <aside className="w-64 bg-white border-r border-orange-200 min-h-[calc(100vh-73px)] sticky top-[73px] flex flex-col justify-between">
@@ -26,14 +52,19 @@ export const SidebarAdmin = () => {
             to={to}
             className={({ isActive }) =>
               `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition justify-start ${
-                isActive ? "bg-orange-500 text-white" : "text-gray-700 hover:bg-orange-50"
+                isActive
+                  ? "bg-orange-500 text-white"
+                  : "text-gray-700 hover:bg-orange-50"
               }`
             }
           >
             <Icon className="w-5 h-5" />
             <span className="font-medium">{label}</span>
             {badge && (
-              <Badge variant="destructive" className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+              <Badge
+                variant="destructive"
+                className="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full"
+              >
                 {badge}
               </Badge>
             )}

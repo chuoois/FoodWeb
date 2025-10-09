@@ -1,18 +1,53 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Search, X, User, ChevronDown, UserCog, Heart, Clock, LogOut } from "lucide-react";
+import {
+  Search,
+  X,
+  User,
+  ChevronDown,
+  UserCog,
+  Heart,
+  Clock,
+  LogOut,
+} from "lucide-react";
 
 export const HeaderHome = () => {
   const [openSearch, setOpenSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  const [userInfo, setUserInfo] = useState(null);
+
+  // Lấy thông tin user từ localStorage khi load trang
+  useEffect(() => {
+    const loadUser = () => {
+      try {
+        const storedUser = localStorage.getItem("userInfo");
+        if (storedUser && storedUser !== "undefined") {
+          setUserInfo(JSON.parse(storedUser));
+        } else {
+          setUserInfo(null);
+        }
+      } catch (error) {
+        console.error("Lỗi parse userInfo:", error);
+        localStorage.removeItem("userInfo");
+        setUserInfo(null);
+      }
+    };
+
+    loadUser(); // chạy lần đầu
+    window.addEventListener("storage", loadUser); // cập nhật khi login/logout
+    return () => window.removeEventListener("storage", loadUser);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("userInfo");
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
     setShowUserMenu(false);
-    // Optionally, redirect to home or login page
-    window.location.href = "/";
+    window.location.href = "/"; // chuyển về trang chủ
   };
+
+  const isLoggedIn = !!userInfo;
 
   return (
     <>
@@ -24,14 +59,12 @@ export const HeaderHome = () => {
             <div className="w-9 h-9 bg-orange-500 rounded-full flex items-center justify-center shadow-md">
               <span className="text-white font-bold text-lg">Y</span>
             </div>
-            <div className="flex items-center gap-3">
-              <Link
-                to="/"
-                className="text-2xl font-bold text-gray-900 transition-colors"
-              >
-                Yummy<span className="text-orange-500">Go</span>
-              </Link>
-            </div>
+            <Link
+              to="/"
+              className="text-2xl font-bold text-gray-900 transition-colors"
+            >
+              Yummy<span className="text-orange-500">Go</span>
+            </Link>
           </div>
 
           {/* Search trigger */}
@@ -50,7 +83,9 @@ export const HeaderHome = () => {
               className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-full shadow-md transition-all duration-300"
             >
               <User className="w-4 h-4" />
-              <span>{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
+              <span>
+                {isLoggedIn ? userInfo?.name || "Tài khoản" : "Đăng nhập"}
+              </span>
               <ChevronDown className="w-4 h-4" />
             </button>
 
@@ -66,7 +101,9 @@ export const HeaderHome = () => {
                       <User className="w-5 h-5 text-orange-500" />
                       <div>
                         <div className="font-medium text-gray-900">Profile</div>
-                        <div className="text-xs text-gray-500">Thông tin cá nhân</div>
+                        <div className="text-xs text-gray-500">
+                          Thông tin cá nhân
+                        </div>
                       </div>
                     </Link>
                     <Link
@@ -76,8 +113,12 @@ export const HeaderHome = () => {
                     >
                       <Heart className="w-5 h-5 text-orange-500" />
                       <div>
-                        <div className="font-medium text-gray-900">Nhà hàng yêu thích</div>
-                        <div className="text-xs text-gray-500">Danh sách yêu thích</div>
+                        <div className="font-medium text-gray-900">
+                          Nhà hàng yêu thích
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Danh sách yêu thích
+                        </div>
                       </div>
                     </Link>
                     <Link
@@ -87,8 +128,12 @@ export const HeaderHome = () => {
                     >
                       <Clock className="w-5 h-5 text-orange-500" />
                       <div>
-                        <div className="font-medium text-gray-900">Lịch sử mua hàng</div>
-                        <div className="text-xs text-gray-500">Đơn hàng đã đặt</div>
+                        <div className="font-medium text-gray-900">
+                          Lịch sử mua hàng
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Đơn hàng đã đặt
+                        </div>
                       </div>
                     </Link>
                     <hr className="my-2" />
@@ -98,8 +143,12 @@ export const HeaderHome = () => {
                     >
                       <LogOut className="w-5 h-5 text-orange-500" />
                       <div>
-                        <div className="font-medium text-gray-900">Đăng xuất</div>
-                        <div className="text-xs text-gray-500">Thoát tài khoản</div>
+                        <div className="font-medium text-gray-900">
+                          Đăng xuất
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Thoát tài khoản
+                        </div>
                       </div>
                     </button>
                   </>
@@ -112,7 +161,9 @@ export const HeaderHome = () => {
                     >
                       <User className="w-5 h-5 text-orange-500" />
                       <div>
-                        <div className="font-medium text-gray-900">Đăng nhập người dùng</div>
+                        <div className="font-medium text-gray-900">
+                          Đăng nhập người dùng
+                        </div>
                         <div className="text-xs text-gray-500">Khách hàng</div>
                       </div>
                     </Link>
@@ -124,7 +175,9 @@ export const HeaderHome = () => {
                     >
                       <UserCog className="w-5 h-5 text-orange-500" />
                       <div>
-                        <div className="font-medium text-gray-900">Đăng nhập đối tác</div>
+                        <div className="font-medium text-gray-900">
+                          Đăng nhập đối tác
+                        </div>
                         <div className="text-xs text-gray-500">Đối tác</div>
                       </div>
                     </Link>
@@ -140,7 +193,6 @@ export const HeaderHome = () => {
       {openSearch && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-start pt-20 z-50">
           <div className="bg-white w-full max-w-2xl rounded-lg shadow-lg p-4 relative">
-            {/* Close button */}
             <button
               onClick={() => setOpenSearch(false)}
               className="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
@@ -148,7 +200,6 @@ export const HeaderHome = () => {
               <X className="w-6 h-6" />
             </button>
 
-            {/* Search input */}
             <div className="flex items-center gap-2 border rounded-lg px-3 py-2">
               <Search className="w-5 h-5 text-gray-400" />
               <input
@@ -158,14 +209,19 @@ export const HeaderHome = () => {
               />
             </div>
 
-            {/* Gợi ý */}
             <div className="mt-6">
-              <h3 className="text-sm font-semibold text-gray-600 mb-2">Tìm kiếm gần đây</h3>
+              <h3 className="text-sm font-semibold text-gray-600 mb-2">
+                Tìm kiếm gần đây
+              </h3>
               <div className="flex flex-wrap gap-2 mb-4">
-                <span className="px-3 py-1 border rounded-full text-sm text-gray-700">gà ủ muối</span>
+                <span className="px-3 py-1 border rounded-full text-sm text-gray-700">
+                  gà ủ muối
+                </span>
               </div>
 
-              <h3 className="text-sm font-semibold text-gray-600 mb-2">Món gì đang hot</h3>
+              <h3 className="text-sm font-semibold text-gray-600 mb-2">
+                Món gì đang hot
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {[
                   "mì cay",

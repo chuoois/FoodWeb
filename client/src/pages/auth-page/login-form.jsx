@@ -1,19 +1,19 @@
-import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import { Eye, EyeOff, Mail, Lock } from "lucide-react"
-import { useFormik } from "formik"
-import * as Yup from "yup"
-import toast from "react-hot-toast"
-import { login, loginGoogle } from "@/services/auth.service"
-import { GoogleLogin } from "@react-oauth/google"
-import Cookies from "js-cookie"
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { useFormik } from "formik";
+import * as Yup from "yup";
+import toast from "react-hot-toast";
+import { login, loginGoogle } from "@/services/auth.service";
+import { GoogleLogin } from "@react-oauth/google";
+import Cookies from "js-cookie";
 
 export function LoginForm() {
-  const [showPassword, setShowPassword] = useState(false)
-  const navigate = useNavigate()
+  const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   // Lấy email đã lưu trong cookie (nếu có)
-  const savedEmail = Cookies.get("rememberedEmail") || ""
+  const savedEmail = Cookies.get("rememberedEmail") || "";
 
   // Validation Schema
   const validationSchema = Yup.object({
@@ -23,7 +23,7 @@ export function LoginForm() {
     password: Yup.string()
       .min(6, "Mật khẩu tối thiểu 6 ký tự")
       .required("Vui lòng nhập mật khẩu"),
-  })
+  });
 
   // Formik setup
   const formik = useFormik({
@@ -35,44 +35,65 @@ export function LoginForm() {
     validationSchema,
     onSubmit: async (values, { setSubmitting }) => {
       try {
-        const res = await login(values)
-        toast.success("Đăng nhập thành công!")
+        const res = await login(values);
+        toast.success("Đăng nhập thành công!");
 
-        // Lưu token/ thông tin user vào localStorage
-        localStorage.setItem("token", res.data.token)
+        // ✅ Lưu token và role
+        
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("role", res.data.role);
+        
 
-        // Xử lý Remember Me
-        if (values.rememberMe) {
-          Cookies.set("rememberedEmail", values.email, { expires: 7 }) // lưu 7 ngày
-        } else {
-          Cookies.remove("rememberedEmail")
+        // ✅ Điều hướng theo role
+        switch (res.data.role) {
+          case "ADMIN":
+            navigate("/admin/list-user");
+            break;
+          case "MANAGER_STAFF":
+            navigate("/manager/dashboard");
+            break;
+          default:
+            navigate("/"); // CUSTOMER hoặc mặc định
+            break;
         }
-
-        navigate("/") // Chuyển về trang chủ
       } catch (error) {
-        toast.error(error.response?.data?.message || "Đăng nhập thất bại")
+        toast.error(error.response?.data?.message || "Đăng nhập thất bại");
       } finally {
-        setSubmitting(false)
+        setSubmitting(false);
       }
     },
-  })
+  });
 
   // Xử lý Google Login
   const handleGoogleLogin = async (credentialResponse) => {
-    try {
-      const tokenId = credentialResponse.credential
-      const res = await loginGoogle(tokenId)
-      toast.success("Đăng nhập Google thành công!")
-      localStorage.setItem("token", res.data.token)
-      navigate("/")
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Đăng nhập Google thất bại")
+  try {
+    const tokenId = credentialResponse.credential;
+    const res = await loginGoogle(tokenId);
+
+    toast.success("Đăng nhập Google thành công!");
+    localStorage.setItem("token", res.data.token);
+    localStorage.setItem("role", res.data.role);
+  
+
+    switch (res.data.role) {
+      case "ADMIN":
+        navigate("/admin/list-user");
+        break;
+      case "MANAGER_STAFF":
+        navigate("/manager/dashboard");
+        break;
+      default:
+        navigate("/");
+        break;
     }
+  } catch (error) {
+    toast.error(error.response?.data?.message || "Đăng nhập Google thất bại");
   }
+};
+
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-orange-50 px-4">
-
       {/* Logo + Brand */}
       <Link to="/" className="flex flex-col items-center mb-6">
         <div className="w-16 h-16 rounded-full bg-orange-500 flex items-center justify-center text-white text-2xl font-bold">
@@ -93,7 +114,10 @@ export function LoginForm() {
         <form onSubmit={formik.handleSubmit} className="space-y-6">
           {/* Email */}
           <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium text-gray-700">
+            <label
+              htmlFor="email"
+              className="text-sm font-medium text-gray-700"
+            >
               Email
             </label>
             <div className="relative">
@@ -116,7 +140,10 @@ export function LoginForm() {
 
           {/* Password */}
           <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium text-gray-700">
+            <label
+              htmlFor="password"
+              className="text-sm font-medium text-gray-700"
+            >
               Mật khẩu
             </label>
             <div className="relative">
@@ -136,7 +163,11 @@ export function LoginForm() {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {showPassword ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
               </button>
             </div>
             {formik.touched.password && formik.errors.password && (
@@ -157,7 +188,10 @@ export function LoginForm() {
               />
               <span>Ghi nhớ đăng nhập</span>
             </label>
-            <a href="/auth/forgot-password" className="text-sm text-orange-500 hover:underline">
+            <a
+              href="/auth/forgot-password"
+              className="text-sm text-orange-500 hover:underline"
+            >
               Quên mật khẩu?
             </a>
           </div>
@@ -191,7 +225,10 @@ export function LoginForm() {
           <div className="text-center">
             <p className="text-sm text-gray-600">
               Chưa có tài khoản?{" "}
-              <a href="/auth/register" className="text-orange-500 hover:underline font-medium">
+              <a
+                href="/auth/register"
+                className="text-orange-500 hover:underline font-medium"
+              >
                 Đăng ký ngay
               </a>
             </p>
@@ -200,10 +237,16 @@ export function LoginForm() {
 
         <p className="mt-6 text-xs text-gray-500 text-center">
           Bằng cách tiếp tục, bạn đồng ý với{" "}
-          <a href="/terms" className="text-orange-500 hover:underline">Điều khoản dịch vụ</a> và{" "}
-          <a href="/privacy" className="text-orange-500 hover:underline">Chính sách bảo mật</a> của chúng tôi.
+          <a href="/terms" className="text-orange-500 hover:underline">
+            Điều khoản dịch vụ
+          </a>{" "}
+          và{" "}
+          <a href="/privacy" className="text-orange-500 hover:underline">
+            Chính sách bảo mật
+          </a>{" "}
+          của chúng tôi.
         </p>
       </div>
     </div>
-  )
+  );
 }
