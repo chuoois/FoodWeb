@@ -23,18 +23,29 @@ const listAccounts = async (req, res) => {
 
     const accounts = await Account.find(query)
       .populate("role_id", "name description")
-      .select("email status email_verified role_id createdAt")
+      .select("email status email_verified role_id createdAt provider")
       .skip(skip)
       .limit(limit);
 
     const total = await Account.countDocuments(query);
     const totalPages = Math.ceil(total / limit);
 
-    return res.json({ accounts, totalPages, currentPage: parseInt(page) });
+    // 🔹 Lấy thêm danh sách role để gửi về frontend
+    const roles = await Role.find({}, "_id name description");
+
+    return res.json({
+      accounts,
+      roles,           // ✅ thêm dòng này
+      totalPages,
+      currentPage: parseInt(page),
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
+
+
+
 const updateAccountStatus = async (req, res) => {
   try {
     const { accountId } = req.params;
