@@ -1,4 +1,6 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
+import { RootLayout } from "./RootLayout";
+
 import {
   AuthLayout,
   HomeMainLayout,
@@ -6,8 +8,6 @@ import {
   DetailMainLayout,
   DashboardMainLayout,
   CheckOutMainLayout
-  
-
 } from "@/components/layouts";
 
 import {
@@ -23,102 +23,58 @@ import {
   FavoritePage,
   ShopManagement,
   AdminSettings,
-
 } from "@/pages";
 
-const router = createBrowserRouter([
-  {
-    path: "auth",
-    element: <AuthLayout />,
-    children: [
-      {
-        path: "login",
-        element: <LoginForm/>,
-      },
-      {
-        path: "register",
-        element: <RegisterForm/>,
-      },
-      {
-        path: "forgot-password",
-        element: <ForgotPasswordForm/>,
-      }
-    ],
-  },
+export const router = createBrowserRouter([
   {
     path: "/",
-    element: <HomeMainLayout />,
+    element: <RootLayout />,
     children: [
+      {
+        path: "auth",
+        element: <AuthLayout />,
+        children: [
+          { path: "login", element: <LoginForm /> },
+          { path: "register", element: <RegisterForm /> },
+          { path: "forgot-password", element: <ForgotPasswordForm /> },
+        ],
+      },
       {
         path: "",
-        element: <HomePage />,
-      },
-      
-    ],
-  },
-    {
-    path: "menu",
-    element: <MenuListMainLayout />,
-    children: [
-      {
-        path: "list/:category",
-        element: <MenuListPage/>,
-      },
-      
-    ],
-  },
-  {
-    path: "detail",
-    element: <DetailMainLayout />,
-    children: [
-      {
-        path: ":id",
-        element: <DetailPage/>,
+        element: <HomeMainLayout />,
+        children: [{ path: "", element: <HomePage /> }],
       },
       {
-        path: "history",
-        element: <HistoryPage/>,
+        path: "menu",
+        element: <MenuListMainLayout />,
+        children: [{ path: "list/:category", element: <MenuListPage /> }],
       },
       {
-        path: "favorite",
-        element: <FavoritePage/>,
-      },
-    ],
-  },
-  {
-    path: "admin",
-    element: <DashboardMainLayout />,
-    children: [
-      {
-        path: "list-user",
-        element: <AccountManagement/>,
+        path: "detail",
+        element: <DetailMainLayout />,
+        children: [
+          { path: ":id", element: <DetailPage /> },
+          { path: "history", element: <HistoryPage /> },
+          { path: "favorite", element: <FavoritePage /> },
+        ],
       },
       {
-        path: "list-shop",
-        element: <ShopManagement/>,
+        path: "admin",
+        element: <DashboardMainLayout />,
+        children: [
+          { path: "list-user", element: <AccountManagement /> },
+          { path: "list-shop", element: <ShopManagement /> },
+          { path: "setting", element: <AdminSettings /> },
+        ],
       },
       {
-        path: "setting",
-        element: <AdminSettings/>,
-      },
-    ],
-  },
-  {
-    path: "checkout",
-    element: <CheckOutMainLayout />,
-    children: [
-      {
-        path: "",
-        element: <CheckOutPage/>,
-      },
-      {
-        path: "product",
-        element: <div>Đây là product page</div>,
+        path: "checkout",
+        element: <CheckOutMainLayout />,
+        children: [
+          { path: "", element: <CheckOutPage /> },
+          { path: "product", element: <div>Đây là product page</div> },
+        ],
       },
     ],
   },
 ]);
-
-export const AppRouter = () => {
-  return <RouterProvider router={router} />;
-};
