@@ -7,7 +7,9 @@ import {
   MenuListMainLayout,
   DetailMainLayout,
   DashboardMainLayout,
-  CheckOutMainLayout
+  CheckOutMainLayout,
+  StoreDirectorAuthLayout,
+  StoreDirectorLayout
 } from "@/components/layouts";
 
 import {
@@ -23,6 +25,10 @@ import {
   FavoritePage,
   ShopManagement,
   AdminSettings,
+  StoreDirectorLogin,
+  StoreDirectorRegister,
+  StoreDirectorForgotPassword,
+  CreateShopPage
 } from "@/pages";
 
 export const router = createBrowserRouter([
@@ -73,6 +79,35 @@ export const router = createBrowserRouter([
         children: [
           { path: "", element: <CheckOutPage /> },
           { path: "product", element: <div>Đây là product page</div> },
+        ],
+      },
+      {
+        path: "store-director",
+        element: <StoreDirectorAuthLayout />,
+        children: [
+          {
+            path: "login",
+            element: <StoreDirectorLogin />,
+          },
+          {
+            path: "register",
+            element: <StoreDirectorRegister />,
+          },
+          {
+            path: "forgot-password",
+            element: < StoreDirectorForgotPassword />,
+          }
+        ],
+      },
+      {
+        path: "store-director/manage",
+        element: < StoreDirectorLayout />,
+        children: [
+          {
+            path: "create-shop",
+            element: < CreateShopPage />,
+          },
+
         ],
       },
     ],
