@@ -84,16 +84,16 @@ export function CreateShopPage() {
                 <CardHeader>
                     <div className="flex items-center gap-2">
                         <Store className="h-5 w-5 text-muted-foreground" />
-                        <CardTitle>Basic Information</CardTitle>
+                        <CardTitle>Thông tin cơ bản</CardTitle>
                     </div>
-                    <CardDescription>Provide the essential details about your shop</CardDescription>
+                    <CardDescription>Cung cấp các thông tin chi tiết cần thiết về cửa hàng của bạn</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="name">Shop Name *</Label>
+                        <Label htmlFor="name">Tên cửa hàng *</Label>
                         <Input
                             id="name"
-                            placeholder="Enter your shop name"
+                            placeholder="Nhập tên cửa hàng của bạn"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             required
@@ -102,10 +102,10 @@ export function CreateShopPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="description">Description</Label>
+                        <Label htmlFor="description">Mô tả ngắn</Label>
                         <Textarea
                             id="description"
-                            placeholder="Describe your shop and what makes it special"
+                            placeholder="Mô tả cửa hàng của bạn và điều gì làm cho nó đặc biệt"
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                             rows={4}
@@ -114,7 +114,7 @@ export function CreateShopPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number *</Label>
+                        <Label htmlFor="phone">Số điện thoại *</Label>
                         <Input
                             id="phone"
                             type="tel"
@@ -133,13 +133,13 @@ export function CreateShopPage() {
                 <CardHeader>
                     <div className="flex items-center gap-2">
                         <MapPin className="h-5 w-5 text-muted-foreground" />
-                        <CardTitle>Location</CardTitle>
+                        <CardTitle>Vị trí</CardTitle>
                     </div>
-                    <CardDescription>Where is your shop located?</CardDescription>
+                    <CardDescription>Cửa hàng của bạn ở đâu?</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="street">Street Address *</Label>
+                        <Label htmlFor="street">Địa chỉ cụ thể *</Label>
                         <Input
                             id="street"
                             placeholder="123 Main Street"
@@ -152,10 +152,10 @@ export function CreateShopPage() {
 
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                            <Label htmlFor="ward">Ward *</Label>
+                            <Label htmlFor="ward">Phường/Xã *</Label>
                             <Input
                                 id="ward"
-                                placeholder="Ward 1"
+                                placeholder="Xã Hòa Lạc"
                                 value={formData.address.ward}
                                 onChange={(e) => updateAddress("ward", e.target.value)}
                                 required
@@ -164,10 +164,10 @@ export function CreateShopPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="district">District *</Label>
+                            <Label htmlFor="district">Quận/Huyện *</Label>
                             <Input
                                 id="district"
-                                placeholder="District 1"
+                                placeholder="Huyện Thạch Thất"
                                 value={formData.address.district}
                                 onChange={(e) => updateAddress("district", e.target.value)}
                                 required
@@ -178,10 +178,10 @@ export function CreateShopPage() {
 
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                            <Label htmlFor="city">City *</Label>
+                            <Label htmlFor="city">Thành phố *</Label>
                             <Input
                                 id="city"
-                                placeholder="Ho Chi Minh City"
+                                placeholder="Hà Nội"
                                 value={formData.address.city}
                                 onChange={(e) => updateAddress("city", e.target.value)}
                                 required
@@ -190,10 +190,10 @@ export function CreateShopPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="province">Province *</Label>
+                            <Label htmlFor="province">Tỉnh/Thành phố *</Label>
                             <Input
                                 id="province"
-                                placeholder="Ho Chi Minh"
+                                placeholder="Hà Nội"
                                 value={formData.address.province}
                                 onChange={(e) => updateAddress("province", e.target.value)}
                                 required
@@ -202,7 +202,7 @@ export function CreateShopPage() {
                         </div>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    {/* <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
                             <Label htmlFor="latitude">Latitude (GPS)</Label>
                             <Input
@@ -228,7 +228,7 @@ export function CreateShopPage() {
                                 className="bg-background"
                             />
                         </div>
-                    </div>
+                    </div> */}
                 </CardContent>
             </Card>
 
@@ -237,13 +237,13 @@ export function CreateShopPage() {
                 <CardHeader>
                     <div className="flex items-center gap-2">
                         <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                        <CardTitle>Branding</CardTitle>
+                        <CardTitle>Thương hiệu</CardTitle>
                     </div>
-                    <CardDescription>Upload your shop logo and cover image</CardDescription>
+                    <CardDescription>Tải lên logo và ảnh bìa của cửa hàng bạn</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="logoUrl">Logo URL</Label>
+                        <Label htmlFor="logoUrl">Đường dẫn logo (Logo URL)</Label>
                         <div className="flex gap-2">
                             <Input
                                 id="logoUrl"
@@ -258,12 +258,12 @@ export function CreateShopPage() {
                             </Button>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            Recommended: Square image, at least 200x200px
+                           Khuyến nghị ảnh vuông ≥ 200×200px
                         </p>
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="coverUrl">Cover Image URL</Label>
+                        <Label htmlFor="coverUrl">Đường dẫn ảnh bìa (Cover Image URL)</Label>
                         <div className="flex gap-2">
                             <Input
                                 id="coverUrl"
@@ -277,7 +277,7 @@ export function CreateShopPage() {
                                 <Upload className="h-4 w-4" />
                             </Button>
                         </div>
-                        <p className="text-xs text-muted-foreground">Recommended: 1200x400px or wider</p>
+                        <p className="text-xs text-muted-foreground">Khuyến nghị kích thước ≥ 1200×400px</p>
                     </div>
                 </CardContent>
             </Card>
@@ -287,13 +287,13 @@ export function CreateShopPage() {
                 <CardHeader>
                     <div className="flex items-center gap-2">
                         <CreditCard className="h-5 w-5 text-muted-foreground" />
-                        <CardTitle>Bank Account</CardTitle>
+                        <CardTitle>Tài khoản ngân hàng</CardTitle>
                     </div>
-                    <CardDescription>Add your bank account for receiving payments</CardDescription>
+                    <CardDescription>Thêm thông tin tài khoản ngân hàng để nhận thanh toán</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="bankName">Bank Name *</Label>
+                        <Label htmlFor="bankName">Tên ngân hàng *</Label>
                         <Input
                             id="bankName"
                             placeholder="Vietcombank"
@@ -305,7 +305,7 @@ export function CreateShopPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="accountNumber">Account Number *</Label>
+                        <Label htmlFor="accountNumber">Số tài khoản *</Label>
                         <Input
                             id="accountNumber"
                             placeholder="1234567890"
@@ -317,7 +317,7 @@ export function CreateShopPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="accountHolder">Account Holder Name *</Label>
+                        <Label htmlFor="accountHolder">Chủ tài khoản *</Label>
                         <Input
                             id="accountHolder"
                             placeholder="NGUYEN VAN A"
@@ -333,13 +333,13 @@ export function CreateShopPage() {
             {/* Submit Button */}
             <div className="flex items-center justify-between rounded-lg border border-border bg-card p-6">
                 <div>
-                    <p className="text-sm font-medium text-foreground">Ready to submit?</p>
+                    <p className="text-sm font-medium text-foreground">Bạn đã sẵn sàng gửi đăng ký cửa hàng chưa?</p>
                     <p className="text-sm text-muted-foreground">
-                        Your shop will be reviewed and approved by our team
+                     Chúng tôi sẽ xem xét và phê duyệt cửa hàng của bạn trong thời gian sớm nhất.
                     </p>
                 </div>
                 <Button type="submit" size="lg" disabled={isSubmitting}>
-                    {isSubmitting ? "Submitting..." : "Submit Application"}
+                    {isSubmitting ? "Đang gửi..." : "Gửi đăng ký"}
                 </Button>
             </div>
         </form>

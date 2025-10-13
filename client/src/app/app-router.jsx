@@ -67,7 +67,7 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: "store-director-manage",
+    path: "store-director/manage",
     element: < StoreDirectorLayout />,
     children: [
       {

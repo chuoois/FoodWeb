@@ -1,16 +1,25 @@
+"use client"
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   LayoutDashboard,
   Store,
-  ShoppingBag,
-  Users,
-  Settings,
   Menu,
   X,
   ChevronRight,
+  LogOut,
+  HelpCircle,
+  UserCircle,
 } from "lucide-react"
 
 export function SidebarStoreDirectorLayout({ children }) {
@@ -18,11 +27,23 @@ export function SidebarStoreDirectorLayout({ children }) {
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Tạo cửa hàng", href: "/store-director-manage/create-shop", icon: Store, current: true },
-    // { name: "Orders", href: "/orders", icon: ShoppingBag },
-    // { name: "Staff Management", href: "/staff", icon: Users },
-    // { name: "Settings", href: "/settings", icon: Settings },
+    { name: "Tạo cửa hàng", href: "/store-director/manage/create-shop", icon: Store, current: true },
   ]
+
+  const handleLogout = () => {
+    console.log("Logging out...")
+    // window.location.href = "/login"
+  }
+
+  const handleProfile = () => {
+    console.log("Navigating to profile...")
+    // window.location.href = "/profile"
+  }
+
+  const handleSupport = () => {
+    console.log("Opening support...")
+    // window.location.href = "/support"
+  }
 
   return (
     <div className="flex h-screen bg-background">
@@ -81,22 +102,42 @@ export function SidebarStoreDirectorLayout({ children }) {
             })}
           </nav>
 
-          {/* User info at bottom */}
+          {/* User info dropdown */}
           <div className="border-t border-border p-4">
-            <div className="flex items-center gap-3 rounded-lg bg-accent/50 p-3">
-              <Avatar className="h-9 w-9">
-                <AvatarImage src="/placeholder.svg?height=36&width=36" />
-                <AvatarFallback>SD</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 overflow-hidden">
-                <p className="truncate text-sm font-medium text-foreground">
-                  Store Director
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  director@example.com
-                </p>
-              </div>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex w-full items-center gap-3 rounded-lg bg-accent/50 p-3 transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src="/placeholder.svg?height=36&width=36" />
+                    <AvatarFallback>SD</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 overflow-hidden text-left">
+                    <p className="truncate text-sm font-medium text-foreground">Store Director</p>
+                    <p className="truncate text-xs text-muted-foreground">director@example.com</p>
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Tài khoản của tôi</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleProfile} className="cursor-pointer">
+                  <UserCircle className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSupport} className="cursor-pointer">
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  <span>Hỗ trợ</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Đăng xuất</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </aside>
