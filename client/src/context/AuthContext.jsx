@@ -5,7 +5,7 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [mounted, setMounted] = useState(false); // ✅ kiểm soát khi nào render app
+  const [mounted, setMounted] = useState(false); 
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -29,10 +29,9 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    setMounted(true); // ✅ Sau khi check xong mới render app
+    setMounted(true); 
   }, []);
 
-  // ✅ Login — lưu token và cập nhật user ngay
   const login = (token) => {
     localStorage.setItem("token", token);
     try {

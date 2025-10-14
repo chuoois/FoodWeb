@@ -16,13 +16,11 @@ export const loadingEmitter = {
   
   start: () => {
     activeRequests++;
-    console.log('🚀 Loading START - Active requests:', activeRequests);
     loadingEmitter.emit(true);
   },
   
   stop: () => {
     activeRequests = Math.max(0, activeRequests - 1);
-    console.log('✅ Loading STOP - Active requests:', activeRequests);
     if (activeRequests === 0) {
       loadingEmitter.emit(false);
     }

@@ -8,7 +8,7 @@ import { Eye, EyeOff, Mail, Lock, Store, ShieldCheck, CheckCircle2 } from "lucid
 import toast from "react-hot-toast"
 import { useFormik } from "formik"
 import * as Yup from "yup"
-import { register, verifyOtp, resendOtp } from "@/services/auth.service"
+import { register, verifyOtp, resendOtp, registerGoogle } from "@/services/auth.service"
 import { GoogleLogin } from "@react-oauth/google"
 
 export function StoreDirectorRegister() {
@@ -46,6 +46,7 @@ export function StoreDirectorRegister() {
       email: "",
       password: "",
       confirmPassword: "",
+      roleName: "STORE_DIRECTOR",
       agreeToTerms: false,
     },
     validationSchema,
@@ -55,6 +56,7 @@ export function StoreDirectorRegister() {
           email: values.email,
           password: values.password,
           confirmPassword: values.confirmPassword,
+          roleName: values.roleName,
           role: "STORE_DIRECTOR",
         })
         setEmail(values.email)
@@ -247,29 +249,29 @@ export function StoreDirectorRegister() {
               >
                 {formik.isSubmitting ? "Đang đăng ký..." : "Đăng ký"}
               </Button>
-           <div className="relative">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-300" /></div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Hoặc</span>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-300" /></div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">Hoặc</span>
+                </div>
               </div>
-            </div>
 
-            <GoogleLogin
-              onSuccess={async (res) => {
-                try {
-                  await registerGoogle(res.credential)
-                  toast.success("Đăng ký Google thành công!")
-                  navigate("/auth/login")
-                } catch (error) {
-                  toast.error(error.response?.data?.message || "Đăng ký Google thất bại")
-                }
-              }}
-              onError={() => toast.error("Đăng ký Google thất bại")}
-            />
+              <GoogleLogin
+                onSuccess={async (res) => {
+                  try {
+                    await registerGoogle(res.credential, "STORE_DIRECTOR"); 
+                    toast.success("Đăng ký Google thành công!");
+                    navigate("/store-director/login");
+                  } catch (error) {
+                    toast.error(error.response?.data?.message || "Đăng ký Google thất bại");
+                  }
+                }}
+                onError={() => toast.error("Đăng ký Google thất bại")}
+              />
 
-            <p className="text-sm text-gray-600 text-center">
-              Đã có tài khoản? <a href="/store-director/login" className="text-orange-500 hover:underline">Đăng nhập</a>
-            </p>
+              <p className="text-sm text-gray-600 text-center">
+                Đã có tài khoản? <a href="/store-director/login" className="text-orange-500 hover:underline">Đăng nhập</a>
+              </p>
             </form>
 
           </div>
