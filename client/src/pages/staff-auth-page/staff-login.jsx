@@ -4,14 +4,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Eye, EyeOff, Mail, Lock, UserLock  } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, UserLock } from "lucide-react"
 import { useFormik } from "formik"
 import * as Yup from "yup"
 import toast from "react-hot-toast"
-import { login, loginGoogle } from "@/services/auth.service"
-import { GoogleLogin } from "@react-oauth/google"
+import { login, getRoleNameById } from "@/services/auth.service"
 import Cookies from "js-cookie"
 import { AuthContext } from "@/context/AuthContext"
+import { jwtDecode } from "jwt-decode"
 
 export function StaffLogin() {
   const [showPassword, setShowPassword] = useState(false)
@@ -35,17 +35,25 @@ export function StaffLogin() {
     onSubmit: async (values, { setSubmitting }) => {
       try {
         const res = await login(values)
-        toast.success("Đăng nhập thành công!")
+        const decoded = jwtDecode(res.data.token)
 
-        loginContext(res.data.token)
+        const responseRole = await getRoleNameById({ id: decoded.roleId })
+        const roleName = responseRole.data.name
 
-        if (values.rememberMe) {
-          Cookies.set("rememberedEmail", values.email, { expires: 7 })
+        if (roleName === "ADMIN") {
+          toast.success("Đăng nhập thành công!")
+          loginContext(res.data.token)
+
+          if (values.rememberMe) {
+            Cookies.set("rememberedEmail", values.email, { expires: 7 })
+          } else {
+            Cookies.remove("rememberedEmail")
+          }
+          navigate("/admin/list-user")
+          return
         } else {
-          Cookies.remove("rememberedEmail")
+          navigate("/403-forbidden")
         }
-
-        navigate("/store-director/dashboard")
       } catch (error) {
         toast.error(error.response?.data?.message || "Đăng nhập thất bại")
       } finally {
@@ -54,15 +62,13 @@ export function StaffLogin() {
     },
   })
 
-  
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg">
-            < UserLock  className="w-8 h-8 text-white" />
+            < UserLock className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-800">
             Yummy<span className="text-orange-600">Go</span>
@@ -159,10 +165,10 @@ export function StaffLogin() {
               {formik.isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
 
-           
+
           </form>
 
-         
+
 
           {/* Footer Note */}
           <div className="mt-6 pt-6 border-t border-gray-100">

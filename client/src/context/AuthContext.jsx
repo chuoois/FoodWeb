@@ -1,58 +1,66 @@
 import React, { createContext, useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
+import { getRoleNameById } from "@/services/auth.service";
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [mounted, setMounted] = useState(false); 
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        const currentTime = Date.now() / 1000;
+    const initUser = async () => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          const decoded = jwtDecode(token);
+          const currentTime = Date.now() / 1000;
 
-        // ✅ Kiểm tra token hết hạn
-        if (decoded.exp && decoded.exp < currentTime) {
+          if (decoded.exp && decoded.exp < currentTime) {
+            logout();
+          } else {
+            // Lấy roleName async
+            const response = await getRoleNameById({ id: decoded.roleId });
+            const roleName = response.data.name;
+            setUser({
+              id: decoded.accountId,
+              roleId: decoded.roleId,
+              roleName,
+            });
+          }
+        } catch (error) {
+          console.error("Token decode failed:", error);
           logout();
-        } else {
-          setUser({
-            id: decoded.accountId,
-            roleId: decoded.roleId,
-          });
         }
-      } catch (error) {
-        console.error("Token decode failed:", error);
-        logout();
       }
-    }
+      setMounted(true);
+    };
 
-    setMounted(true); 
+    initUser();
   }, []);
 
-  const login = (token) => {
+  const login = async (token) => {
     localStorage.setItem("token", token);
-    try {
-      const decoded = jwtDecode(token);
-      setUser({
-        id: decoded.accountId,
-        roleId: decoded.roleId,
-      });
-    } catch (error) {
-      console.error("Token decode error:", error);
-    }
+    const decoded = jwtDecode(token);
+    const response = await getRoleNameById({ id: decoded.roleId });
+    const roleName = response.data.name;
+
+    setUser({
+      id: decoded.accountId,
+      roleId: decoded.roleId,
+      roleName,
+    });
   };
 
-  // ✅ Logout — xóa token và user
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
   };
 
+  const isAuthenticated = !!user;
+
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated }}>
       {mounted ? children : null}
     </AuthContext.Provider>
   );
