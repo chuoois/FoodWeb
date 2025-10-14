@@ -19,7 +19,8 @@ const shopSchema = new mongoose.Schema({
   status: { type: String, enum: ["ACTIVE", "INACTIVE", "BANNED", "PENDING_APPROVAL"], default: "ACTIVE" },
   logoUrl: String,
   coverUrl: String,
-  rating: { type: Number, default: 0 }
+  rating: { type: Number, default: 0 },
+  type: { type: String, enum: ["Food", "Drink"]},
 }, { timestamps: true });
 
 // index geospatial

@@ -4,3 +4,6 @@ import api from "../lib/axios";
 export const getNearbyShops = (lat, lng) => {
     return api.get("home/nearby", { params: { lat, lng } });
 };
+export const getPopularShops = () => {
+    return api.get("home/popular");
+}
