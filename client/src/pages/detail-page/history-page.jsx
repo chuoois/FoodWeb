@@ -4,13 +4,13 @@ import { Clock, ChevronRight } from "lucide-react";
 
 export const HistoryPage = () => {
   const navigate = useNavigate();
-  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  // const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
 
-  useEffect(() => {
-    if (!isLoggedIn) {
-      navigate("/auth/login");
-    }
-  }, [isLoggedIn, navigate]);
+  // useEffect(() => {
+  //   if (!isLoggedIn) {
+  //     navigate("/auth/login");
+  //   }
+  // }, [isLoggedIn, navigate]);
 
   // Sample order data
   const orders = [

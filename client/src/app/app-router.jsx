@@ -9,7 +9,8 @@ import {
   DashboardMainLayout,
   CheckOutMainLayout,
   StoreDirectorAuthLayout,
-  StoreDirectorLayout
+  StoreDirectorLayout,
+  StaffAuthLayout
 } from "@/components/layouts";
 
 import {
@@ -28,7 +29,8 @@ import {
   StoreDirectorLogin,
   StoreDirectorRegister,
   StoreDirectorForgotPassword,
-  CreateShopPage
+  CreateShopPage,
+  StaffLogin
 } from "@/pages";
 
 export const router = createBrowserRouter([
@@ -95,6 +97,13 @@ export const router = createBrowserRouter([
         element: < StoreDirectorLayout />,
         children: [
           { path: "create-shop", element: < CreateShopPage /> },
+        ],
+      },
+      {
+        path: "staff/auth",
+        element: < StaffAuthLayout />,
+        children: [
+          { path: "login", element: <  StaffLogin /> },
         ],
       },
     ],
