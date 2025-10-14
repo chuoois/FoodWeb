@@ -85,29 +85,16 @@ export const router = createBrowserRouter([
         path: "store-director",
         element: <StoreDirectorAuthLayout />,
         children: [
-          {
-            path: "login",
-            element: <StoreDirectorLogin />,
-          },
-          {
-            path: "register",
-            element: <StoreDirectorRegister />,
-          },
-          {
-            path: "forgot-password",
-            element: < StoreDirectorForgotPassword />,
-          }
+          { path: "login", element: <StoreDirectorLogin /> },
+          { path: "register", element: <StoreDirectorRegister /> },
+          { path: "forgot-password", element: < StoreDirectorForgotPassword /> }
         ],
       },
       {
         path: "store-director/manage",
         element: < StoreDirectorLayout />,
         children: [
-          {
-            path: "create-shop",
-            element: < CreateShopPage />,
-          },
-
+          { path: "create-shop", element: < CreateShopPage /> },
         ],
       },
     ],
