@@ -34,3 +34,8 @@ export const loginGoogle = (tokenId) => {
 export const resendOtp = (email) => {
     return api.post("/auth/resend-otp", { email });
 };
+
+// Lay role name by id
+export const getRoleNameById = (data) => {
+    return api.post(`/auth/get-role-name-by-id`, data);
+};

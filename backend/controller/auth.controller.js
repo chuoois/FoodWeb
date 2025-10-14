@@ -292,8 +292,20 @@ const loginGoogle = async (req, res) => {
     }
 };
 
+const getRoleNameById = async (req, res) => {
+    const { id } = req.body;
+    try {
+        const role = await Role.findById(id).select("name"); 
+        if (!role) return res.status(404).json({ message: "Role not found" });
+        res.json({ name: role.name });
+    } catch (err) {
+        console.error(err); // in lỗi ra để debug
+        res.status(500).json({ message: "Server error" });
+    }
+};
 
 module.exports = {
+    getRoleNameById,
     register,
     verifyOtp,
     registerGoogle,
