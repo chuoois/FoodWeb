@@ -11,8 +11,8 @@ export const verifyOtp = (data) => {
 };
 
 // Đăng ký bằng Google
-export const registerGoogle = (tokenId) => {
-    return api.post("/auth/register/google", { tokenId });
+export const registerGoogle = (tokenId, roleName) => {
+    return api.post("/auth/register/google", { tokenId, roleName });
 };
 
 // Quên mật khẩu (gửi mật khẩu tạm qua email)

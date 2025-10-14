@@ -1,5 +1,27 @@
 const mongoose = require("mongoose");
 
+const optionSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      required: true,
+      enum: ["SIZE", "TOPPING", "EXTRA", "SPICY"],
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    price: {
+      type: Number,
+      default: 0
+    },
+  },
+  {
+    _id: false
+  }
+);
+
 const foodSchema = new mongoose.Schema(
   {
     shop_id: {
@@ -36,6 +58,8 @@ const foodSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // 👇 Nhúng mảng các options trực tiếp vào món ăn
+    options: [optionSchema],
     created_by: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User", // MANAGER_STAFF tạo
@@ -49,7 +73,6 @@ const foodSchema = new mongoose.Schema(
 //  Unique index: mỗi cửa hàng không được có 2 món trùng tên
 foodSchema.index({ shop_id: 1, name: 1 }, { unique: true });
 
-//  Hỗ trợ tìm kiếm text (vd: tìm theo tên hoặc mô tả)
-foodSchema.index({ name: "text", description: "text" });
+
 
 module.exports = mongoose.model("Food", foodSchema);

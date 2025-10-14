@@ -14,21 +14,21 @@ const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
 // Đăng ký (tạo account + gửi OTP)
 const register = async (req, res) => {
     try {
-        const { email, password, confirmPassword } = req.body;
+        const { email, password, confirmPassword, roleName } = req.body;
 
-        // Kiểm tra confirm password
         if (password !== confirmPassword) {
             return res.status(400).json({ message: "Mật khẩu xác nhận không khớp" });
         }
 
-        // Kiểm tra email đã tồn tại
         const existingAccount = await Account.findOne({ email });
         if (existingAccount) {
             return res.status(400).json({ message: "Email đã tồn tại" });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const role = await Role.findOne({ name: "CUSTOMER" });
+
+        // Lấy role theo roleName, default = CUSTOMER
+        const role = await Role.findOne({ name: roleName || "CUSTOMER" });
 
         const newAccount = new Account({
             email,
@@ -53,14 +53,12 @@ const register = async (req, res) => {
         // Sinh OTP
         const otpCode = generateOtp();
         const expiresAt = new Date(Date.now() + 1 * 60 * 1000);
-
         await Otp.findOneAndUpdate(
             { account_id: newAccount._id },
             { otp_code: otpCode, attempts: 0, expires_at: expiresAt },
             { upsert: true, new: true }
         );
 
-        // Gửi email
         await sendOtpEmail(email, otpCode);
 
         res.status(201).json({ message: "Đăng ký thành công, OTP đã gửi" });
@@ -142,7 +140,7 @@ const resendOtp = async (req, res) => {
 
 const registerGoogle = async (req, res) => {
     try {
-        const { tokenId } = req.body;
+        const { tokenId, roleName } = req.body;
 
         const ticket = await client.verifyIdToken({
             idToken: tokenId,
@@ -158,7 +156,7 @@ const registerGoogle = async (req, res) => {
             return res.status(400).json({ message: "Email đã được đăng ký" });
         }
 
-        const role = await Role.findOne({ name: "CUSTOMER" });
+        const role = await Role.findOne({ name: roleName || "CUSTOMER" });
 
         account = new Account({
             email,

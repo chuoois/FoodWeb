@@ -1,13 +1,70 @@
-import { useState } from "react"
-import { Link } from "react-router-dom"
+import { useState, useContext } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff, Mail, Lock, Store } from "lucide-react"
+import { useFormik } from "formik"
+import * as Yup from "yup"
+import toast from "react-hot-toast"
+import { login, loginGoogle } from "@/services/auth.service"
+import { GoogleLogin } from "@react-oauth/google"
+import Cookies from "js-cookie"
+import { AuthContext } from "@/context/AuthContext"
 
-export  function StoreDirectorLogin() {
+export function StoreDirectorLogin() {
   const [showPassword, setShowPassword] = useState(false)
+  const navigate = useNavigate()
+  const { login: loginContext } = useContext(AuthContext)
+
+  const savedEmail = Cookies.get("rememberedEmail") || ""
+
+  const validationSchema = Yup.object({
+    email: Yup.string().email("Email không hợp lệ").required("Vui lòng nhập email"),
+    password: Yup.string().min(6, "Mật khẩu tối thiểu 6 ký tự").required("Vui lòng nhập mật khẩu"),
+  })
+
+  const formik = useFormik({
+    initialValues: {
+      email: savedEmail,
+      password: "",
+      rememberMe: !!savedEmail,
+    },
+    validationSchema,
+    onSubmit: async (values, { setSubmitting }) => {
+      try {
+        const res = await login(values)
+        toast.success("Đăng nhập thành công!")
+
+        loginContext(res.data.token)
+
+        if (values.rememberMe) {
+          Cookies.set("rememberedEmail", values.email, { expires: 7 })
+        } else {
+          Cookies.remove("rememberedEmail")
+        }
+
+        navigate("/store-director/dashboard")
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Đăng nhập thất bại")
+      } finally {
+        setSubmitting(false)
+      }
+    },
+  })
+
+  const handleGoogleLogin = async (credentialResponse) => {
+    try {
+      const tokenId = credentialResponse.credential
+      const res = await loginGoogle(tokenId)
+      toast.success("Đăng nhập Google thành công!")
+      loginContext(res.data.token)
+      navigate("/store-director/dashboard")
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Đăng nhập Google thất bại")
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 p-4">
@@ -34,34 +91,41 @@ export  function StoreDirectorLogin() {
             <p className="text-sm text-gray-600">Quản lý cửa hàng của bạn với YummyGo</p>
           </div>
 
-          <form className="space-y-5">
-            {/* Email Field */}
+          <form onSubmit={formik.handleSubmit} className="space-y-5">
+            {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                Email
-              </Label>
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="Nhập email của bạn"
+                  value={formik.values.email}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
                   className="pl-10 h-12 border-gray-300 focus:border-orange-500 focus:ring-orange-500"
                 />
               </div>
+              {formik.touched.email && formik.errors.email && (
+                <p className="text-red-500 text-sm">{formik.errors.email}</p>
+              )}
             </div>
 
-            {/* Password Field */}
+            {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                Mật khẩu
-              </Label>
+              <Label htmlFor="password" className="text-sm font-medium text-gray-700">Mật khẩu</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <Input
                   id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Nhập mật khẩu"
+                  value={formik.values.password}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
                   className="pl-10 pr-10 h-12 border-gray-300 focus:border-orange-500 focus:ring-orange-500"
                 />
                 <button
@@ -72,15 +136,21 @@ export  function StoreDirectorLogin() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {formik.touched.password && formik.errors.password && (
+                <p className="text-red-500 text-sm">{formik.errors.password}</p>
+              )}
             </div>
 
             {/* Remember & Forgot */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Checkbox id="remember" />
-                <label htmlFor="remember" className="text-sm text-gray-600 cursor-pointer select-none">
-                  Ghi nhớ đăng nhập
-                </label>
+                <Checkbox
+                  id="rememberMe"
+                  name="rememberMe"
+                  checked={formik.values.rememberMe}
+                  onChange={formik.handleChange}
+                />
+                <label htmlFor="rememberMe" className="text-sm text-gray-600 cursor-pointer select-none">Ghi nhớ đăng nhập</label>
               </div>
               <Link
                 to="/store-director/forgot-password"
@@ -93,9 +163,10 @@ export  function StoreDirectorLogin() {
             {/* Login Button */}
             <Button
               type="submit"
+              disabled={formik.isSubmitting}
               className="w-full h-12 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-semibold text-base shadow-md"
             >
-              Đăng nhập
+              {formik.isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
 
             {/* Divider */}
@@ -109,31 +180,10 @@ export  function StoreDirectorLogin() {
             </div>
 
             {/* Google Login */}
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-12 border-gray-300 hover:bg-gray-50 font-medium bg-transparent"
-            >
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
-              </svg>
-              Đăng nhập bằng Google
-            </Button>
+            <GoogleLogin
+              onSuccess={handleGoogleLogin}
+              onError={() => toast.error("Đăng nhập Google thất bại")}
+            />
           </form>
 
           {/* Register Link */}
@@ -150,14 +200,8 @@ export  function StoreDirectorLogin() {
           <div className="mt-6 pt-6 border-t border-gray-100">
             <p className="text-xs text-center text-gray-500 leading-relaxed">
               Bằng cách tiếp tục, bạn đồng ý với{" "}
-              <Link to="/terms" className="text-orange-600 hover:underline">
-                Điều khoản dịch vụ
-              </Link>{" "}
-              và{" "}
-              <Link to="/privacy" className="text-orange-600 hover:underline">
-                Chính sách bảo mật
-              </Link>{" "}
-              của chúng tôi.
+              <Link to="/terms" className="text-orange-600 hover:underline">Điều khoản dịch vụ</Link> và{" "}
+              <Link to="/privacy" className="text-orange-600 hover:underline">Chính sách bảo mật</Link> của chúng tôi.
             </p>
           </div>
         </div>
