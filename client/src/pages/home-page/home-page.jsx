@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MapPin, Crosshair, Star, Heart, Clock } from "lucide-react";
 import { getNearbyShops, getPopularShops } from "@/services/home.service";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
 
 const heroContent = {
   title: "Giao hàng nhanh ,",
@@ -24,6 +26,12 @@ const foodCategories = [
     color: "from-orange-400 to-orange-600",
   },
 ]
+const heroSlides = [
+  { id: 1, image: "/img-home/img-hero-section.png", alt: "Delivery illustration" },
+  { id: 2, image: "/img-home/delicious-food-delivery-with-fresh-ingredients.jpg", alt: "Fresh food delivery" },
+  { id: 3, image: "/img-home/happy-customer-receiving-food-delivery.png", alt: "Happy customer" },
+  { id: 4, image: "/img-home/variety-of-restaurant-dishes-and-meals.jpg", alt: "Restaurant dishes" },
+];
 
 export const HomePage = () => {
   const [favorites, setFavorites] = useState([]);
@@ -127,7 +135,7 @@ export const HomePage = () => {
         </div>
       </section>
 
-      
+
 
       {/* Food Categories */}
       <section className="max-w-7xl mx-auto px-6 py-10 space-y-8">
@@ -187,11 +195,10 @@ export const HomePage = () => {
                     className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition"
                   >
                     <Heart
-                      className={`w-4 h-4 ${
-                        favorites.includes(shop._id)
+                      className={`w-4 h-4 ${favorites.includes(shop._id)
                           ? "fill-red-500 text-red-500"
                           : "text-gray-600"
-                      }`}
+                        }`}
                     />
                   </button>
                 </div>
@@ -209,7 +216,7 @@ export const HomePage = () => {
                   </div>
 
                   <p className="text-xs text-gray-600 mb-2 line-clamp-1">
-                     {shop.address?.street}, {shop.address?.ward}, {shop.address?.district}, {shop.address?.city}
+                    {shop.address?.street}, {shop.address?.ward}, {shop.address?.district}, {shop.address?.city}
                   </p>
 
                   <div className="flex items-center justify-between text-xs text-gray-500">
@@ -254,11 +261,10 @@ export const HomePage = () => {
                       className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition"
                     >
                       <Heart
-                        className={`w-4 h-4 ${
-                          favorites.includes(shop._id)
+                        className={`w-4 h-4 ${favorites.includes(shop._id)
                             ? "fill-red-500 text-red-500"
                             : "text-gray-600"
-                        }`}
+                          }`}
                       />
                     </button>
                   </div>
@@ -276,7 +282,7 @@ export const HomePage = () => {
                     <p className="text-xs text-gray-600 mb-2 line-clamp-1">
                       {shop.address?.street}, {shop.address?.ward}, {shop.address?.district}, {shop.address?.city}
                     </p>
-                    
+
                   </div>
                 </div>
               ))}
