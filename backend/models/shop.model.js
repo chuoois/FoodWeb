@@ -16,11 +16,12 @@ const shopSchema = new mongoose.Schema({
     coordinates: { type: [Number], required: true } // [lng, lat]
   },
   phone: { type: String, unique: true, required: true },
-  status: { type: String, enum: ["ACTIVE", "INACTIVE", "BANNED", "PENDING_APPROVAL"], default: "ACTIVE" },
+  status: { type: String, enum: ["ACTIVE", "INACTIVE", "BANNED", "PENDING_APPROVAL"], default: "PENDING_APPROVAL" },
   logoUrl: String,
   coverUrl: String,
-  rating: { type: Number, default: 0 },
   type: { type: String, enum: ["Food", "Drink"]},
+  isFavorite: { type:Boolean, default:false},
+  rating: { type: Number, default: 0 }
 }, { timestamps: true });
 
 // index geospatial

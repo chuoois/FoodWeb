@@ -11,8 +11,8 @@ export const verifyOtp = (data) => {
 };
 
 // Đăng ký bằng Google
-export const registerGoogle = (tokenId) => {
-    return api.post("/auth/register/google", { tokenId });
+export const registerGoogle = (tokenId, roleName) => {
+    return api.post("/auth/register/google", { tokenId, roleName });
 };
 
 // Quên mật khẩu (gửi mật khẩu tạm qua email)
@@ -33,4 +33,9 @@ export const loginGoogle = (tokenId) => {
 // Gửi lại OTP
 export const resendOtp = (email) => {
     return api.post("/auth/resend-otp", { email });
+};
+
+// Lay role name by id
+export const getRoleNameById = (data) => {
+    return api.post(`/auth/get-role-name-by-id`, data);
 };

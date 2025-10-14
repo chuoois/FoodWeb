@@ -5,3 +5,7 @@ export * from './detail-page'
 export * from './auth-page'
 export * from './managerStaff-page'
 export * from './menu-list-page'
+export * from './store-director-auth-page'
+export * from './create-shop-page'
+export * from './staff-auth-page'
+

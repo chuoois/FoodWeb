@@ -7,10 +7,13 @@ import toast from "react-hot-toast"
 import { login, loginGoogle } from "@/services/auth.service"
 import { GoogleLogin } from "@react-oauth/google"
 import Cookies from "js-cookie"
+import { useContext } from "react";
+import { AuthContext } from "@/context/AuthContext";
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const navigate = useNavigate()
+  const { login: loginContext } = useContext(AuthContext);
 
   // Lấy email đã lưu trong cookie (nếu có)
   const savedEmail = Cookies.get("rememberedEmail") || ""
@@ -35,40 +38,43 @@ export function LoginForm() {
     validationSchema,
     onSubmit: async (values, { setSubmitting }) => {
       try {
-        const res = await login(values)
-        toast.success("Đăng nhập thành công!")
+        const res = await login(values);
+        toast.success("Đăng nhập thành công!");
 
-        // Lưu token/ thông tin user vào localStorage
-        localStorage.setItem("token", res.data.token)
+        // ✅ Gọi hàm login của context để cập nhật user toàn app
+        loginContext(res.data.token);
 
-        // Xử lý Remember Me
+        // ✅ Xử lý Remember Me
         if (values.rememberMe) {
-          Cookies.set("rememberedEmail", values.email, { expires: 7 }) // lưu 7 ngày
+          Cookies.set("rememberedEmail", values.email, { expires: 7 });
         } else {
-          Cookies.remove("rememberedEmail")
+          Cookies.remove("rememberedEmail");
         }
 
-        navigate("/") // Chuyển về trang chủ
+        navigate("/"); // Chuyển về trang chủ
       } catch (error) {
-        toast.error(error.response?.data?.message || "Đăng nhập thất bại")
+        toast.error(error.response?.data?.message || "Đăng nhập thất bại");
       } finally {
-        setSubmitting(false)
+        setSubmitting(false);
       }
-    },
+    }
   })
 
   // Xử lý Google Login
   const handleGoogleLogin = async (credentialResponse) => {
     try {
-      const tokenId = credentialResponse.credential
-      const res = await loginGoogle(tokenId)
-      toast.success("Đăng nhập Google thành công!")
-      localStorage.setItem("token", res.data.token)
-      navigate("/")
+      const tokenId = credentialResponse.credential;
+      const res = await loginGoogle(tokenId);
+      toast.success("Đăng nhập Google thành công!");
+
+      // ✅ Cập nhật vào context
+      loginContext(res.data.token);
+
+      navigate("/");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Đăng nhập Google thất bại")
+      toast.error(error.response?.data?.message || "Đăng nhập Google thất bại");
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-orange-50 px-4">

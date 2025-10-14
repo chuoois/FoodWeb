@@ -3,6 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { MapPin, Crosshair, Star, Heart, Clock } from "lucide-react";
 import { getNearbyShops, getPopularShops } from "@/services/home.service";
 
+const heroContent = {
+  title: "Giao hàng nhanh ,",
+  highlight: "mọi lúc!",
+  description: "Đặt món ăn yêu thích từ các nhà hàng tốt nhất trong thành phố. Giao hàng nhanh chóng, đảm bảo chất lượng.",
+};
 const foodCategories = [
   {
     id: 1,
@@ -18,7 +23,7 @@ const foodCategories = [
     image: "/img-home/fast-food.jpg",
     color: "from-orange-400 to-orange-600",
   },
-];
+]
 
 export const HomePage = () => {
   const [favorites, setFavorites] = useState([]);
@@ -51,18 +56,18 @@ export const HomePage = () => {
             })
             .catch((err) => console.log(err));
         },
-        (err) => alert("Không lấy được vị trí: " + err.message)
-      );
+        (err) => alert("Không lấy được vị trí: " + err.message),
+      )
     } else {
-      alert("Trình duyệt không hỗ trợ định vị!");
+      alert("Trình duyệt không hỗ trợ định vị!")
     }
-  };
+  }
 
   const toggleFavorite = (id) => {
     setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((fav) => fav !== id) : [...prev, id]
-    );
-  };
+      prev.includes(id) ? prev.filter((fav) => fav !== id) : [...prev, id],
+    )
+  }
 
   return (
     <div className="bg-[#FBF4E6] min-h-screen">
@@ -76,8 +81,7 @@ export const HomePage = () => {
                 <span className="text-orange-500">mọi lúc!</span>
               </h1>
               <p className="text-lg text-muted-foreground leading-relaxed max-w-lg">
-                Đặt món ăn yêu thích từ các nhà hàng tốt nhất trong thành phố.
-                Giao hàng nhanh chóng, đảm bảo chất lượng.
+                {heroContent.description}
               </p>
             </div>
 
@@ -98,16 +102,32 @@ export const HomePage = () => {
           </div>
 
           <div className="relative">
-            <div className="relative w-full h-96 rounded-3xl overflow-hidden shadow-2xl shadow-orange-200 transform hover:scale-105 transition-transform duration-500 ease-in-out animate-fade-in">
-              <img
-                src="/img-home/img-hero-section.png"
-                alt="Delivery illustration"
-                className="w-full h-full object-cover"
-              />
-            </div>
+            <Carousel
+              opts={{ align: "center", loop: true }}
+              plugins={[Autoplay({ delay: 3500 })]}
+              className="w-full"
+            >
+              <CarouselContent>
+                {heroSlides.map((slide) => (
+                  <CarouselItem key={slide.id}>
+                    <div className="relative w-full h-96 rounded-3xl overflow-hidden shadow-2xl shadow-orange-200 transform hover:scale-105 transition-transform duration-500 ease-in-out">
+                      <img
+                        src={slide.image || "/placeholder.svg"}
+                        alt={slide.alt}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="left-4" />
+              <CarouselNext className="right-4" />
+            </Carousel>
           </div>
         </div>
       </section>
+
+      
 
       {/* Food Categories */}
       <section className="max-w-7xl mx-auto px-6 py-10 space-y-8">
@@ -127,13 +147,9 @@ export const HomePage = () => {
                   alt={category.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <div
-                  className={`absolute inset-0 bg-gradient-to-r ${category.color} opacity-60`}
-                />
+                <div className={`absolute inset-0 bg-gradient-to-r ${category.color} opacity-60`} />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <h3 className="text-white text-xl font-bold text-center px-4">
-                    {category.name}
-                  </h3>
+                  <h3 className="text-white text-xl font-bold text-center px-4">{category.name}</h3>
                 </div>
               </div>
             </Link>
@@ -269,5 +285,7 @@ export const HomePage = () => {
         </section>
       )}
     </div>
-  );
-};
+  )
+}
+
+

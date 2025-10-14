@@ -1,17 +1,27 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Search, X, User, ChevronDown, UserCog, Heart, Clock, LogOut } from "lucide-react";
+import { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  Search,
+  X,
+  User,
+  ChevronDown,
+  UserCog,
+  Heart,
+  Clock,
+  LogOut,
+} from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
 
 export const HeaderHome = () => {
   const [openSearch, setOpenSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
+    logout();
     setShowUserMenu(false);
-    // Optionally, redirect to home or login page
-    window.location.href = "/";
+    navigate("/"); // Chuyển về trang chủ
   };
 
   return (
@@ -43,20 +53,20 @@ export const HeaderHome = () => {
             <span className="text-gray-500">Tìm món ăn hoặc nhà hàng</span>
           </div>
 
-          {/* CTA Button */}
+          {/* Account menu */}
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-full shadow-md transition-all duration-300"
             >
               <User className="w-4 h-4" />
-              <span>{isLoggedIn ? "Tài khoản" : "Đăng nhập"}</span>
+              <span>{user ? user.name || "Tài khoản" : "Đăng nhập"}</span>
               <ChevronDown className="w-4 h-4" />
             </button>
 
             {showUserMenu && (
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                {isLoggedIn ? (
+                {user ? (
                   <>
                     <Link
                       to="/profile"
@@ -65,33 +75,39 @@ export const HeaderHome = () => {
                     >
                       <User className="w-5 h-5 text-orange-500" />
                       <div>
-                        <div className="font-medium text-gray-900">Profile</div>
-                        <div className="text-xs text-gray-500">Thông tin cá nhân</div>
+                        <div className="font-medium text-gray-900">Hồ sơ cá nhân</div>
+                        <div className="text-xs text-gray-500">
+                          {user.name || "Người dùng"}
+                        </div>
                       </div>
                     </Link>
+
                     <Link
-                      to="/favorites"
+                      to="/detail/favorite"
                       className="w-full px-4 py-3 text-left text-sm hover:bg-orange-50 flex items-center gap-3 transition"
                       onClick={() => setShowUserMenu(false)}
                     >
                       <Heart className="w-5 h-5 text-orange-500" />
                       <div>
-                        <div className="font-medium text-gray-900">Nhà hàng yêu thích</div>
-                        <div className="text-xs text-gray-500">Danh sách yêu thích</div>
+                        <div className="font-medium text-gray-900">Yêu thích</div>
+                        <div className="text-xs text-gray-500">Danh sách món</div>
                       </div>
                     </Link>
+
                     <Link
-                      to="/orderhistory"
+                      to="/detail/history"
                       className="w-full px-4 py-3 text-left text-sm hover:bg-orange-50 flex items-center gap-3 transition"
                       onClick={() => setShowUserMenu(false)}
                     >
                       <Clock className="w-5 h-5 text-orange-500" />
                       <div>
-                        <div className="font-medium text-gray-900">Lịch sử mua hàng</div>
-                        <div className="text-xs text-gray-500">Đơn hàng đã đặt</div>
+                        <div className="font-medium text-gray-900">Lịch sử đơn hàng</div>
+                        <div className="text-xs text-gray-500">Đơn đã đặt</div>
                       </div>
                     </Link>
+
                     <hr className="my-2" />
+
                     <button
                       onClick={handleLogout}
                       className="w-full px-4 py-3 text-left text-sm hover:bg-orange-50 flex items-center gap-3 transition"
@@ -118,7 +134,7 @@ export const HeaderHome = () => {
                     </Link>
                     <hr className="my-2" />
                     <Link
-                      to="/auth2"
+                      to="/store-director/login"
                       className="w-full px-4 py-3 text-left text-sm hover:bg-orange-50 flex items-center gap-3 transition"
                       onClick={() => setShowUserMenu(false)}
                     >
@@ -160,12 +176,18 @@ export const HeaderHome = () => {
 
             {/* Gợi ý */}
             <div className="mt-6">
-              <h3 className="text-sm font-semibold text-gray-600 mb-2">Tìm kiếm gần đây</h3>
+              <h3 className="text-sm font-semibold text-gray-600 mb-2">
+                Tìm kiếm gần đây
+              </h3>
               <div className="flex flex-wrap gap-2 mb-4">
-                <span className="px-3 py-1 border rounded-full text-sm text-gray-700">gà ủ muối</span>
+                <span className="px-3 py-1 border rounded-full text-sm text-gray-700">
+                  gà ủ muối
+                </span>
               </div>
 
-              <h3 className="text-sm font-semibold text-gray-600 mb-2">Món gì đang hot</h3>
+              <h3 className="text-sm font-semibold text-gray-600 mb-2">
+                Món gì đang hot
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {[
                   "mì cay",
