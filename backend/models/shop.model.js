@@ -19,6 +19,7 @@ const shopSchema = new mongoose.Schema({
   status: { type: String, enum: ["ACTIVE", "INACTIVE", "BANNED", "PENDING_APPROVAL"], default: "PENDING_APPROVAL" },
   logoUrl: String,
   coverUrl: String,
+  type: { type: String, enum: ["Food", "Drink"]},
   isFavorite: { type:Boolean, default:false},
   rating: { type: Number, default: 0 }
 }, { timestamps: true });

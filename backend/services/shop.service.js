@@ -2,12 +2,31 @@
 const Shop = require("../models/shop.model");
 const Food = require("../models/food.model");
 const { getOSMMatrix } = require("../utils/osm");
+const { Types } = require('mongoose');
 
+// Cache kiểm tra môi trường
+let isAtlas = null;
 
-// Lấy danh sách cửa hàng gần nhất dựa trên tọa độ lat, lng
+const checkIsAtlas = async () => {
+  if (isAtlas !== null) return isAtlas;
+  
+  try {
+    await Shop.aggregate([
+      { $search: { index: 'default', text: { query: 'test', path: 'name' } } },
+      { $limit: 1 }
+    ]);
+    isAtlas = true;
+    console.log('✅ MongoDB Atlas detected - using $search');
+  } catch (error) {
+    isAtlas = false;
+    console.log('✅ MongoDB Local detected - using standard queries');
+  }
+  
+  return isAtlas;
+};
+
+// Lấy danh sách cửa hàng gần nhất
 const findNearbyShops = async (lat, lng, radius = 5000, limit = 20) => {
-  // Query MongoDB theo đường chim bay ( 5km)
-  // thêm limit để giới hạn số lượng shop cần xử lý.
   const shops = await Shop.find({
     gps: {
       $near: {
@@ -16,93 +35,59 @@ const findNearbyShops = async (lat, lng, radius = 5000, limit = 20) => {
       }
     },
     status: "ACTIVE"
-  }).limit(limit * 2) // Lấy dư ra một chút để phòng trường hợp lọc bớt
+  }).limit(limit * 2)
     .lean();
 
-  if (!shops.length) {
-    return [];
-  }
+  if (!shops.length) return [];
 
-  //Gọi OSRM MỘT LẦN DUY NHẤT để lấy ma trận khoảng cách
   const matrixData = await getOSMMatrix({ lat, lng }, shops);
-
   if (!matrixData) {
-    // Nếu OSRM lỗi, có thể trả về danh sách sắp xếp theo đường chim bay
     return shops.map(s => ({ ...s, distance: null, duration: null }));
   }
 
-  //Gắn khoảng cách thực tế vào từng shop và lọc
-  let shopsWithDistance = shops.map((shop, index) => {
-    // Khoảng cách/thời gian của user đến shop[index] sẽ nằm ở
-    // matrixData.distances[index + 1] và matrixData.durations[index + 1]
-    // vì tọa độ 0 trong matrix là của user.
-    return {
-      ...shop,
-      distance: matrixData.distances[index + 1], // mét
-      duration: matrixData.durations[index + 1]  // giây
-    };
-  });
+  let shopsWithDistance = shops.map((shop, index) => ({
+    ...shop,
+    distance: matrixData.distances[index + 1],
+    duration: matrixData.durations[index + 1]
+  }));
 
-  //Lọc bỏ những shop có khoảng cách thực tế quá xa
-  shopsWithDistance = shopsWithDistance.filter(shop => shop.distance !== null && shop.distance <= radius);
+  shopsWithDistance = shopsWithDistance
+    .filter(shop => shop.distance !== null && shop.distance <= radius)
+    .sort((a, b) => a.distance - b.distance);
 
-  //Sort theo khoảng cách thực tế
-  shopsWithDistance.sort((a, b) => a.distance - b.distance);
-
-  //Áp dụng phân trang cuối cùng
   return shopsWithDistance.slice(0, limit);
 };
 
+// OPTIMIZED: Tìm kiếm với Atlas Search
+const searchWithAtlas = async (keyword, location, options) => {
+  const { limit = 10, page = 1 } = options;
+  const skip = (page - 1) * limit;
+  const { lat, lng } = location;
 
-
-
-// Tìm kiếm quán và món ăn theo từ khóa, kết hợp tính toán khoảng cách thực tế
-const searchByKeyword = async (keyword, location, options = {}) => {
-  try {
-    const { limit = 10, page = 1 } = options;
-    const skip = (page - 1) * limit;
-    const { lat, lng } = location;
-    const regex = new RegExp(keyword, 'i');
-
-    // --- B1: Lấy danh sách ID quán có món khớp ---
-    const shopIdsFromFoods = await Food.distinct('shop_id', { name: regex });
-    const shopIdsAsObjectId = shopIdsFromFoods.map(id => new Types.ObjectId(id));
-
-    // --- B2: Pipeline MongoDB Atlas Search ---
-    const pipeline = [
+  // Query Food và Shop SONG SONG để giảm thời gian chờ
+  const [shopIdsFromFoods, searchResults] = await Promise.all([
+    Food.distinct('shop_id', { name: new RegExp(keyword, 'i') }),
+    Shop.aggregate([
       {
         $search: {
-          index: 'default', // tên index của bạn trên Atlas Search
+          index: 'default',
           compound: {
             must: [
               {
                 near: {
                   path: 'gps',
-                  origin: {
-                    type: 'Point',
-                    coordinates: [lng, lat],
-                  },
-                  pivot: 1000, // 1km
+                  origin: { type: 'Point', coordinates: [lng, lat] },
+                  pivot: 1000,
                 },
               },
-              {
-                equals: {
-                  path: 'status',
-                  value: 'ACTIVE',
-                },
-              },
+              { equals: { path: 'status', value: 'ACTIVE' } },
             ],
             should: [
               {
                 text: {
                   query: keyword,
                   path: ['name', 'description'],
-                },
-              },
-              {
-                in: {
-                  path: '_id',
-                  value: shopIdsAsObjectId,
+                  fuzzy: { maxEdits: 1 }, // Thêm fuzzy search
                 },
               },
             ],
@@ -116,44 +101,152 @@ const searchByKeyword = async (keyword, location, options = {}) => {
           totalCount: [{ $count: 'count' }],
         },
       },
-    ];
+    ])
+  ]);
 
-    const results = await Shop.aggregate(pipeline);
+  let shops = searchResults[0]?.paginatedResults || [];
+  const totalResults = searchResults[0]?.totalCount[0]?.count || 0;
 
-    const shops = results[0]?.paginatedResults || [];
-    const totalResults = results[0]?.totalCount[0]?.count || 0;
+  // Nếu có shop từ food, merge vào kết quả (không query lại)
+  if (shopIdsFromFoods.length > 0) {
+    const shopIds = new Set(shops.map(s => s._id.toString()));
+    const missingShopIds = shopIdsFromFoods
+      .filter(id => !shopIds.has(id.toString()))
+      .slice(0, limit - shops.length);
 
-    // --- B3: Nếu không có kết quả ---
+    if (missingShopIds.length > 0) {
+      const additionalShops = await Shop.find({
+        _id: { $in: missingShopIds },
+        status: 'ACTIVE'
+      }).lean();
+      shops = [...shops, ...additionalShops];
+    }
+  }
+
+  return { shops, totalResults };
+};
+
+// OPTIMIZED: Tìm kiếm với MongoDB Local
+const searchWithLocal = async (keyword, location, options) => {
+  const { limit = 10, page = 1, radius = 10000 } = options;
+  const skip = (page - 1) * limit;
+  const { lat, lng } = location;
+  const regex = new RegExp(keyword, 'i');
+
+  // Lấy shop IDs từ Food trước (nhanh hơn)
+  const shopIdsFromFoods = await Food.distinct('shop_id', { name: regex });
+
+  // Tối ưu query: Chỉ search trong bán kính nhỏ trước
+  const baseQuery = {
+    status: "ACTIVE",
+    gps: {
+      $near: {
+        $geometry: { type: "Point", coordinates: [lng, lat] },
+        $maxDistance: radius
+      }
+    }
+  };
+
+  // Nếu có shopIds từ foods, ưu tiên tìm những shop đó trước
+  const orConditions = [
+    { name: regex },
+    { description: regex }
+  ];
+
+  if (shopIdsFromFoods.length > 0) {
+    orConditions.push({ 
+      _id: { $in: shopIdsFromFoods.map(id => new Types.ObjectId(id)) } 
+    });
+  }
+
+  const query = { ...baseQuery, $or: orConditions };
+
+  // Query song song để tăng tốc
+  const [shops, totalResults] = await Promise.all([
+    Shop.find(query)
+      .skip(skip)
+      .limit(limit * 2)
+      .select('-__v') // Bỏ field không cần thiết
+      .lean(),
+    Shop.countDocuments({ 
+      status: "ACTIVE", 
+      $or: orConditions 
+    })
+  ]);
+
+  return { shops, totalResults };
+};
+
+// OPTIMIZED: Main search function
+const searchByKeyword = async (keyword, location, options = {}) => {
+  try {
+    // Validate input nhanh
+    if (!keyword || !location?.lat || !location?.lng) {
+      return { shops: [], totalResults: 0, currentPage: options.page || 1 };
+    }
+
+    const { limit = 10, page = 1 } = options;
+    const { lat, lng } = location;
+
+    // Kiểm tra môi trường (cached sau lần đầu)
+    const useAtlas = await checkIsAtlas();
+
+    // Gọi hàm search tương ứng
+    const { shops, totalResults } = useAtlas
+      ? await searchWithAtlas(keyword, location, options)
+      : await searchWithLocal(keyword, location, options);
+
     if (shops.length === 0) {
       return { shops: [], totalResults: 0, currentPage: page };
     }
 
-    // --- B4: Gọi OSRM để lấy khoảng cách thật ---
-    const matrixData = await getOSMMatrix({ lat, lng }, shops);
+    // OPTIMIZATION: Chỉ gọi OSRM nếu có > 1 shop
+    let finalShops = shops;
 
-    const shopsWithRealDistance = shops.map((shop, index) => {
-      const real_distance = matrixData?.distances?.[index + 1] || null;
-      const duration = matrixData?.durations?.[index + 1] || null;
-      return { ...shop, distance: real_distance, duration };
-    });
+    if (shops.length > 1) {
+      const matrixData = await getOSMMatrix({ lat, lng }, shops);
 
-    // --- B5: Sắp xếp theo khoảng cách ---
-    shopsWithRealDistance.sort((a, b) => {
-      if (a.distance === null) return 1;
-      if (b.distance === null) return -1;
-      return a.distance - b.distance;
-    });
+      if (matrixData) {
+        finalShops = shops.map((shop, index) => ({
+          ...shop,
+          distance: matrixData.distances?.[index + 1] || null,
+          duration: matrixData.durations?.[index + 1] || null
+        }));
+
+        // Sort theo khoảng cách thực
+        finalShops.sort((a, b) => {
+          if (a.distance === null) return 1;
+          if (b.distance === null) return -1;
+          return a.distance - b.distance;
+        });
+      }
+    } else {
+      // Chỉ 1 shop, không cần matrix
+      const matrixData = await getOSMMatrix({ lat, lng }, shops);
+      finalShops = [{
+        ...shops[0],
+        distance: matrixData?.distances?.[1] || null,
+        duration: matrixData?.durations?.[1] || null
+      }];
+    }
+
+    // Slice cuối cùng nếu dùng local (đã lấy limit * 2)
+    const result = !useAtlas ? finalShops.slice(0, limit) : finalShops;
 
     return {
-      shops: shopsWithRealDistance,
+      shops: result,
       totalResults,
       currentPage: page,
     };
   } catch (error) {
-    console.error('❌ Lỗi trong searchByKeyword:', error);
-    return { shops: [], totalResults: 0, currentPage: options.page || 1, error: error.message };
+    console.error('❌ Error in searchByKeyword:', error);
+    return { 
+      shops: [], 
+      totalResults: 0, 
+      currentPage: options.page || 1, 
+      error: error.message 
+    };
   }
 };
-
 
 module.exports = { findNearbyShops, searchByKeyword };

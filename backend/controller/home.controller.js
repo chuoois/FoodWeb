@@ -1,5 +1,5 @@
 const { findNearbyShops, searchByKeyword } = require("../services/shop.service");
-
+const Shop = require("../models/shop.model");
 // Định nghĩa vị trí mặc định (ĐH FPT Hà Nội) bằng biến môi trường
 const DEFAULT_LOCATION = {
     lat: parseFloat(process.env.DEFAULT_LAT || '21.0135'),
@@ -8,12 +8,14 @@ const DEFAULT_LOCATION = {
 
 const getNearbyShopsByCoords = async (req, res) => {
   try {
+    const limit = 20;
     const { lat, lng } = req.query;
     if (!lat || !lng) {
       return res.status(400).json({ success: false, message: "Missing lat/lng" });
     }
 
-    const shops = await findNearbyShops(parseFloat(lat), parseFloat(lng));
+    const shops = await findNearbyShops(parseFloat(lat), parseFloat(lng)).limit(limit);
+   
     res.json({ success: true, shops });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -53,6 +55,15 @@ const searchHome = async (req, res) => {
     }
 };
 
-module.exports = { getNearbyShopsByCoords, searchHome };
+const getShopsByRate = async (req, res) => {
+    try {
+        const shops = await Shop.find().sort({ rating: -1 }).limit(8);
+        res.json({ success: true, shops });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+module.exports = { getNearbyShopsByCoords, searchHome,getShopsByRate };
 
 
