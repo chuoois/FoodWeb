@@ -1,6 +1,6 @@
-"use client"
-
-import { useState } from "react"
+import { useState, useContext } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
+import { AuthContext } from "@/context/AuthContext"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -20,30 +20,32 @@ import {
   LogOut,
   HelpCircle,
   UserCircle,
+  CheckSquare,
+  UserPlus,
+  BarChart3
 } from "lucide-react"
 
 export function SidebarStoreDirectorLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { logout, user } = useContext(AuthContext)
+  const navigate = useNavigate()
+  const location = useLocation()
 
   const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Tạo cửa hàng", href: "/store-director/manage/create-shop", icon: Store, current: true },
+    { name: "Dashboard", href: "/store-director/manage/dashboard", icon: LayoutDashboard },
+    { name: "Tạo cửa hàng", href: "/store-director/manage/create-shop", icon: Store },
+    { name: "Đơn xét duyệt", href: "/store-director/manage/approval", icon: CheckSquare },
+    { name: "Tạo nhân viên", href: "/store-director/manage/create-staff", icon: UserPlus },
+    { name: "Doanh thu", href: "/store-director/manage/revenue", icon: BarChart3 }, 
   ]
 
   const handleLogout = () => {
-    console.log("Logging out...")
-    // window.location.href = "/login"
+    logout()
+    navigate("/login")
   }
 
-  const handleProfile = () => {
-    console.log("Navigating to profile...")
-    // window.location.href = "/profile"
-  }
-
-  const handleSupport = () => {
-    console.log("Opening support...")
-    // window.location.href = "/support"
-  }
+  const handleProfile = () => navigate("/profile")
+  const handleSupport = () => navigate("/support")
 
   return (
     <div className="flex h-screen bg-background">
@@ -57,9 +59,8 @@ export function SidebarStoreDirectorLayout({ children }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r border-border bg-card transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r border-border bg-card transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="flex h-full flex-col">
           {/* Logo */}
@@ -84,19 +85,19 @@ export function SidebarStoreDirectorLayout({ children }) {
           <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
             {navigation.map((item) => {
               const Icon = item.icon
+              const isActive = location.pathname === item.href
               return (
                 <a
                   key={item.name}
                   href={item.href}
-                  className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    item.current
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
+                  className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    }`}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
                   <span>{item.name}</span>
-                  {item.current && <ChevronRight className="ml-auto h-4 w-4" />}
+                  {isActive && <ChevronRight className="ml-auto h-4 w-4" />}
                 </a>
               )
             })}
@@ -109,11 +110,14 @@ export function SidebarStoreDirectorLayout({ children }) {
                 <button className="flex w-full items-center gap-3 rounded-lg bg-accent/50 p-3 transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring">
                   <Avatar className="h-9 w-9">
                     <AvatarImage src="/placeholder.svg?height=36&width=36" />
-                    <AvatarFallback>SD</AvatarFallback>
+                    <AvatarFallback>
+                      {user?.roleName?.slice(0, 2)?.toUpperCase() || "SD"}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 overflow-hidden text-left">
-                    <p className="truncate text-sm font-medium text-foreground">Store Director</p>
-                    <p className="truncate text-xs text-muted-foreground">director@example.com</p>
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {user?.roleName || "Store Director"}
+                    </p>
                   </div>
                 </button>
               </DropdownMenuTrigger>

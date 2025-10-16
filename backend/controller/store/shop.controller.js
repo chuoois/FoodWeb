@@ -1,4 +1,3 @@
-// controllers/shop.controller.js
 const Shop = require("../../models/shop.model");
 
 const createShop = async (req, res) => {
@@ -6,40 +5,78 @@ const createShop = async (req, res) => {
     const {
       name,
       description,
-      address,
-      gps, // { coordinates: [lng, lat] }
+      address, // { street, ward, district, city, province }
+      gps,     // { coordinates: [lng, lat] }
       phone,
       logoUrl,
-      coverUrl
+      coverUrl,
+      type
     } = req.body;
 
-    // Lấy owner từ token
+    // Lấy owner từ token (được middleware auth thêm vào)
     const owner = req.user.accountId;
 
-    if (!gps || !gps.coordinates || gps.coordinates.length !== 2) {
-      return res.status(400).json({ message: "GPS coordinates are required [lng, lat]" });
+    // Kiểm tra thông tin cơ bản
+    if (!name || !phone) {
+      return res.status(400).json({ message: "Tên cửa hàng và số điện thoại là bắt buộc" });
     }
 
+    if (!gps || !gps.coordinates || gps.coordinates.length !== 2) {
+      return res.status(400).json({ message: "Tọa độ GPS không hợp lệ. Cần định dạng [lng, lat]" });
+    }
+
+    // Tạo mới cửa hàng
     const newShop = new Shop({
       owner,
       name,
       description,
-      address,
-      gps: { type: "Point", coordinates: gps.coordinates },
+      address: {
+        street: address?.street,
+        ward: address?.ward,
+        district: address?.district,
+        city: address?.city,
+        province: address?.province
+      },
+      gps: {
+        type: "Point",
+        coordinates: gps.coordinates
+      },
       phone,
       logoUrl,
-      coverUrl
+      coverUrl,
+      type,
+      status: "PENDING_APPROVAL", 
+      isFavorite: false,
+      rating: 0
     });
 
     const savedShop = await newShop.save();
-    return res.status(201).json(savedShop);
+    return res.status(201).json({
+      message: "Tạo cửa hàng thành công",
+      shop: savedShop
+    });
+
   } catch (err) {
-    console.error(err);
+    console.error("❌ Lỗi khi tạo shop:", err);
+
     if (err.code === 11000) {
-      return res.status(400).json({ message: "Phone number already exists" });
+      // Lỗi trùng phone
+      return res.status(400).json({ message: "Số điện thoại đã được sử dụng" });
     }
-    return res.status(500).json({ message: "Server error" });
+
+    return res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
   }
 };
 
-module.exports = { createShop };
+const getShopByOwerID = async (req, res) => {
+  try {
+    const { accountId } = req.user;
+    const shop = await Shop.findOne({ owner: accountId });
+    return res.status(200).json(shop);
+  } catch (err) {
+    console.error("Lỗi khi tìm kiếm cửa hàng:", err);
+    return res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
+  }
+};
+
+module.exports = { createShop, getShopByOwerID };
