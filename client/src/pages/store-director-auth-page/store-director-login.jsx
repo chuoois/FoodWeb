@@ -8,10 +8,11 @@ import { Eye, EyeOff, Mail, Lock, Store } from "lucide-react"
 import { useFormik } from "formik"
 import * as Yup from "yup"
 import toast from "react-hot-toast"
-import { login, loginGoogle } from "@/services/auth.service"
+import { login, loginGoogle, getRoleNameById } from "@/services/auth.service"
 import { GoogleLogin } from "@react-oauth/google"
 import Cookies from "js-cookie"
 import { AuthContext } from "@/context/AuthContext"
+import { jwtDecode } from "jwt-decode"
 
 export function StoreDirectorLogin() {
   const [showPassword, setShowPassword] = useState(false)
@@ -34,37 +35,86 @@ export function StoreDirectorLogin() {
     validationSchema,
     onSubmit: async (values, { setSubmitting }) => {
       try {
-        const res = await login(values)
-        toast.success("Đăng nhập thành công!")
+        const res = await login(values);
+        toast.success("Đăng nhập thành công!");
 
-        loginContext(res.data.token)
+        // Lưu token vào context
+        loginContext(res.data.token);
 
+        // Giải mã token
+        const decoded = jwtDecode(res.data.token);
+
+        // Lấy role name từ API
+        const responseRole = await getRoleNameById({ id: decoded.roleId });
+        const roleName = responseRole.data.name;
+
+        // Xử lý ghi nhớ email
         if (values.rememberMe) {
-          Cookies.set("rememberedEmail", values.email, { expires: 7 })
+          Cookies.set("rememberedEmail", values.email, { expires: 7 });
         } else {
-          Cookies.remove("rememberedEmail")
+          Cookies.remove("rememberedEmail");
         }
 
-        navigate("/store-director/dashboard")
+        // Điều hướng theo role
+        switch (roleName) {
+          case "STORE_DIRECTOR":
+            navigate("/store-director/dashboard");
+            break;
+          case "MANAGER_STAFF":
+            navigate("/manager/dashboard");
+            break;
+          case "SELLER_STAFF":
+            navigate("/seller/dashboard");
+            break;
+          default:
+            navigate("/403-forbidden");
+            break;
+        }
+
       } catch (error) {
-        toast.error(error.response?.data?.message || "Đăng nhập thất bại")
+        toast.error(error.response?.data?.message || "Đăng nhập thất bại");
       } finally {
-        setSubmitting(false)
+        setSubmitting(false);
       }
     },
   })
 
   const handleGoogleLogin = async (credentialResponse) => {
     try {
-      const tokenId = credentialResponse.credential
-      const res = await loginGoogle(tokenId)
-      toast.success("Đăng nhập Google thành công!")
-      loginContext(res.data.token)
-      navigate("/store-director/dashboard")
+      const tokenId = credentialResponse.credential;
+      const res = await loginGoogle(tokenId);
+
+      toast.success("Đăng nhập Google thành công!");
+      loginContext(res.data.token);
+
+      // Giải mã token để lấy roleId
+      const decoded = jwtDecode(res.data.token);
+
+      // Lấy roleName từ API
+      const responseRole = await getRoleNameById({ id: decoded.roleId });
+      const roleName = responseRole.data.name;
+
+      // Điều hướng theo role
+      switch (roleName) {
+        case "STORE_DIRECTOR":
+          navigate("/store-director/manage/dashboard");
+          break;
+        case "MANAGER_STAFF":
+          navigate("/manager/dashboard");
+          break;
+        case "SELLER_STAFF":
+          navigate("/seller/dashboard");
+          break;
+        default:
+          navigate("/403-forbidden");
+          break;
+      }
+
     } catch (error) {
-      toast.error(error.response?.data?.message || "Đăng nhập Google thất bại")
+      console.error(error);
+      toast.error(error.response?.data?.message || "Đăng nhập Google thất bại");
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 p-4">
