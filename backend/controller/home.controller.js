@@ -14,7 +14,7 @@ const getNearbyShopsByCoords = async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing lat/lng" });
     }
 
-    const shops = await findNearbyShops(parseFloat(lat), parseFloat(lng)).limit(limit);
+    const shops = await findNearbyShops(parseFloat(lat), parseFloat(lng));
    
     res.json({ success: true, shops });
   } catch (err) {
@@ -55,15 +55,38 @@ const searchHome = async (req, res) => {
     }
 };
 
+const getShopsByType = async (req, res) => {
+    try {
+        const {type,lat,lng } = req.query;
+        let newLat, newLng ;
+        if (!type) {
+            console.log('Type param:', type);
+            return res.status(400).json({ success: false, message: "Loại quán là bắt buộc." });
+        }
+        if (!lat || !lng) {
+            newLat = DEFAULT_LOCATION.lat;
+            newLng = DEFAULT_LOCATION.lng;
+        } else {
+            newLat = parseFloat(lat);
+            newLng = parseFloat(lng);
+        }
+        const shops = await findNearbyShops(parseFloat(newLat), parseFloat(newLng));
+        const shopsByType = shops.filter(shop => shop.type === type && shop.status === 'ACTIVE');
+        res.json({ success: true, shopsByType });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
 const getShopsByRate = async (req, res) => {
     try {
-        const shops = await Shop.find().sort({ rating: -1 }).limit(8);
+        const shops = await Shop.find({ status: 'ACTIVE' }).sort({ rating: -1 }).limit(20).lean();
         res.json({ success: true, shops });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
 };
 
-module.exports = { getNearbyShopsByCoords, searchHome,getShopsByRate };
+module.exports = { getNearbyShopsByCoords, searchHome,getShopsByRate,getShopsByType};
 
 
