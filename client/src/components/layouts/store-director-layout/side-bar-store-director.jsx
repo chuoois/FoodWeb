@@ -33,10 +33,10 @@ export function SidebarStoreDirectorLayout({ children }) {
 
   const navigation = [
     { name: "Dashboard", href: "/store-director/manage/dashboard", icon: LayoutDashboard },
+    { name: "Tạo nhân viên", href: "/store-director/manage/create-staff", icon: UserPlus },
     { name: "Tạo cửa hàng", href: "/store-director/manage/create-shop", icon: Store },
     { name: "Đơn xét duyệt", href: "/store-director/manage/approval", icon: CheckSquare },
-    { name: "Tạo nhân viên", href: "/store-director/manage/create-staff", icon: UserPlus },
-    { name: "Doanh thu", href: "/store-director/manage/revenue", icon: BarChart3 }, 
+    { name: "Doanh thu", href: "/store-director/manage/revenue", icon: BarChart3 },
   ]
 
   const handleLogout = () => {
