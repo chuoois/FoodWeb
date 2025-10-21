@@ -22,7 +22,8 @@ import {
   UserCircle,
   CheckSquare,
   UserPlus,
-  BarChart3
+  BarChart3,
+  Home
 } from "lucide-react"
 
 export function SidebarStoreDirectorLayout({ children }) {
@@ -32,16 +33,19 @@ export function SidebarStoreDirectorLayout({ children }) {
   const location = useLocation()
 
   const navigation = [
+    { name: "Trang chủ", href: "/store-director/manage/home", icon: Home },
     { name: "Dashboard", href: "/store-director/manage/dashboard", icon: LayoutDashboard },
-    { name: "Tạo nhân viên", href: "/store-director/manage/create-staff", icon: UserPlus },
+    { name: "Tạo quản lý", href: "/store-director/manage/create-staff", icon: UserPlus },
+    { name: "Quản lý tài khoản", href: "/store-director/manage/account-staff", icon: UserCircle },
     { name: "Tạo cửa hàng", href: "/store-director/manage/create-shop", icon: Store },
     { name: "Đơn xét duyệt", href: "/store-director/manage/approval", icon: CheckSquare },
     { name: "Doanh thu", href: "/store-director/manage/revenue", icon: BarChart3 },
   ]
 
+
   const handleLogout = () => {
     logout()
-    navigate("/login")
+    navigate("/store-director/login")
   }
 
   const handleProfile = () => navigate("/profile")

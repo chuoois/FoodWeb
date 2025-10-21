@@ -223,60 +223,135 @@ const createShopStaff = async (req, res) => {
 };
 
 /**
- *  Lấy danh sách tài khoản nhân viên (SELLER_STAFF và MANAGER_STAFF) 
+ *  Lấy danh sách nhân viên do người dùng tạo
  */
-
-const listStaffAccounts = async (req, res) => {
+const listStaffByCreator = async (req, res) => {
   try {
-    const { accountId } = req.user;
+    const { accountId } = req.user; // từ middleware xác thực
+    const { search, status, page = 1, limit = 10 } = req.query;
 
-    // Lấy thông tin tài khoản hiện tại
-    const currentAccount = await Account.findById(accountId).lean();
-    if (!currentAccount) {
-      return res.status(404).json({ message: "Không tìm thấy tài khoản" });
+    // Bộ lọc
+    const filter = { created_by: accountId };
+    if (status) filter.status = status;
+
+    if (search) {
+      filter.$or = [
+        { full_name: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+      ];
     }
 
-    const created_by = currentAccount._id; 
+    // Tính tổng
+    const totalCount = await Staff.countDocuments(filter);
 
-    // Lấy role MANAGER_STAFF và SELLER_STAFF
-    const [managerRole, sellerRole] = await Promise.all([
-      Role.findOne({ name: "MANAGER_STAFF" }),
-      Role.findOne({ name: "SELLER_STAFF" }),
-    ]);
+    // Phân trang
+    const staffList = await Staff.find(filter)
+      .populate("account_id", "email role")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
 
-    if (!managerRole || !sellerRole) {
-      return res.status(404).json({ message: "Không tìm thấy role tương ứng" });
-    }
-
-    // Tìm tất cả staff do user này tạo
-    const staffList = await Staff.find({ created_by }).select("account_id").lean();
-    const accountIds = staffList.map((s) => s.account_id);
-
-    // Nếu chưa có staff nào
-    if (accountIds.length === 0) {
-      return res.status(200).json({
-        message: "Chưa có nhân viên nào được tạo",
-        data: { managerAccounts: [], sellerAccounts: [] },
-      });
-    }
-
-    // Lấy danh sách tài khoản theo vai trò
-    const [managerAccounts, sellerAccounts] = await Promise.all([
-      Account.find({ _id: { $in: accountIds }, role_id: managerRole._id })
-        .select("_id username email phone")
-        .lean(),
-      Account.find({ _id: { $in: accountIds }, role_id: sellerRole._id })
-        .select("_id username email phone")
-        .lean(),
-    ]);
-
-    return res.status(200).json({
-      message: "Lấy danh sách tài khoản nhân viên thành công",
-      data: { managerAccounts, sellerAccounts },
+    res.status(200).json({
+      message: "Lấy danh sách nhân viên thành công",
+      totalCount,
+      currentPage: Number(page),
+      totalPages: Math.ceil(totalCount / limit),
+      data: staffList,
     });
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách tài khoản nhân viên:", error);
-    return res.status(500).json({ message: error.message });
+    console.error("Lỗi khi lấy danh sách nhân viên:", error);
+    res.status(500).json({
+      message: "Đã xảy ra lỗi khi lấy danh sách nhân viên",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ *  Cập nhật nhân viên
+ */
+
+const updateStaff = async (req, res) => {
+  try {
+    const { accountId } = req.user;
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Kiểm tra tồn tại
+    const staff = await Staff.findById(id);
+    if (!staff) {
+      return res.status(404).json({ message: "Không tìm thấy nhân viên" });
+    }
+
+    // Chỉ cho phép người tạo sửa nhân viên
+    if (staff.created_by.toString() !== accountId.toString()) {
+      return res.status(403).json({ message: "Bạn không có quyền cập nhật nhân viên này" });
+    }
+
+    // Cập nhật hợp lệ
+    const allowedFields = [
+      "full_name",
+      "phone",
+      "avatar_url",
+      "date_of_birth",
+      "gender"
+    ];
+
+    for (let key in updateData) {
+      if (allowedFields.includes(key)) {
+        staff[key] = updateData[key];
+      }
+    }
+
+    const updatedStaff = await staff.save();
+
+    res.status(200).json({
+      message: "Cập nhật nhân viên thành công",
+      data: updatedStaff,
+    });
+  } catch (error) {
+    console.error("Lỗi khi cập nhật nhân viên:", error);
+    res.status(500).json({
+      message: "Đã xảy ra lỗi khi cập nhật nhân viên",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ *  Xóa nhân viên và tài khoản liên kết
+ */
+const deleteStaff = async (req, res) => {
+  try {
+    const { accountId } = req.user; // ID người đang đăng nhập
+    const { id } = req.params; // ID của staff cần xóa
+
+    // Tìm nhân viên
+    const staff = await Staff.findById(id);
+    if (!staff) {
+      return res.status(404).json({ message: "Không tìm thấy nhân viên" });
+    }
+
+    // Chỉ người tạo mới được xóa
+    if (staff.created_by.toString() !== accountId.toString()) {
+      return res.status(403).json({ message: "Bạn không có quyền xóa nhân viên này" });
+    }
+
+    // Xóa account liên kết nếu có
+    if (staff.account_id) {
+      await Account.findByIdAndDelete(staff.account_id);
+    }
+
+    // Xóa staff
+    await Staff.findByIdAndDelete(id);
+
+    return res.status(200).json({ message: "Xóa nhân viên và tài khoản thành công" });
+  } catch (error) {
+    console.error("❌ Lỗi khi xóa nhân viên:", error);
+    res.status(500).json({
+      message: "Đã xảy ra lỗi khi xóa nhân viên",
+      error: error.message,
+    });
   }
 };
 
@@ -287,5 +362,7 @@ module.exports = {
   createShopStaff,
   updateManager,
   deleteShop,
-  listStaffAccounts
+  listStaffByCreator,
+  updateStaff,
+  deleteStaff
 };

@@ -346,12 +346,13 @@ export const CreateShopPage = () => {
                       : "Chọn quản lý..."}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[600px] p-0 max-h-[300px]">
+                <PopoverContent className="w-[600px] px-2 py-1 max-h-[300px]" align="start">
                   <Command>
                     <CommandInput
                       placeholder="Tìm kiếm quản lý..."
                       value={searchValue}
                       onValueChange={setSearchValue}
+                      className="text-left pl-2"
                     />
                     <CommandList>
                       <CommandEmpty>Không tìm thấy quản lý</CommandEmpty>
@@ -407,7 +408,7 @@ export const CreateShopPage = () => {
                           className="h-4 w-4 p-0 ml-1"
                           onClick={() => handleManagerSelect(managerId)}
                         >
-                          <Crosshair className="h-3 w-3" />
+                          X
                         </Button>
                       </Badge>
                     );
@@ -586,7 +587,7 @@ export const CreateShopPage = () => {
               </div>
               {formik.values.gps.latitude && formik.values.gps.longitude && (
                 <p className="text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
-                  📍 Tọa độ: {formik.values.gps.latitude}, {formik.values.gps.longitude}
+                  Tọa độ: {formik.values.gps.latitude}, {formik.values.gps.longitude}
                 </p>
               )}
             </div>
@@ -737,7 +738,7 @@ export const CreateShopPage = () => {
               </>
             )
             : hasSubmitted
-              ? "✅ Đã gửi thành công"
+              ? "Đã gửi thành công"
               : "Gửi đăng ký"}
         </Button>
       </div>
