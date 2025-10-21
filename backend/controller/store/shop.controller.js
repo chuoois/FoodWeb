@@ -79,4 +79,6 @@ const getShopByOwerID = async (req, res) => {
   }
 };
 
+
+
 module.exports = { createShop, getShopByOwerID };

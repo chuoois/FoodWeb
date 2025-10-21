@@ -86,6 +86,15 @@ const getShopsByRate = async (req, res) => {
         res.status(500).json({ success: false, message: err.message });
     }
 };
+const getShopsById = async (req, res) => {
+    try {
+        const { shopId } = req.params;
+        const shop = await Shop.findById(shopId).lean();
+        res.json({ success: true, shop });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+}
 
 module.exports = { getNearbyShopsByCoords, searchHome,getShopsByRate,getShopsByType};
 
