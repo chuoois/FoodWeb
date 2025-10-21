@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react"
 import {
   Star,
   Heart,
@@ -13,19 +13,13 @@ import {
   X,
   ChevronLeft,
   Trash2,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from "lucide-react"
+import { Link } from "react-router-dom"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Pagination,
   PaginationContent,
@@ -34,7 +28,8 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@/components/ui/pagination";
+} from "@/components/ui/pagination"
+import toast from "react-hot-toast"
 
 const products = [
   {
@@ -109,7 +104,7 @@ const products = [
     img: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735",
     category: "COLD BREW",
   },
-    {
+  {
     id: 9,
     title: "COLD BREW MILK - Cà phê ủ lạnh sữa tươi",
     desc: "Sự kết hợp hoàn hảo giữa cold brew và sữa tươi",
@@ -118,7 +113,7 @@ const products = [
     img: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735",
     category: "COLD BREW",
   },
-    {
+  {
     id: 10,
     title: "COLD BREW MILK - Cà phê ủ lạnh sữa tươi",
     desc: "Sự kết hợp hoàn hảo giữa cold brew và sữa tươi",
@@ -127,7 +122,7 @@ const products = [
     img: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735",
     category: "COLD BREW",
   },
-];
+]
 
 const similarRestaurants = [
   {
@@ -171,7 +166,7 @@ const similarRestaurants = [
     img: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624",
     badge: "PROMO",
   },
-];
+]
 
 const openingHours = [
   { day: "Chủ nhật", time: "06:30 - 21:00", isToday: false },
@@ -181,85 +176,89 @@ const openingHours = [
   { day: "Thứ năm", time: "06:30 - 21:00", isToday: false },
   { day: "Thứ sáu", time: "06:30 - 21:00", isToday: false },
   { day: "Thứ bảy", time: "06:30 - 21:00", isToday: true },
-];
+]
 
 export const DetailPage = () => {
-  const [cartItems, setCartItems] = useState([]);
-  const [liked, setLiked] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("Tất cả");
-  const [showSimilar, setShowSimilar] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1); // State mới cho trang hiện tại
+  const [cartItems, setCartItems] = useState([])
+  const [liked, setLiked] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState("Tất cả")
+  const [showSimilar, setShowSimilar] = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
-  const itemsPerPage = 9; // Tối đa 9 sản phẩm/trang
+  useEffect(() => {
+    const token = localStorage.getItem("token")
+    setIsLoggedIn(!!token)
+  }, [])
+  const itemsPerPage = 9
 
   const categories = useMemo(() => {
-    const allCategories = ["Tất cả"];
-    const categoryCounts = { "Tất cả": products.length };
+    const allCategories = ["Tất cả"]
+    const categoryCounts = { "Tất cả": products.length }
 
     products.forEach((product) => {
       if (!allCategories.includes(product.category)) {
-        allCategories.push(product.category);
-        categoryCounts[product.category] = 1;
+        allCategories.push(product.category)
+        categoryCounts[product.category] = 1
       } else if (product.category) {
-        categoryCounts[product.category]++;
+        categoryCounts[product.category]++
       }
-    });
+    })
 
     return allCategories.map((name) => ({
       name,
       count: categoryCounts[name] || 0,
-    }));
-  }, []);
+    }))
+  }, [])
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const matchesCategory =
-        selectedCategory === "Tất cả" || product.category === selectedCategory;
+      const matchesCategory = selectedCategory === "Tất cả" || product.category === selectedCategory
       const matchesSearch =
         product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.desc.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [selectedCategory, searchQuery]);
+        product.desc.toLowerCase().includes(searchQuery.toLowerCase())
+      return matchesCategory && matchesSearch
+    })
+  }, [selectedCategory, searchQuery])
 
-  // useMemo cho sản phẩm phân trang
   const paginatedProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredProducts.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredProducts, currentPage]);
+    const startIndex = (currentPage - 1) * itemsPerPage
+    return filteredProducts.slice(startIndex, startIndex + itemsPerPage)
+  }, [filteredProducts, currentPage])
 
-  // Tính tổng số trang
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage)
 
-  // Reset về trang 1 khi thay đổi category hoặc search
   useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedCategory, searchQuery]);
+    setCurrentPage(1)
+  }, [selectedCategory, searchQuery])
 
-  // Hàm xử lý thay đổi trang
   const handlePageChange = (pageNumber) => {
     if (pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
+      setCurrentPage(pageNumber)
     }
-  };
+  }
 
   const handleIncrease = (id) => {
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, qty: item.qty + 1 } : item
-      )
-    );
-  };
+    setCartItems((prev) => prev.map((item) => (item.id === id ? { ...item, qty: item.qty + 1 } : item)))
+  }
+
+  const handleDecrease = (id) => {
+    setCartItems((prev) => prev.map((item) => (item.id === id ? { ...item, qty: Math.max(1, item.qty - 1) } : item)))
+  }
+
+  const handleRemove = (id) => {
+    setCartItems((prev) => prev.filter((item) => item.id !== id))
+  }
 
   const addToCart = (product) => {
-    const existingItem = cartItems.find((item) => item.id === product.id);
+    const existingItem = cartItems.find((item) => item.id === product.id)
     if (existingItem) {
-      handleIncrease(product.id);
+      handleIncrease(product.id)
+      toast.success(`Đã thêm ${product.title} vào giỏ hàng`)
     } else {
       setCartItems((prev) => [
-        ...prev,
         {
           id: product.id,
           qty: 1,
@@ -267,13 +266,16 @@ export const DetailPage = () => {
           price: product.price,
           img: product.img,
         },
-      ]);
+        ...prev,
+      ])
+      toast.success(`Đã thêm ${product.title} vào giỏ hàng`)
     }
-  };
+  }
+
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0)
 
   return (
     <main className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 min-h-screen pt-4">
-      {/* Restaurant Header */}
       <Card className="border-0 shadow-md mx-auto max-w-7xl rounded-none sm:rounded-2xl">
         <CardContent className="p-0">
           <div className="px-6 py-8">
@@ -296,18 +298,13 @@ export const DetailPage = () => {
                   <Button
                     variant={liked ? "destructive" : "outline"}
                     size="sm"
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all duration-300 ${
-                      liked
-                        ? "bg-red-50 border-red-400 text-red-600 hover:bg-red-100"
-                        : "border-gray-300 text-gray-600 hover:bg-orange-50 hover:border-orange-300"
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all duration-300 ${liked
+                      ? "bg-red-50 border-red-400 text-red-600 hover:bg-red-100"
+                      : "border-gray-300 text-gray-600 hover:bg-orange-50 hover:border-orange-300"
+                      }`}
                     onClick={() => setLiked(!liked)}
                   >
-                    <Heart
-                      className={`w-4 h-4 transition-all ${
-                        liked ? "fill-red-500 scale-110" : ""
-                      }`}
-                    />
+                    <Heart className={`w-4 h-4 transition-all ${liked ? "fill-red-500 scale-110" : ""}`} />
                     <span className="text-sm font-medium">Yêu thích</span>
                   </Button>
                 </div>
@@ -359,11 +356,7 @@ export const DetailPage = () => {
                     onClick={() => setShowSimilar(!showSimilar)}
                   >
                     <span className="font-medium">Nhà hàng tương tự</span>
-                    <span
-                      className={`text-xs transition-transform duration-300 ${
-                        showSimilar ? "rotate-180" : ""
-                      }`}
-                    >
+                    <span className={`text-xs transition-transform duration-300 ${showSimilar ? "rotate-180" : ""}`}>
                       ▼
                     </span>
                   </Button>
@@ -397,27 +390,19 @@ export const DetailPage = () => {
               {categories.map((cat) => (
                 <Button
                   key={cat.name}
-                  variant={
-                    selectedCategory === cat.name ? "default" : "outline"
-                  }
+                  variant={selectedCategory === cat.name ? "default" : "outline"}
                   size="sm"
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold whitespace-nowrap transition-all duration-300 ${
-                    selectedCategory === cat.name
-                      ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg shadow-orange-200 scale-105"
-                      : "border-2 border-gray-300 text-gray-700 hover:bg-orange-50 hover:border-orange-300"
-                  }`}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold whitespace-nowrap transition-all duration-300 ${selectedCategory === cat.name
+                    ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg shadow-orange-200 scale-105"
+                    : "border-2 border-gray-300 text-gray-700 hover:bg-orange-50 hover:border-orange-300"
+                    }`}
                   onClick={() => setSelectedCategory(cat.name)}
                 >
                   {cat.name}
                   <Badge
-                    variant={
-                      selectedCategory === cat.name ? "default" : "secondary"
-                    }
-                    className={`text-xs font-bold ${
-                      selectedCategory === cat.name
-                        ? "bg-white/30 text-white"
-                        : "bg-orange-100 text-orange-600"
-                    }`}
+                    variant={selectedCategory === cat.name ? "default" : "secondary"}
+                    className={`text-xs font-bold ${selectedCategory === cat.name ? "bg-white/30 text-white" : "bg-orange-100 text-orange-600"
+                      }`}
                   >
                     {cat.count}
                   </Badge>
@@ -428,12 +413,11 @@ export const DetailPage = () => {
         </CardContent>
       </Card>
 
-      {/* Restaurant Info Modal */}
       {showInfo && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setShowInfo(false);
+            if (e.target === e.currentTarget) setShowInfo(false)
           }}
         >
           <div className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -447,9 +431,7 @@ export const DetailPage = () => {
                 >
                   <ChevronLeft className="w-5 h-5 text-gray-600" />
                 </Button>
-                <span className="text-sm font-medium text-gray-600 truncate">
-                  THCS Giáp Bát – Điện Đồng Tả, 35
-                </span>
+                <span className="text-sm font-medium text-gray-600 truncate">THCS Giáp Bát – Điện Đồng Tả, 35</span>
               </div>
               <Button
                 variant="ghost"
@@ -463,13 +445,9 @@ export const DetailPage = () => {
 
             <ScrollArea className="max-h-[calc(90vh-80px)]">
               <div className="p-6">
-                <h3 className="text-xl font-bold mb-5 text-gray-900">
-                  Thông tin quán
-                </h3>
+                <h3 className="text-xl font-bold mb-5 text-gray-900">Thông tin quán</h3>
                 <div className="mb-6 p-5 bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl border border-orange-100">
-                  <h4 className="text-base font-bold text-gray-900 mb-3">
-                    Bún Bò Huế 72 - Dường 72
-                  </h4>
+                  <h4 className="text-base font-bold text-gray-900 mb-3">Bún Bò Huế 72 - Dường 72</h4>
                   <div className="flex items-start gap-2 text-gray-600 text-sm mb-2">
                     <MapPin className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
                     <span>318 Dương 72, Xã An Khánh, H. Nghi</span>
@@ -481,31 +459,20 @@ export const DetailPage = () => {
                 </div>
 
                 <div>
-                  <h5 className="text-base font-bold mb-4 text-gray-900">
-                    Giờ hoạt động
-                  </h5>
+                  <h5 className="text-base font-bold mb-4 text-gray-900">Giờ hoạt động</h5>
                   <div className="space-y-2">
                     {openingHours.map((hour) => (
                       <div
                         key={hour.day}
-                        className={`flex justify-between items-center p-4 rounded-xl border transition-all ${
-                          hour.isToday
-                            ? "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 shadow-sm"
-                            : "bg-gray-50 border-gray-100 hover:bg-gray-100"
-                        }`}
-                      >
-                        <span
-                          className={`text-sm font-medium ${
-                            hour.isToday ? "text-gray-900" : "text-gray-700"
+                        className={`flex justify-between items-center p-4 rounded-xl border transition-all ${hour.isToday
+                          ? "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200 shadow-sm"
+                          : "bg-gray-50 border-gray-100 hover:bg-gray-100"
                           }`}
-                        >
+                      >
+                        <span className={`text-sm font-medium ${hour.isToday ? "text-gray-900" : "text-gray-700"}`}>
                           {hour.day}
                         </span>
-                        <span
-                          className={`text-sm font-semibold ${
-                            hour.isToday ? "text-orange-600" : "text-gray-600"
-                          }`}
-                        >
+                        <span className={`text-sm font-semibold ${hour.isToday ? "text-orange-600" : "text-gray-600"}`}>
                           {hour.time}
                         </span>
                       </div>
@@ -518,13 +485,10 @@ export const DetailPage = () => {
         </div>
       )}
 
-      {/* Similar Restaurants Section */}
       {showSimilar && (
         <Card className="border-0 shadow-md mx-auto max-w-7xl rounded-none sm:rounded-2xl">
           <CardContent className="p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-5">
-              Nhà hàng tương tự
-            </h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-5">Nhà hàng tương tự</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {similarRestaurants.map((restaurant) => (
                 <Card
@@ -559,24 +523,16 @@ export const DetailPage = () => {
                     <h4 className="font-bold text-gray-900 text-sm mb-2 line-clamp-2 min-h-[2.5rem]">
                       {restaurant.name}
                     </h4>
-                    <p className="text-xs text-gray-500 mb-3 line-clamp-1">
-                      {restaurant.address}
-                    </p>
+                    <p className="text-xs text-gray-500 mb-3 line-clamp-1">{restaurant.address}</p>
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="text-gray-600 font-medium">
-                          {restaurant.distance}
-                        </span>
+                        <span className="text-gray-600 font-medium">{restaurant.distance}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Star className="w-3.5 h-3.5 fill-orange-400 text-orange-400" />
-                        <span className="font-bold text-gray-900">
-                          {restaurant.rating}
-                        </span>
-                        <span className="text-gray-500">
-                          ({restaurant.reviews}+)
-                        </span>
+                        <span className="font-bold text-gray-900">{restaurant.rating}</span>
+                        <span className="text-gray-500">({restaurant.reviews}+)</span>
                       </div>
                     </div>
                   </CardContent>
@@ -587,22 +543,18 @@ export const DetailPage = () => {
         </Card>
       )}
 
-      {/* Main Content */}
+      {/* Main Content with Cart Sidebar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-gray-900 mb-6 bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-              {selectedCategory === "Tất cả"
-                ? "TẤT CẢ SẢN PHẨM"
-                : selectedCategory.toUpperCase()}
+              {selectedCategory === "Tất cả" ? "TẤT CẢ SẢN PHẨM" : selectedCategory.toUpperCase()}
             </h2>
 
             {filteredProducts.length === 0 ? (
               <div className="text-center py-16">
                 <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-lg">
-                  Không tìm thấy sản phẩm nào
-                </p>
+                <p className="text-gray-500 text-lg">Không tìm thấy sản phẩm nào</p>
               </div>
             ) : (
               <>
@@ -634,9 +586,7 @@ export const DetailPage = () => {
                         </CardDescription>
                         <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
                           <ShoppingCart className="w-4 h-4 text-orange-500" />
-                          <span className="font-medium">
-                            {product.sold}+ đã bán
-                          </span>
+                          <span className="font-medium">{product.sold}+ đã bán</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
@@ -655,7 +605,6 @@ export const DetailPage = () => {
                   ))}
                 </div>
 
-                {/* Pagination Component */}
                 {totalPages > 1 && (
                   <div className="flex justify-center mt-8">
                     <Pagination>
@@ -663,16 +612,11 @@ export const DetailPage = () => {
                         <PaginationItem>
                           <PaginationPrevious
                             onClick={() => handlePageChange(currentPage - 1)}
-                            className={
-                              currentPage === 1
-                                ? "pointer-events-none opacity-50"
-                                : "cursor-pointer"
-                            }
+                            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                           />
                         </PaginationItem>
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
                           if (totalPages <= 7) {
-                            // Hiển thị tất cả nếu ít trang
                             return (
                               <PaginationItem key={page}>
                                 <PaginationLink
@@ -683,9 +627,8 @@ export const DetailPage = () => {
                                   {page}
                                 </PaginationLink>
                               </PaginationItem>
-                            );
+                            )
                           } else {
-                            // Sử dụng ellipsis cho nhiều trang
                             if (page <= 3 || page >= totalPages - 2 || page === currentPage) {
                               return (
                                 <PaginationItem key={page}>
@@ -697,23 +640,27 @@ export const DetailPage = () => {
                                     {page}
                                   </PaginationLink>
                                 </PaginationItem>
-                              );
+                              )
                             } else if (page === 4 && currentPage > 4) {
-                              return <PaginationItem key="ellipsis-1"><PaginationEllipsis /></PaginationItem>;
+                              return (
+                                <PaginationItem key="ellipsis-1">
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                              )
                             } else if (page === totalPages - 3 && currentPage < totalPages - 3) {
-                              return <PaginationItem key="ellipsis-2"><PaginationEllipsis /></PaginationItem>;
+                              return (
+                                <PaginationItem key="ellipsis-2">
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                              )
                             }
-                            return null;
+                            return null
                           }
                         })}
                         <PaginationItem>
                           <PaginationNext
                             onClick={() => handlePageChange(currentPage + 1)}
-                            className={
-                              currentPage === totalPages
-                                ? "pointer-events-none opacity-50"
-                                : "cursor-pointer"
-                            }
+                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                           />
                         </PaginationItem>
                       </PaginationContent>
@@ -723,8 +670,98 @@ export const DetailPage = () => {
               </>
             )}
           </div>
+
+          <div className="w-full lg:w-80 flex-shrink-0">
+            <Card className="sticky top-8 border-0 shadow-lg bg-white rounded-2xl overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 border-b border-orange-100 pb-4">
+                <CardTitle className="text-lg font-bold text-gray-900">Giỏ hàng của tôi</CardTitle>
+              </CardHeader>
+
+              {cartItems.length === 0 ? (
+                <CardContent className="p-6 text-center">
+                  <div className="flex flex-col items-center justify-center py-8">
+                    <ShoppingCart className="w-12 h-12 text-gray-300 mb-3" />
+                    <p className="text-gray-500 text-sm">Giỏ hàng hiện đang trống</p>
+                  </div>
+                </CardContent>
+              ) : (
+                <>
+                  <ScrollArea className="max-h-[500px] overflow-y-auto">
+                    <div className="p-4 space-y-3">
+                      {cartItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                        >
+                          <img
+                            src={item.img || "/placeholder.svg"}
+                            alt={item.title}
+                            className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-1">{item.title}</h4>
+                            <p className="text-sm font-bold text-orange-600 mb-2">{item.price.toLocaleString()}đ</p>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="w-6 h-6 rounded-md border-gray-300 hover:bg-gray-200 bg-transparent"
+                                onClick={() => handleDecrease(item.id)}
+                              >
+                                <Minus className="w-3 h-3 text-gray-600" />
+                              </Button>
+                              <span className="text-xs font-semibold text-gray-700 w-6 text-center">{item.qty}</span>
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="w-6 h-6 rounded-md border-gray-300 hover:bg-gray-200 bg-transparent"
+                                onClick={() => handleIncrease(item.id)}
+                              >
+                                <Plus className="w-3 h-3 text-gray-600" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="w-6 h-6 ml-auto hover:bg-red-100"
+                                onClick={() => handleRemove(item.id)}
+                              >
+                                <Trash2 className="w-3 h-3 text-red-500" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+
+                  <div className="border-t border-gray-200 p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-600">Tổng số tiền</span>
+                      <span className="text-lg font-bold text-orange-600">{totalPrice.toLocaleString()}đ</span>
+                    </div>
+                    {isLoggedIn ? (
+                      <Link to="/checkout">
+                        <Button className="w-full bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-gray-900 font-bold rounded-xl py-3 shadow-md hover:shadow-lg transition-al">
+                          Xem đơn hàng
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Link to="/auth/login">
+                        <Button className="w-full bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-gray-900 font-bold rounded-xl py-3 shadow-md hover:shadow-lg transition-al">
+                          Đăng nhập để đặt đơn
+                        </Button>
+                      </Link>
+                    )}
+                    <p className="text-xs text-gray-500 text-center">
+                      Xem phí áp dụng và dùng mã khuyến mại ở bước tiếp theo
+                    </p>
+                  </div>
+                </>
+              )}
+            </Card>
+          </div>
         </div>
       </div>
     </main>
-  );
-};
+  )
+}
