@@ -7,10 +7,16 @@ const {
   createShopStaff,
   updateManager,
   deleteShop,
-  listStaffAccounts
+  listStaffByCreator,
+  updateStaff,
+  deleteStaff
 } = require("../controller/store/shop.controller");
 const authenticate = require("../middleware/authenticate.middleware");
 const authorize = require("../middleware/authorize.middleware");
+
+//=====================================//
+//            STORE DIRECTOR           //
+//=====================================//
 
 //  Tạo cửa hàng mới
 router.post("/shop/create", authenticate, authorize("STORE_DIRECTOR"), createShop);
@@ -30,7 +36,13 @@ router.put("/shop/:shopId/managers", authenticate, authorize("STORE_DIRECTOR"), 
 //  Xóa shop theo ID
 router.delete("/shop/:shopId", authenticate, authorize("STORE_DIRECTOR"), deleteShop);
 
-//  Lấy danh sách tài khoản nhân viên (SELLER_STAFF và MANAGER_STAFF) đang làm việc cho các shop
-router.get("/shop/staff/accounts", authenticate, authorize("STORE_DIRECTOR"), listStaffAccounts);
+//  Lấy danh sách nhân viên do người dùng tạo
+router.get("/shop/staff/list", authenticate, authorize("STORE_DIRECTOR"), listStaffByCreator);
+
+//  Cập nhật thông tin nhân viên
+router.put("/shop/staff/:id", authenticate, authorize("STORE_DIRECTOR"), updateStaff);
+
+//  Xóa nhân viên theo ID
+router.delete("/shop/staff/:id", authenticate, authorize("STORE_DIRECTOR"), deleteStaff);
 
 module.exports = router;

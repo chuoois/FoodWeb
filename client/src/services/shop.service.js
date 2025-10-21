@@ -30,3 +30,18 @@ export const updateShopManagers = (shopId, data) => {
 export const deleteShop = (shopId) => {
   return api.delete(`/shop/${shopId}`);
 };
+
+//  Lấy danh sách nhân viên do người dùng tạo
+export const listStaffByCreator = (params = {}) => {
+  return api.get("/shop/staff/list", { params });
+};
+
+//  Cập nhật thông tin nhân viên
+export const updateStaff = (staffId, data) => {
+  return api.put(`/shop/staff/${staffId}`, data);
+};
+
+//  Xóa nhân viên theo ID
+export const deleteStaff = (staffId) => {
+  return api.delete(`/shop/staff/${staffId}`);
+};

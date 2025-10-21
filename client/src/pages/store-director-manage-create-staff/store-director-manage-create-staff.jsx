@@ -30,9 +30,6 @@ const validationSchema = Yup.object({
   confirmPassword: Yup.string()
     .required("Xác nhận mật khẩu là bắt buộc")
     .oneOf([Yup.ref("password"), null], "Mật khẩu xác nhận không khớp"),
-  roleName: Yup.string()
-    .required("Vai trò là bắt buộc")
-    .oneOf(["SELLER_STAFF", "MANAGER_STAFF"], "Vai trò không hợp lệ"),
 });
 
 export const CreateEmployeePage = () => {
@@ -45,27 +42,27 @@ export const CreateEmployeePage = () => {
       email: "",
       password: "",
       confirmPassword: "",
-      roleName: "SELLER_STAFF",
+      roleName: "MANAGER_STAFF", // Fixed role for manager
     },
     validationSchema,
     onSubmit: async (values, { setSubmitting }) => {
       setIsSubmitting(true);
-      const submitToast = toast.loading("Đang đăng ký nhân viên...");
+      const submitToast = toast.loading("Đang đăng ký quản lý...");
       try {
         const payload = {
           full_name: values.fullName,
           email: values.email,
           password: values.password,
           confirmPassword: values.confirmPassword,
-          roleName: values.roleName,
+          roleName: "MANAGER_STAFF", // Hard-coded role
         };
         const res = await createShopStaff(payload);
         toast.success(res.data.message, { id: submitToast });
         navigate("/store-director/manage/create-shop");
       } catch (err) {
-        console.error("[❌ Lỗi đăng ký nhân viên]", err);
+        console.error("[❌ Lỗi đăng ký quản lý]", err);
         const errorMessage =
-          err.response?.data?.message || "Có lỗi xảy ra khi đăng ký nhân viên.";
+          err.response?.data?.message || "Có lỗi xảy ra khi đăng ký quản lý.";
         toast.error(errorMessage, { id: submitToast });
       } finally {
         setIsSubmitting(false);
@@ -78,10 +75,10 @@ export const CreateEmployeePage = () => {
     <form onSubmit={formik.handleSubmit} className="container mx-auto py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-          Đăng ký nhân viên
+          Đăng ký quản lý
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Điền thông tin dưới đây để đăng ký tài khoản nhân viên. OTP sẽ được gửi đến email để xác minh.
+          Điền thông tin dưới đây để đăng ký tài khoản quản lý. OTP sẽ được gửi đến email để xác minh.
         </p>
       </div>
 
@@ -90,9 +87,9 @@ export const CreateEmployeePage = () => {
           <CardHeader>
             <div className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-muted-foreground" />
-              <CardTitle>Thông tin nhân viên</CardTitle>
+              <CardTitle>Thông tin quản lý</CardTitle>
             </div>
-            <CardDescription>Thông tin cơ bản để tạo tài khoản nhân viên</CardDescription>
+            <CardDescription>Thông tin cơ bản để tạo tài khoản quản lý</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Họ và tên */}
@@ -167,23 +164,15 @@ export const CreateEmployeePage = () => {
               )}
             </div>
 
-            {/* Vai trò */}
+            {/* Vai trò - Hiển thị tĩnh */}
             <div className="space-y-2">
-              <Label htmlFor="roleName">Vai trò *</Label>
-              <select
-                id="roleName"
+              <Label>Vai trò *</Label>
+              <p className="text-sm text-foreground">Quản lý</p>
+              <input
+                type="hidden"
                 name="roleName"
-                value={formik.values.roleName}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                className="w-full rounded-md border border-input bg-background p-2"
-              >
-                <option value="SELLER_STAFF">Nhân viên bán hàng</option>
-                <option value="MANAGER_STAFF">Quản lý</option>
-              </select>
-              {formik.touched.roleName && formik.errors.roleName && (
-                <p className="text-sm text-red-500">{formik.errors.roleName}</p>
-              )}
+                value="MANAGER_STAFF"
+              />
             </div>
           </CardContent>
         </Card>
@@ -192,7 +181,7 @@ export const CreateEmployeePage = () => {
       <div className="flex items-center justify-between border rounded-lg p-6">
         <div>
           <p className="text-sm font-medium">
-            Bạn đã sẵn sàng đăng ký tài khoản nhân viên?
+            Bạn đã sẵn sàng đăng ký tài khoản quản lý?
           </p>
           <p className="text-sm text-muted-foreground">
             Hãy chắc chắn rằng tất cả thông tin đã chính xác trước khi tiếp tục.

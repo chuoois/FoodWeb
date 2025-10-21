@@ -32,7 +32,8 @@ import {
   CreateShopPage,
   StaffLogin,
   ShopListPage,
-  CreateEmployeePage
+  CreateEmployeePage,
+  ManagerHomePage
 } from "@/pages";
 
 export const router = createBrowserRouter([
@@ -98,6 +99,7 @@ export const router = createBrowserRouter([
         path: "store-director/manage",
         element: < StoreDirectorLayout />,
         children: [
+          { path: "home", element: <ManagerHomePage /> },
           { path: "dashboard", element: <div>Dashboard</div> },
           { path: "create-shop", element: < CreateShopPage /> },
           { path: "create-staff", element: <CreateEmployeePage /> },
