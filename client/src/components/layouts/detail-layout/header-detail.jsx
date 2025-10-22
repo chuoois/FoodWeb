@@ -43,7 +43,7 @@ export const HeaderDetail = () => {
   return (
     <>
       {/* Header */}
-      <header className="w-full px-6 py-4 bg-white border-b border-orange-200 shadow-sm sticky top-0 z-50">
+      <header className="w-full px-6 py-4 bg-white border-b border-orange-200 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-6">
           {/* Logo */}
           <div className="flex items-center gap-2">
