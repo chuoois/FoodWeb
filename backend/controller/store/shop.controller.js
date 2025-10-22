@@ -18,11 +18,12 @@ const createShop = async (req, res) => {
       logoUrl,
       coverUrl,
       type,
-      managers
+      managers = [] // danh sách manager
     } = req.body;
 
     const owner = req.user.accountId;
 
+    // ===== VALIDATION =====
     if (!name || !phone) {
       return res.status(400).json({ message: "Tên cửa hàng và số điện thoại là bắt buộc" });
     }
@@ -31,6 +32,28 @@ const createShop = async (req, res) => {
       return res.status(400).json({ message: "Tọa độ GPS không hợp lệ. Cần định dạng [lng, lat]" });
     }
 
+    // ===== KIỂM TRA MANAGER ĐÃ CÓ SHOP KHÁC =====
+    if (managers.length > 0) {
+      const existingShops = await Shop.find({
+        managers: { $in: managers },
+      }).lean();
+
+      if (existingShops.length > 0) {
+        const conflictManagers = new Set();
+        existingShops.forEach((shop) => {
+          shop.managers.forEach((m) => {
+            if (managers.includes(m.toString())) conflictManagers.add(m.toString());
+          });
+        });
+
+        return res.status(400).json({
+          message: "Một hoặc nhiều quản lý đã thuộc về cửa hàng khác",
+          conflictManagers: Array.from(conflictManagers),
+        });
+      }
+    }
+
+    // ===== TẠO SHOP MỚI =====
     const newShop = new Shop({
       owner,
       managers,
@@ -39,7 +62,7 @@ const createShop = async (req, res) => {
       address,
       gps: {
         type: "Point",
-        coordinates: gps.coordinates
+        coordinates: gps.coordinates,
       },
       phone,
       logoUrl,
@@ -47,16 +70,25 @@ const createShop = async (req, res) => {
       type,
       status: "PENDING_APPROVAL",
       isFavorite: false,
-      rating: 0
+      rating: 0,
     });
 
     const savedShop = await newShop.save();
+
+    // ===== CẬP NHẬT TRẠNG THÁI MANAGER =====
+    if (managers.length > 0) {
+      await Staff.updateMany(
+        { _id: { $in: managers } },
+        { $set: { isAssigned: true } }
+      );
+    }
+
     return res.status(201).json({
       message: "Tạo cửa hàng thành công",
-      shop: savedShop
+      shop: savedShop,
     });
   } catch (err) {
-    console.error("❌ Lỗi khi tạo shop:", err);
+    console.error("Lỗi khi tạo shop:", err);
     if (err.code === 11000) {
       return res.status(400).json({ message: "Số điện thoại đã được sử dụng" });
     }
@@ -79,7 +111,7 @@ const getShopByOwnerID = async (req, res) => {
     const shops = await Shop.find(filter).populate("managers", "full_name");
     return res.status(200).json(shops);
   } catch (err) {
-    console.error("❌ Lỗi khi tìm kiếm cửa hàng:", err);
+    console.error(" Lỗi khi tìm kiếm cửa hàng:", err);
     return res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
   }
 };
@@ -97,28 +129,73 @@ const updateManager = async (req, res) => {
       return res.status(400).json({ message: "Managers phải là một mảng ID người dùng" });
     }
 
-    // Kiểm tra shop có tồn tại và thuộc quyền của owner
+    // ===== TÌM SHOP =====
     const shop = await Shop.findById(shopId);
     if (!shop) {
       return res.status(404).json({ message: "Không tìm thấy cửa hàng" });
     }
 
+    // ===== KIỂM TRA QUYỀN CỦA OWNER =====
     if (shop.owner.toString() !== accountId.toString()) {
       return res.status(403).json({ message: "Bạn không có quyền chỉnh sửa cửa hàng này" });
     }
 
-    // Cập nhật managers
-    shop.managers = managers;
+    // ===== XÁC ĐỊNH CÁC MANAGER CŨ & MỚI =====
+    const oldManagers = shop.managers.map((m) => m.toString());
+    const newManagers = managers.map((m) => m.toString());
+
+    // Những manager bị gỡ bỏ
+    const removedManagers = oldManagers.filter((m) => !newManagers.includes(m));
+    // Những manager được thêm mới
+    const addedManagers = newManagers.filter((m) => !oldManagers.includes(m));
+
+    // ===== CẬP NHẬT TRẠNG THÁI isAssigned =====
+    if (removedManagers.length > 0) {
+      await Staff.updateMany(
+        { _id: { $in: removedManagers } },
+        { $set: { isAssigned: false } }
+      );
+    }
+
+    if (addedManagers.length > 0) {
+      // Kiểm tra xem manager mới có đang được gán ở shop khác không
+      const conflictShops = await Shop.find({
+        _id: { $ne: shopId },
+        managers: { $in: addedManagers },
+      }).lean();
+
+      if (conflictShops.length > 0) {
+        const conflictManagers = new Set();
+        conflictShops.forEach((s) => {
+          s.managers.forEach((m) => {
+            if (addedManagers.includes(m.toString())) conflictManagers.add(m.toString());
+          });
+        });
+
+        return res.status(400).json({
+          message: "Một hoặc nhiều quản lý đã thuộc về cửa hàng khác",
+          conflictManagers: Array.from(conflictManagers),
+        });
+      }
+
+      await Staff.updateMany(
+        { _id: { $in: addedManagers } },
+        { $set: { isAssigned: true } }
+      );
+    }
+
+    // ===== CẬP NHẬT DANH SÁCH MANAGERS TRONG SHOP =====
+    shop.managers = newManagers;
     const updatedShop = await shop.save();
 
     const populatedShop = await updatedShop.populate("managers", "full_name");
 
     return res.status(200).json({
       message: "Cập nhật danh sách quản lý thành công",
-      shop: populatedShop
+      shop: populatedShop,
     });
   } catch (error) {
-    console.error("❌ Lỗi khi cập nhật managers:", error);
+    console.error("Lỗi khi cập nhật managers:", error);
     return res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
   }
 };
@@ -131,19 +208,31 @@ const deleteShop = async (req, res) => {
     const { shopId } = req.params;
     const { accountId } = req.user;
 
+    // ===== TÌM SHOP =====
     const shop = await Shop.findById(shopId);
     if (!shop) {
       return res.status(404).json({ message: "Không tìm thấy cửa hàng" });
     }
 
+    // ===== KIỂM TRA QUYỀN XOÁ =====
     if (shop.owner.toString() !== accountId.toString()) {
       return res.status(403).json({ message: "Bạn không có quyền xóa cửa hàng này" });
     }
 
+    // ===== CẬP NHẬT TRẠNG THÁI MANAGER TRƯỚC KHI XOÁ SHOP =====
+    if (shop.managers && shop.managers.length > 0) {
+      await Staff.updateMany(
+        { _id: { $in: shop.managers } },
+        { $set: { isAssigned: false } }
+      );
+    }
+
+    // ===== XOÁ SHOP =====
     await Shop.findByIdAndDelete(shopId);
-    return res.status(200).json({ message: "Xóa cửa hàng thành công" });
+
+    return res.status(200).json({ message: "Xóa cửa hàng thành công và đã giải phóng các quản lý" });
   } catch (error) {
-    console.error("❌ Lỗi khi xóa shop:", error);
+    console.error("Lỗi khi xóa shop:", error);
     return res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
   }
 };
@@ -153,19 +242,27 @@ const deleteShop = async (req, res) => {
  */
 const getAllManagerStaffNames = async (req, res) => {
   try {
+    // Tìm role MANAGER_STAFF
     const role = await Role.findOne({ name: "MANAGER_STAFF" });
     if (!role) {
       return res.status(404).json({ message: "Role MANAGER_STAFF not found" });
     }
 
-    const accounts = await Account.find({ role_id: role._id }).select("_id").lean();
+    // Lấy tất cả account có role MANAGER_STAFF
+    const accounts = await Account.find({ role_id: role._id })
+      .select("_id")
+      .lean();
 
+    // Lấy danh sách staff có account thuộc role trên
     const managerStaff = await Staff.find({
       account_id: { $in: accounts.map(acc => acc._id) },
-    }).select("_id full_name").lean();
+      isAssigned: false, 
+    })
+      .select("_id full_name")
+      .lean();
 
     return res.status(200).json({
-      message: "Get all manager staff successfully",
+      message: "Get all available manager staff successfully",
       count: managerStaff.length,
       data: managerStaff.filter(u => u.full_name),
     });
@@ -347,7 +444,7 @@ const deleteStaff = async (req, res) => {
 
     return res.status(200).json({ message: "Xóa nhân viên và tài khoản thành công" });
   } catch (error) {
-    console.error("❌ Lỗi khi xóa nhân viên:", error);
+    console.error(" Lỗi khi xóa nhân viên:", error);
     res.status(500).json({
       message: "Đã xảy ra lỗi khi xóa nhân viên",
       error: error.message,

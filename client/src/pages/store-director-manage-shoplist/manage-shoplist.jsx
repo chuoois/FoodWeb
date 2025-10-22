@@ -37,6 +37,7 @@ export const ShopListPage = () => {
         search: debouncedSearch,
         status: statusFilter,
       });
+      console.log("Fetched shops:", response.data);
       setShops(response.data);
       setHasSearched(!!debouncedSearch || !!statusFilter);
     } catch (err) {
