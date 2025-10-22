@@ -1,9 +1,10 @@
 // services/shop.service.js
 const Shop = require("../models/shop.model");
 const Food = require("../models/food.model");
+const FoodCategory = require("../models/foodCategory.model");
 const { getOSMMatrix } = require("../utils/osm");
 const { Types } = require('mongoose');
-
+const mongoose = require("mongoose");
 // Cache kiểm tra môi trường
 let isAtlas = null;
 
@@ -249,4 +250,67 @@ const searchByKeyword = async (keyword, location, options = {}) => {
   }
 };
 
-module.exports = { findNearbyShops, searchByKeyword };
+/**
+ * Lấy thông tin chi tiết của một cửa hàng bằng ID.
+ */
+const getShopDetails = async (shopId) => {
+    const shop = await Shop.findById(shopId);
+    if (!shop) {
+        throw new Error('Không tìm thấy cửa hàng');
+    }
+    return shop;
+};
+
+const getShopDetailsWithMenu = async (shopId) => {
+    // Chuyển shopId (String) thành ObjectId để so sánh trong aggregation
+    const shopObjectId = new mongoose.Types.ObjectId(shopId);
+
+    // --- Truy vấn 1: Lấy thông tin Shop (như cũ) ---
+    const shopPromise = Shop.findById(shopId).lean();
+
+    // --- Truy vấn 2: Lấy Menu bằng Aggregation ---
+    const menuPromise = FoodCategory.aggregate([
+        {
+            // Bước 1: Tìm tất cả danh mục của cửa hàng này
+            $match: { shop_id: shopObjectId }
+        },
+        {
+            // Bước 2: Tham chiếu (join) với collection 'foods'
+            $lookup: {
+                from: 'foods', // Tên collection 'Food' trong database (thường là số nhiều)
+                localField: '_id', // Khóa của FoodCategory
+                foreignField: 'category_id', // Khóa ngoại của Food
+                as: 'foods', // Tên mảng mới chứa các món ăn
+                
+                // Thêm pipeline con để chỉ lấy các món "is_available"
+                pipeline: [
+                    { $match: { is_available: true } }
+                ]
+            }
+        },
+        {
+            // Bước 3: (Tùy chọn) Lọc bỏ các danh mục không có món ăn nào
+            $match: { "foods.0": { $exists: true } }
+        },
+        {
+            // Bước 4: Định dạng lại output cho gọn gàng
+            $project: {
+                _id: 1, // Giữ lại ID của category
+                name: 1, // Giữ lại tên category
+                foods: 1, // Giữ lại mảng các món ăn đã join
+            }
+        }
+    ]);
+
+    // Chạy cả 2 truy vấn song song để tăng tốc
+    const [shop, menu] = await Promise.all([shopPromise, menuPromise]);
+
+    if (!shop) {
+        throw new Error('Không tìm thấy cửa hàng');
+    }
+
+    // Trả về cả 2 kết quả
+    return { shop, menu };
+};
+
+module.exports = { findNearbyShops, searchByKeyword , getShopDetails,getShopDetailsWithMenu };
