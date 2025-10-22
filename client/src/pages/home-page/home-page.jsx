@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MapPin, Crosshair, Star, Heart, Clock } from "lucide-react";
-import { getNearbyShops, getPopularShops } from "@/services/home.service";
+import { getNearbyShops, getPopularShops, searchHome } from "@/services/home.service";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 
@@ -14,14 +14,14 @@ const foodCategories = [
   {
     id: 1,
     name: "Đồ uống",
-    slug: "do-uong",
+    slug: "Drink",
     image: "/img-home/drinks.jpg",
     color: "from-blue-400 to-blue-600",
   },
   {
     id: 2,
     name: "Thức Ăn",
-    slug: "do-an",
+    slug: "Food",
     image: "/img-home/fast-food.jpg",
     color: "from-orange-400 to-orange-600",
   },
@@ -54,8 +54,12 @@ export const HomePage = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const coords = `Vị trí của bạn (${pos.coords.latitude},${pos.coords.longitude})`;
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const loc = { lat, lng };
+          const coords = `Vị trí của bạn (${lat},${lng})`;
           setAddress(coords);
+          sessionStorage.setItem("userLocation", JSON.stringify(loc));
 
           getNearbyShops(pos.coords.latitude, pos.coords.longitude)
             .then((res) => {
@@ -196,8 +200,8 @@ export const HomePage = () => {
                   >
                     <Heart
                       className={`w-4 h-4 ${favorites.includes(shop._id)
-                          ? "fill-red-500 text-red-500"
-                          : "text-gray-600"
+                        ? "fill-red-500 text-red-500"
+                        : "text-gray-600"
                         }`}
                     />
                   </button>
@@ -262,8 +266,8 @@ export const HomePage = () => {
                     >
                       <Heart
                         className={`w-4 h-4 ${favorites.includes(shop._id)
-                            ? "fill-red-500 text-red-500"
-                            : "text-gray-600"
+                          ? "fill-red-500 text-red-500"
+                          : "text-gray-600"
                           }`}
                       />
                     </button>
