@@ -12,7 +12,7 @@ const reviewSchema = new mongoose.Schema(
 const shopSchema = new mongoose.Schema(
   {
     owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    managers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    managers: [{ type: mongoose.Schema.Types.ObjectId, ref: "Staff" }],
     name: { type: String, required: true, trim: true },
     description: { type: String, trim: true },
     address: {

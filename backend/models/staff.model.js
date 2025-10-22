@@ -38,6 +38,10 @@ const staffSchema = new mongoose.Schema({
         ref: "User",
         required: true,
     },
+    isAssigned: {
+        type: Boolean,
+        default: false,
+    },
 }, { timestamps: true });
 
 module.exports = mongoose.model("Staff", staffSchema);
