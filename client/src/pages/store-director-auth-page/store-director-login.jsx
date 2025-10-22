@@ -97,13 +97,10 @@ export function StoreDirectorLogin() {
       // Điều hướng theo role
       switch (roleName) {
         case "STORE_DIRECTOR":
-          navigate("/store-director/manage/dashboard");
+          navigate("/store-director/manage/home");
           break;
         case "MANAGER_STAFF":
           navigate("/manager/dashboard");
-          break;
-        case "SELLER_STAFF":
-          navigate("/seller/dashboard");
           break;
         default:
           navigate("/403-forbidden");
