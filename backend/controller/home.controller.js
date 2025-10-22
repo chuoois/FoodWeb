@@ -1,4 +1,4 @@
-const { findNearbyShops, searchByKeyword } = require("../services/shop.service");
+const { findNearbyShops, searchByKeyword,getShopDetailsWithMenu } = require("../services/shop.service");
 const Shop = require("../models/shop.model");
 // Định nghĩa vị trí mặc định (ĐH FPT Hà Nội) bằng biến môi trường
 const DEFAULT_LOCATION = {
@@ -87,6 +87,17 @@ const getShopsByRate = async (req, res) => {
     }
 };
 
-module.exports = { getNearbyShopsByCoords, searchHome,getShopsByRate,getShopsByType};
+const getShopsById = async (req, res) => {
+    try {
+        const { shopId } = req.params;
+        const shop = await getShopDetailsWithMenu(shopId);
+        res.json({ success: true, shop });
+    } catch (err) {
+        // Lỗi "Không tìm thấy" từ service cũng sẽ được bắt ở đây
+        res.status(404).json({ success: false, message: err.message });
+    }
+};
+
+module.exports = { getNearbyShopsByCoords, searchHome,getShopsByRate,getShopsByType,getShopsById };
 
 
