@@ -10,7 +10,8 @@ import {
   CheckOutMainLayout,
   StoreDirectorAuthLayout,
   StoreDirectorLayout,
-  StaffAuthLayout
+  StaffAuthLayout,
+  ForbiddenLayout,
 } from "@/components/layouts";
 
 import {
@@ -35,7 +36,9 @@ import {
   ManagerHomePage,
   ManageAccount,
   ShopListApprovePage,
-  ShopDetailPage
+  ShopDetailPage,
+  Forbidden,
+  NotFound
 
 } from "@/pages";
 
@@ -106,7 +109,7 @@ export const router = createBrowserRouter([
           { path: "dashboard", element: <div>Dashboard</div> },
           { path: "create-shop", element: < CreateShopPage /> },
           { path: "create-staff", element: <CreateEmployeePage /> },
-          { path: "account-staff", element: < ManageAccount/> },
+          { path: "account-staff", element: < ManageAccount /> },
           { path: "revenue", element: <div>Revenue</div> },
           { path: "approval", element: < ShopListApprovePage /> },
           { path: "shops/:shopId/detail", element: <ShopDetailPage /> },
@@ -119,6 +122,17 @@ export const router = createBrowserRouter([
         children: [
           { path: "login", element: <  StaffLogin /> },
         ],
+      },
+      {
+        path: "403-forbidden",
+        element: < ForbiddenLayout />,
+        children: [
+          { path: "", element: < Forbidden /> },
+        ],
+      },
+       {
+        path: "*",
+        element: <NotFound />,
       },
     ],
   },
