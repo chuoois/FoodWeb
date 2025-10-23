@@ -74,7 +74,7 @@ export const ManageAccount = () => {
     }
   };
 
- 
+
 
   if (loading) {
     return (
@@ -139,6 +139,7 @@ export const ManageAccount = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Họ và tên</TableHead>
+                  <TableHead>Phone</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Ngày tạo</TableHead>
@@ -156,23 +157,23 @@ export const ManageAccount = () => {
                   staffs.map((s) => (
                     <TableRow key={s._id}>
                       <TableCell>{s.full_name}</TableCell>
-                      <TableCell>{s.account_id?.email}</TableCell>
+                      <TableCell>{s.phone || "—"}</TableCell> {/* 🟢 Thêm dòng này */}
+                      <TableCell>{s.account_id?.email || "—"}</TableCell>
 
                       <TableCell>
                         <span
-                          className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
-                            s.status === "ACTIVE"
+                          className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${s.status === "ACTIVE"
                               ? "bg-green-100 text-green-800"
                               : s.status === "INACTIVE"
-                              ? "bg-gray-100 text-gray-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
+                                ? "bg-gray-100 text-gray-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
                         >
                           {s.status === "ACTIVE"
                             ? "Đang hoạt động"
                             : s.status === "INACTIVE"
-                            ? "Ngừng hoạt động"
-                            : "Bị cấm"}
+                              ? "Ngừng hoạt động"
+                              : "Bị cấm"}
                         </span>
                       </TableCell>
 
@@ -181,7 +182,6 @@ export const ManageAccount = () => {
                       </TableCell>
 
                       <TableCell className="flex gap-2">
-                      
                         <Button
                           variant="destructive"
                           size="sm"
