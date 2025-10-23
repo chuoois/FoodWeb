@@ -7,5 +7,10 @@ export const createFoodWithCategory = (data) => {
 
 // Lấy danh sách món ăn theo shop_id
 export const getFoodsByShop = (shop_id, params = {}) => {
-    return api.get(`/food/${shop_id}`, { params });
+    return api.get(`/food/${shop_id}/detail`, { params });
+};
+
+// Lấy shop ID theo manager
+export const getShopIdByManager = () => {
+    return api.get("/food/shopId-by-manager");
 };

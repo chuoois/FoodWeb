@@ -1,6 +1,7 @@
 const Food = require("../../models/food.model");
 const Shop = require("../../models/shop.model");
 const FoodCategory = require("../../models/foodCategory.model");
+const Staff = require("../../models/staff.model");
 
 const createFoodWithCategory = async (req, res) => {
   try {
@@ -126,7 +127,29 @@ const getFoodsByShop = async (req, res) => {
   }
 };
 
+const getShopIdByManager = async (req, res) => {
+  try {
+    const { accountId } = req.user;
+
+    const staff = await Staff.findOne({ account_id: accountId });
+    if (!staff) {
+      return res.status(404).json({ message: "Staff not found for this account" });
+    }
+
+    const shop = await Shop.findOne({ managers: staff.account_id });
+    if (!shop) {
+      return res.status(404).json({ message: "Shop not found for this staff" });
+    }
+
+    return res.status(200).json({ shopId: shop._id, shopName: shop.name });
+  } catch (error) {
+    console.error("Error getting shopId by manager:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 module.exports = {
   createFoodWithCategory,
-  getFoodsByShop
+  getFoodsByShop,
+  getShopIdByManager
 };

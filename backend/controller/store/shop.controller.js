@@ -339,7 +339,7 @@ const createShopStaff = async (req, res) => {
       password_hash: hashedPassword,
       provider: "local",
       status: "ACTIVE",
-      email_verified: false,
+      email_verified: true,
       role_id: role ? role._id : null,
     });
     await newAccount.save();
