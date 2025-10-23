@@ -32,6 +32,7 @@ import { Store, MapPin, ImageIcon, Crosshair, Check, Users } from "lucide-react"
 import { createShop, getAllManagerStaffNames } from "@/services/shop.service";
 import { uploadImages } from "@/utils/cloudinary";
 import { toast } from "react-hot-toast";
+import Cropper from "react-easy-crop";
 
 // Validation schema with Yup
 const validationSchema = Yup.object({
@@ -75,6 +76,101 @@ export const CreateShopPage = () => {
   const [managers, setManagers] = useState([]);
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+
+  { /* thêm states cho crop */ }
+  const [cropSrc, setCropSrc] = useState(null);
+  const [cropKey, setCropKey] = useState(null); // "logoUrl" hoặc "coverUrl"
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [pendingFileName, setPendingFileName] = useState("cropped.jpg");
+
+  // helper: load image
+  const createImage = (url) =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.addEventListener("load", () => resolve(img));
+      img.addEventListener("error", (err) => reject(err));
+      img.setAttribute("crossOrigin", "anonymous");
+      img.src = url;
+    });
+
+  // helper: crop to blob
+  const getCroppedImg = async (imageSrc, pixelCrop, fileType = "image/jpeg") => {
+    const image = await createImage(imageSrc);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(pixelCrop.width);
+    canvas.height = Math.round(pixelCrop.height);
+    const ctx = canvas.getContext("2d");
+
+    ctx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      pixelCrop.width,
+      pixelCrop.height
+    );
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        resolve(blob);
+      }, fileType);
+    });
+  };
+
+  // khi user chọn file -> mở cropper
+  const handleSelectFileForCrop = (e, key) => {
+    const files = e.target.files;
+    if (!files || !files.length) return;
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropSrc(reader.result);
+      setCropKey(key);
+      setPendingFileName(file.name || `${key}.jpg`);
+      setShowCropModal(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // khi crop xong -> tạo file và upload
+  const handleCropAndUpload = async () => {
+    if (!cropSrc || !croppedAreaPixels || !cropKey) {
+      setShowCropModal(false);
+      return;
+    }
+    setShowCropModal(false);
+    const blob = await getCroppedImg(cropSrc, croppedAreaPixels);
+    const file = new File([blob], pendingFileName, { type: blob.type || "image/jpeg" });
+
+    // reuse uploadImages util
+    try {
+      setUploading((prev) => ({ ...prev, [cropKey]: true }));
+      const uploadToast = toast.loading(`Đang tải ảnh ${cropKey === "logoUrl" ? "logo" : "bìa"}...`);
+      const urls = await uploadImages([file], () => { });
+      if (urls.length > 0) {
+        formik.setFieldValue(cropKey, urls[0]);
+        toast.success(`Tải ảnh thành công!`, { id: uploadToast });
+      } else {
+        toast.error("Không nhận được URL ảnh.", { id: uploadToast });
+      }
+    } catch (err) {
+      console.error("[Lỗi tải ảnh sau crop]", err);
+      toast.error("Có lỗi xảy ra khi tải ảnh.");
+    } finally {
+      setUploading((prev) => ({ ...prev, [cropKey]: false }));
+      setCropSrc(null);
+      setCropKey(null);
+      setZoom(1);
+      setCrop({ x: 0, y: 0 });
+      setCroppedAreaPixels(null);
+    }
+  };
 
   // Fetch managers on component mount
   useEffect(() => {
@@ -200,35 +296,6 @@ export const CreateShopPage = () => {
     } else {
       toast.error("Trình duyệt không hỗ trợ định vị!");
       setIsGettingLocation(false);
-    }
-  };
-
-  // Handle image upload
-  const handleUpload = async (e, key) => {
-    const files = e.target.files;
-    if (!files?.length) return;
-
-    setUploading((prev) => ({ ...prev, [key]: true }));
-    const uploadToast = toast.loading(`Đang tải ảnh ${key === "logoUrl" ? "logo" : "bìa"}...`);
-    try {
-      const urls = await uploadImages([files[0]], () => { });
-      if (urls.length > 0) {
-        formik.setFieldValue(key, urls[0]);
-        toast.success(`Tải ảnh ${key === "logoUrl" ? "logo" : "bìa"} thành công!`, {
-          id: uploadToast,
-        });
-      } else {
-        toast.error(`Không nhận được URL ảnh ${key === "logoUrl" ? "logo" : "bìa"}.`, {
-          id: uploadToast,
-        });
-      }
-    } catch (err) {
-      console.error(`[Lỗi tải ảnh ${key}]`, err);
-      toast.error(`Có lỗi xảy ra khi tải ảnh ${key === "logoUrl" ? "logo" : "bìa"}.`, {
-        id: uploadToast,
-      });
-    } finally {
-      setUploading((prev) => ({ ...prev, [key]: false }));
     }
   };
 
@@ -360,16 +427,16 @@ export const CreateShopPage = () => {
                         {filteredManagers.length > 0 ? (
                           filteredManagers.map((manager) => (
                             <CommandItem
-                              key={manager._id}
+                              key={manager.account_id}
                               value={manager.full_name}
                               onSelect={() => {
-                                handleManagerSelect(manager._id);
+                                handleManagerSelect(manager.account_id);
                               }}
                               className="cursor-pointer"
                             >
                               <div className="mr-2 flex items-center">
                                 <Check
-                                  className={`h-4 w-4 ${formik.values.managers.includes(manager._id)
+                                  className={`h-4 w-4 ${formik.values.managers.includes(manager.account_id)
                                     ? "opacity-100"
                                     : "opacity-0"
                                     }`}
@@ -393,7 +460,7 @@ export const CreateShopPage = () => {
               {formik.values.managers.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   {formik.values.managers.map((managerId) => {
-                    const manager = managers.find((m) => m._id === managerId);
+                    const manager = managers.find((m) => m.account_id === managerId);
                     return (
                       <Badge
                         key={managerId}
@@ -612,7 +679,7 @@ export const CreateShopPage = () => {
                 <Input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleUpload(e, "logoUrl")}
+                  onChange={(e) => handleSelectFileForCrop(e, "logoUrl")}
                   disabled={uploading.logo || uploading.cover || formik.isSubmitting || hasSubmitted}
                 />
                 {uploading.logo && (
@@ -638,16 +705,16 @@ export const CreateShopPage = () => {
                     <span className="text-sm text-muted-foreground">Đang tải...</span>
                   </div>
                 )}
+                {formik.values.logoUrl && (
+                  <div className="mt-2">
+                    <img
+                      src={formik.values.logoUrl}
+                      alt="Logo Preview"
+                      className="h-24 w-24 rounded-md border object-cover"
+                    />
+                  </div>
+                )}
               </div>
-              {formik.values.logoUrl && (
-                <div className="mt-2">
-                  <img
-                    src={formik.values.logoUrl}
-                    alt="Logo Preview"
-                    className="h-24 w-24 rounded-md border object-cover"
-                  />
-                </div>
-              )}
             </div>
 
             <div className="space-y-2">
@@ -656,7 +723,7 @@ export const CreateShopPage = () => {
                 <Input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleUpload(e, "coverUrl")}
+                  onChange={(e) => handleSelectFileForCrop(e, "coverUrl")}
                   disabled={uploading.logo || uploading.cover || formik.isSubmitting || hasSubmitted}
                 />
                 {uploading.cover && (
@@ -742,6 +809,47 @@ export const CreateShopPage = () => {
               : "Gửi đăng ký"}
         </Button>
       </div>
+
+      { /* thêm modal croper (đặt ở cuối return hoặc ngay trong Images Card) */}
+      {showCropModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-[90%] max-w-3xl bg-white rounded shadow-lg p-4">
+            <div className="h-[400px] relative bg-gray-100">
+              <Cropper
+                image={cropSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={cropKey === "logoUrl" ? 1 / 1 : 16 / 9}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={(_, croppedAreaPixels_) => setCroppedAreaPixels(croppedAreaPixels_)}
+              />
+            </div>
+            <div className="flex items-center gap-3 mt-3">
+              <label className="flex-1">
+                Zoom
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.01}
+                  value={zoom}
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  className="w-full"
+                />
+              </label>
+              <div className="flex gap-2">
+                <Button type="button" variant="ghost" onClick={() => { setShowCropModal(false); setCropSrc(null); }}>
+                  Hủy
+                </Button>
+                <Button type="button" onClick={handleCropAndUpload}>
+                  Crop & Upload
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 };

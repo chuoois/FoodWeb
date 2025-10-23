@@ -3,7 +3,13 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Store, MapPin, Loader2, X, Trash2, Users } from "lucide-react";
+import { Store, MapPin, Loader2, X, Trash2, Users, Eye, MoreVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   getShopByOwnerID,
   deleteShop,
@@ -14,7 +20,7 @@ import useDebounce from "@/hooks/useDebounce";
 import { Dialog } from "@/components/ui/dialog";
 import { toast, Toaster } from "react-hot-toast";
 
-export const ShopListPage = () => {
+export const ShopListApprovePage = () => {
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -116,7 +122,7 @@ export const ShopListPage = () => {
           Quản lý cửa hàng
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Xem chi tiết và quản lý thông tin cửa hàng của bạn.
+          Xem và quản lý các cửa hàng bạn sở hữu.
         </p>
       </div>
 
@@ -165,13 +171,13 @@ export const ShopListPage = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Tên cửa hàng</TableHead>
-                  <TableHead>Loại</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Quản lý</TableHead>
-                  <TableHead>Số điện thoại</TableHead>
-                  <TableHead>Địa chỉ</TableHead>
-                  <TableHead>Ngày tạo</TableHead>
-                  <TableHead>Hành động</TableHead>
+                  <TableHead className="text-center">Loại</TableHead>
+                  <TableHead className="text-center">Trạng thái</TableHead>
+                  <TableHead className="text-center">Quản lý</TableHead>
+                  <TableHead className="text-center">Số điện thoại</TableHead>
+                  <TableHead className="text-center">Địa chỉ</TableHead>
+                  <TableHead className="text-center">Ngày tạo</TableHead>
+                  <TableHead className="text-center">Hành động</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -179,11 +185,11 @@ export const ShopListPage = () => {
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-4">
                       {hasSearched ? (
-                        <span className="text-muted-foreground">
+                        <span className="text-muted-foreground text-center">
                           Không có kết quả phù hợp với tiêu chí tìm kiếm hoặc bộ lọc.
                         </span>
                       ) : (
-                        <div className="flex flex-col items-center gap-2">
+                        <div className="flex flex-col items-center gap-2 text-center">
                           <span className="text-muted-foreground">Chưa có cửa hàng.</span>
                         </div>
                       )}
@@ -193,63 +199,76 @@ export const ShopListPage = () => {
                   shops.map((s) => (
                     <TableRow key={s._id}>
                       <TableCell className="font-medium">{s.name}</TableCell>
-                      <TableCell>{s.type === "Food" ? "Đồ ăn" : "Đồ uống"}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">{s.type === "Food" ? "Đồ ăn" : "Đồ uống"}</TableCell>
+                      <TableCell className="text-center">
                         <span
-                          className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${
-                            s.status === "PENDING_APPROVAL"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : s.status === "ACTIVE"
+                          className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ${s.status === "PENDING_APPROVAL"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : s.status === "ACTIVE"
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
-                          }`}
+                            }`}
                         >
                           {s.status === "PENDING_APPROVAL"
                             ? "Đang chờ duyệt"
                             : s.status === "ACTIVE"
-                            ? "Đang hoạt động"
-                            : "Bị cấm/Ngừng hoạt động"}
+                              ? "Đang hoạt động"
+                              : "Bị cấm/Ngừng hoạt động"}
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         {s.managers && s.managers.length > 0
                           ? s.managers.map((m) => m.full_name).join(", ")
                           : "Chưa có quản lý"}
                       </TableCell>
-                      <TableCell>{s.phone}</TableCell>
+                      <TableCell className="text-center">{s.phone}</TableCell>
                       <TableCell>
                         <div className="flex items-start gap-1.5">
                           <MapPin className="h-4 w-4 flex-shrink-0 text-muted-foreground mt-0.5" />
                           <span>{`${s.address.street}, ${s.address.ward}, ${s.address.district}, ${s.address.city}`}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         {new Date(s.createdAt).toLocaleDateString("vi-VN")}
                       </TableCell>
-                      <TableCell className="flex gap-2">
-                        {s.status === "ACTIVE" ? (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenUpdateManagers(s)}
-                            >
-                              <Users className="h-4 w-4 mr-1" /> Quản lý
+                      <TableCell className="text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-5 w-5" />
                             </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDeleteShop(s._id)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" /> Xóa
-                            </Button>
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">
-                            Chỉ có thể quản lý/xóa khi đang hoạt động
-                          </span>
-                        )}
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link
+                                to={`/store-director/manage/shops/${s._id}/detail`}
+                                className="flex items-center"
+                              >
+                                <Eye className="h-4 w-4 mr-2" /> Xem chi tiết
+                              </Link>
+                            </DropdownMenuItem>
+
+                            {s.status === "ACTIVE" && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => handleOpenUpdateManagers(s)}
+                                  className="flex items-center"
+                                >
+                                  <Users className="h-4 w-4 mr-2" /> Cập nhật quản lý
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteShop(s._id)}
+                                  className="flex items-center text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" /> Xóa cửa hàng
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
+
                     </TableRow>
                   ))
                 )}
@@ -264,8 +283,7 @@ export const ShopListPage = () => {
         <Dialog open={isManagerDialogOpen} onOpenChange={setIsManagerDialogOpen}>
           <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg w-[400px] shadow-lg">
-              <h2 className="text-lg font-semibold mb-4">Cập nhật quản lý cửa hàng</h2>
-
+              <h2 className="text-lg font-semibold mb-4 text-center">Cập nhật quản lý cửa hàng</h2>
               <select
                 multiple
                 className="border p-2 w-full rounded-md h-40"
@@ -280,7 +298,6 @@ export const ShopListPage = () => {
                   </option>
                 ))}
               </select>
-
               <div className="mt-4 flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsManagerDialogOpen(false)}>
                   Hủy
