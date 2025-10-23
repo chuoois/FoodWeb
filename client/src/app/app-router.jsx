@@ -33,8 +33,10 @@ import {
   StaffLogin,
   CreateEmployeePage,
   ManagerHomePage,
+  ManageAccount,
   ShopListApprovePage,
   ShopDetailPage
+
 } from "@/pages";
 
 export const router = createBrowserRouter([
@@ -104,10 +106,11 @@ export const router = createBrowserRouter([
           { path: "dashboard", element: <div>Dashboard</div> },
           { path: "create-shop", element: < CreateShopPage /> },
           { path: "create-staff", element: <CreateEmployeePage /> },
-          { path: "approval", element: < ShopListApprovePage /> },
+          { path: "account-staff", element: < ManageAccount/> },
           { path: "revenue", element: <div>Revenue</div> },
-          { path: "account-staff", element: <div>Account Staff</div> },
+          { path: "approval", element: < ShopListApprovePage /> },
           { path: "shops/:shopId/detail", element: <ShopDetailPage /> },
+
         ],
       },
       {
