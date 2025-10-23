@@ -58,7 +58,7 @@ export function StoreDirectorLogin() {
         // Điều hướng theo role
         switch (roleName) {
           case "STORE_DIRECTOR":
-            navigate("/store-director/dashboard");
+            navigate("/store-director/manage/dashboard");
             break;
           case "MANAGER_STAFF":
             navigate("/manager/dashboard");
@@ -190,15 +190,18 @@ export function StoreDirectorLogin() {
 
             {/* Remember & Forgot */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="rememberMe"
-                  name="rememberMe"
-                  checked={formik.values.rememberMe}
-                  onChange={formik.handleChange}
-                />
-                <label htmlFor="rememberMe" className="text-sm text-gray-600 cursor-pointer select-none">Ghi nhớ đăng nhập</label>
-              </div>
+           <div className="flex items-center space-x-2">
+  <Checkbox
+    id="rememberMe"
+    name="rememberMe"
+    checked={formik.values.rememberMe}
+    onCheckedChange={(checked) =>
+      formik.setFieldValue("rememberMe", checked)
+    }
+  />
+  <Label htmlFor="rememberMe">Ghi nhớ đăng nhập</Label>
+</div>
+
               <Link
                 to="/store-director/forgot-password"
                 className="text-sm text-orange-600 hover:text-orange-700 font-medium"

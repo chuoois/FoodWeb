@@ -12,6 +12,9 @@ export * from './store-director-manage-shoplist-approve'
 export * from './store-director-manage-create-staff'
 export * from './store-director-manage-home'
 export * from './store-director-manage-account'
+export * from './403-forbidden'
+export * from './404-not-found'
+
 
 
 

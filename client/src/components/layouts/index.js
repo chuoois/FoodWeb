@@ -7,4 +7,5 @@ export * from './auth-layout';
 export * from './store-director-auth-layout';
 export * from './store-director-layout';
 export * from './staff-auth-layout';
+export * from './403';
 

@@ -144,9 +144,14 @@ export function StaffLogin() {
                   id="rememberMe"
                   name="rememberMe"
                   checked={formik.values.rememberMe}
-                  onChange={formik.handleChange}
+                  onCheckedChange={(checked) => formik.setFieldValue("rememberMe", checked)}
                 />
-                <label htmlFor="rememberMe" className="text-sm text-gray-600 cursor-pointer select-none">Ghi nhớ đăng nhập</label>
+                <label
+                  htmlFor="rememberMe"
+                  className="text-sm text-gray-600 cursor-pointer select-none"
+                >
+                  Ghi nhớ đăng nhập
+                </label>
               </div>
               <Link
                 to="/store-director/forgot-password"
