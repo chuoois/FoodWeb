@@ -16,7 +16,7 @@ import { UserPlus } from "lucide-react";
 import { createShopStaff } from "@/services/shop.service";
 import { toast } from "react-hot-toast";
 
-// Schema xác thực với Yup
+// ✅ Schema xác thực với Yup
 const validationSchema = Yup.object({
   fullName: Yup.string()
     .required("Họ và tên là bắt buộc")
@@ -24,6 +24,9 @@ const validationSchema = Yup.object({
   email: Yup.string()
     .email("Email không hợp lệ")
     .required("Email là bắt buộc"),
+  phone: Yup.string()
+    .required("Số điện thoại là bắt buộc")
+    .matches(/^(0|\+84)\d{9}$/, "Số điện thoại không hợp lệ"),
   password: Yup.string()
     .required("Mật khẩu là bắt buộc")
     .min(8, "Mật khẩu phải có ít nhất 8 ký tự"),
@@ -40,9 +43,10 @@ export const CreateEmployeePage = () => {
     initialValues: {
       fullName: "",
       email: "",
+      phone: "",
       password: "",
       confirmPassword: "",
-      roleName: "MANAGER_STAFF", // Fixed role for manager
+      roleName: "MANAGER_STAFF", // Fixed role
     },
     validationSchema,
     onSubmit: async (values, { setSubmitting }) => {
@@ -52,9 +56,10 @@ export const CreateEmployeePage = () => {
         const payload = {
           full_name: values.fullName,
           email: values.email,
+          phone: values.phone,
           password: values.password,
           confirmPassword: values.confirmPassword,
-          roleName: "MANAGER_STAFF", // Hard-coded role
+          roleName: "MANAGER_STAFF",
         };
         const res = await createShopStaff(payload);
         toast.success(res.data.message, { id: submitToast });
@@ -128,6 +133,24 @@ export const CreateEmployeePage = () => {
               )}
             </div>
 
+            {/* ✅ Số điện thoại */}
+            <div className="space-y-2">
+              <Label htmlFor="phone">Số điện thoại *</Label>
+              <Input
+                id="phone"
+                name="phone"
+                type="text"
+                placeholder="Nhập số điện thoại (VD: 0912345678)"
+                value={formik.values.phone}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                required
+              />
+              {formik.touched.phone && formik.errors.phone && (
+                <p className="text-sm text-red-500">{formik.errors.phone}</p>
+              )}
+            </div>
+
             {/* Mật khẩu */}
             <div className="space-y-2">
               <Label htmlFor="password">Mật khẩu *</Label>
@@ -164,15 +187,11 @@ export const CreateEmployeePage = () => {
               )}
             </div>
 
-            {/* Vai trò - Hiển thị tĩnh */}
+            {/* Vai trò */}
             <div className="space-y-2">
               <Label>Vai trò *</Label>
               <p className="text-sm text-foreground">Quản lý</p>
-              <input
-                type="hidden"
-                name="roleName"
-                value="MANAGER_STAFF"
-              />
+              <input type="hidden" name="roleName" value="MANAGER_STAFF" />
             </div>
           </CardContent>
         </Card>
