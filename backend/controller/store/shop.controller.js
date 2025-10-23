@@ -319,7 +319,7 @@ const getAllManagerStaffNames = async (req, res) => {
  */
 const createShopStaff = async (req, res) => {
   try {
-    const { email, password, confirmPassword, roleName, full_name } = req.body;
+    const { email, password, confirmPassword, roleName, full_name, phone } = req.body;
     const reqUserId = req.user.accountId;
 
     if (password !== confirmPassword) {
@@ -347,7 +347,7 @@ const createShopStaff = async (req, res) => {
     const staff = new Staff({
       account_id: newAccount._id,
       full_name,
-      phone: null,
+      phone: phone || null,
       avatar_url: null,
       date_of_birth: null,
       gender: null,
