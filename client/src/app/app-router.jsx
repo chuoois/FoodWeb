@@ -31,9 +31,10 @@ import {
   StoreDirectorForgotPassword,
   CreateShopPage,
   StaffLogin,
-  ShopListPage,
   CreateEmployeePage,
-  ManagerHomePage
+  ManagerHomePage,
+  ShopListApprovePage,
+  ShopDetailPage
 } from "@/pages";
 
 export const router = createBrowserRouter([
@@ -103,8 +104,10 @@ export const router = createBrowserRouter([
           { path: "dashboard", element: <div>Dashboard</div> },
           { path: "create-shop", element: < CreateShopPage /> },
           { path: "create-staff", element: <CreateEmployeePage /> },
-          { path: "approval", element: < ShopListPage /> },
+          { path: "approval", element: < ShopListApprovePage /> },
           { path: "revenue", element: <div>Revenue</div> },
+          { path: "account-staff", element: <div>Account Staff</div> },
+          { path: "shops/:shopId/detail", element: <ShopDetailPage /> },
         ],
       },
       {

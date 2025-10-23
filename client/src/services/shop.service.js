@@ -45,3 +45,8 @@ export const updateStaff = (staffId, data) => {
 export const deleteStaff = (staffId) => {
   return api.delete(`/shop/staff/${staffId}`);
 };
+
+// Lấy chi tiết cửa hàng theo ID
+export const getShopDetailByID = (shopId) => {
+  return api.get(`/shop/${shopId}/detail`);
+};

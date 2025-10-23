@@ -16,7 +16,9 @@ import {
   BarChart3,
   Home,
   Settings,
-  UsersRound
+  UsersRound,
+  Building2,
+  UtensilsCrossed
 } from "lucide-react"
 
 export function SidebarStoreDirectorLayout({ children }) {
@@ -28,11 +30,11 @@ export function SidebarStoreDirectorLayout({ children }) {
   const navigation = [
     { name: "Trang chủ", href: "/store-director/manage/home", icon: Home },
     { name: "Dashboard", href: "/store-director/manage/dashboard", icon: LayoutDashboard },
+    { name: "Doanh thu", href: "/store-director/manage/revenue", icon: BarChart3 },
     { name: "Tạo quản lý", href: "/store-director/manage/create-staff", icon: UserPlus },
     { name: "Quản lý tài khoản", href: "/store-director/manage/account-staff", icon: UsersRound },
     { name: "Tạo cửa hàng", href: "/store-director/manage/create-shop", icon: Store },
-    { name: "Đơn xét duyệt", href: "/store-director/manage/approval", icon: CheckSquare },
-    { name: "Doanh thu", href: "/store-director/manage/revenue", icon: BarChart3 },
+    { name: "Quản lý cửa hàng", href: "/store-director/manage/approval", icon: Building2 },
   ]
 
   const handleLogout = () => {
@@ -55,9 +57,8 @@ export function SidebarStoreDirectorLayout({ children }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 transform border-r border-border bg-card transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 w-72 transform border-r border-border bg-card transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <div className="flex h-full flex-col">
           {/* Logo & Brand */}
@@ -90,11 +91,10 @@ export function SidebarStoreDirectorLayout({ children }) {
                 <a
                   key={item.name}
                   href={item.href}
-                  className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  }`}
+                  className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    }`}
                 >
                   <Icon className="h-5 w-5 shrink-0" />
                   <span className="flex-1">{item.name}</span>
