@@ -113,16 +113,7 @@ export const ManageAccount = () => {
           )}
         </div>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="border p-2 rounded-md"
-        >
-          <option value="">Tất cả trạng thái</option>
-          <option value="ACTIVE">Đang hoạt động</option>
-          <option value="INACTIVE">Ngừng hoạt động</option>
-          <option value="BANNED">Bị cấm</option>
-        </select>
+    
       </div>
 
       {/* 🧾 Bảng nhân viên */}
