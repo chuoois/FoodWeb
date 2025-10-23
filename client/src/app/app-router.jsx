@@ -38,6 +38,7 @@ import {
   ShopListApprovePage,
   ShopDetailPage,
   Forbidden,
+  ProfilePage,
   NotFound
 
 } from "@/pages";
@@ -73,6 +74,7 @@ export const router = createBrowserRouter([
           { path: ":id", element: <DetailPage /> },
           { path: "history", element: <HistoryPage /> },
           { path: "favorite", element: <FavoritePage /> },
+          { path: "profile", element: <ProfilePage /> },
         ],
       },
       {
