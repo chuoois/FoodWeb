@@ -6,8 +6,8 @@ export const createFoodWithCategory = (data) => {
 };
 
 // Lấy danh sách món ăn theo shop_id
-export const getFoodsByShop = (shop_id, params = {}) => {
-    return api.get(`/food/${shop_id}/detail`, { params });
+export const getFoodsByShop = (params) => {
+    return api.get("/food/all", { params });
 };
 
 // Lấy shop ID theo manager

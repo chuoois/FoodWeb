@@ -16,6 +16,6 @@ router.post('/food/create-with-category', authenticate, authorize("STORE_DIRECTO
 router.get('/food/shopId-by-manager', authenticate, authorize("MANAGER_STAFF"), getShopIdByManager);
 
 // Lấy danh sách món ăn
-router.get('/food/:shop_id/detail', authenticate, authorize("STORE_DIRECTOR", "MANAGER_STAFF"), getFoodsByShop);
+router.get('/food/all', authenticate, authorize("STORE_DIRECTOR", "MANAGER_STAFF"), getFoodsByShop);
 
 module.exports = router;

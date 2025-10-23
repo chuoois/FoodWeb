@@ -66,64 +66,99 @@ const createFoodWithCategory = async (req, res) => {
 
 const getFoodsByShop = async (req, res) => {
   try {
-    const { shop_id } = req.params;
+    const { accountId } = req.user;
+
+    // Lấy query parameters
     const {
-      category_id,
-      search,
-      minPrice,
-      maxPrice,
-      is_available,
       page = 1,
       limit = 10,
+      search = '',
+      category_id = '',
+      is_available = '',
+      min_price = '',
+      max_price = '',
+      sort_by = 'created_at',
+      sort_order = 'desc'
     } = req.query;
 
-    const query = {};
-
-    if (shop_id) {
-      const shopExists = await Shop.findById(shop_id);
-      if (!shopExists)
-        return res.status(404).json({ message: "Cửa hàng không tồn tại" });
-      query.shop_id = shop_id;
+    const staff = await Staff.findOne({ account_id: accountId });
+    if (!staff) {
+      return res.status(404).json({ message: "Staff not found for this account" });
     }
 
-    if (category_id) query.category_id = category_id;
-
-    if (search)
-      query.name = { $regex: new RegExp(search, "i") };
-
-    if (minPrice || maxPrice) {
-      query.price = {};
-      if (minPrice) query.price.$gte = Number(minPrice);
-      if (maxPrice) query.price.$lte = Number(maxPrice);
+    const shop = await Shop.findOne({ managers: staff.account_id });
+    if (!shop) {
+      return res.status(404).json({ message: "Shop not found for this staff" });
     }
 
-    if (is_available !== undefined)
-      query.is_available = is_available === "true";
+    // Xây dựng filter query
+    const filter = { shop_id: shop._id };
 
-    const skip = (page - 1) * limit;
+    // Search theo tên món ăn
+    if (search.trim()) {
+      filter.name = { $regex: search.trim(), $options: 'i' };
+    }
 
-    const foods = await Food.find(query)
-      .populate("category_id", "name")
-      .populate("shop_id", "name")
-      .sort({ created_at: -1 })
-      .skip(skip)
-      .limit(Number(limit));
+    // Filter theo category
+    if (category_id) {
+      filter.category_id = category_id;
+    }
 
-    const total = await Food.countDocuments(query);
-    const totalPages = Math.ceil(total / limit);
+    // Filter theo trạng thái available
+    if (is_available !== '') {
+      filter.is_available = is_available === 'true';
+    }
+
+    // Filter theo khoảng giá
+    if (min_price !== '' || max_price !== '') {
+      filter.price = {};
+      if (min_price !== '') {
+        filter.price.$gte = Number(min_price);
+      }
+      if (max_price !== '') {
+        filter.price.$lte = Number(max_price);
+      }
+    }
+
+    // Xây dựng sort object
+    const sortObj = {};
+    const validSortFields = ['name', 'price', 'created_at', 'discount'];
+    const sortField = validSortFields.includes(sort_by) ? sort_by : 'created_at';
+    sortObj[sortField] = sort_order === 'asc' ? 1 : -1;
+
+    // Tính toán pagination
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    // Thực hiện query với pagination
+    const [foods, totalCount] = await Promise.all([
+      Food.find(filter)
+        .populate("category_id", "name")
+        .sort(sortObj)
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Food.countDocuments(filter)
+    ]);
+
+    // Tính toán metadata
+    const totalPages = Math.ceil(totalCount / limitNum);
 
     return res.status(200).json({
-      message: "Lấy danh sách món ăn thành công",
+      foods,
       pagination: {
-        currentPage: Number(page),
-        totalPages,
-        totalItems: total,
-      },
-      data: foods,
+        current_page: pageNum,
+        total_pages: totalPages,
+        total_items: totalCount,
+        items_per_page: limitNum,
+        has_next: pageNum < totalPages,
+        has_prev: pageNum > 1
+      }
     });
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách món ăn:", error);
-    res.status(500).json({ message: "Lỗi server", error: error.message });
+    console.error("Error getting foods by shop:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
