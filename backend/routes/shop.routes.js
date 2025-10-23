@@ -9,7 +9,8 @@ const {
   deleteShop,
   listStaffByCreator,
   updateStaff,
-  deleteStaff
+  deleteStaff,
+  getShopDetailByID
 } = require("../controller/store/shop.controller");
 const authenticate = require("../middleware/authenticate.middleware");
 const authorize = require("../middleware/authorize.middleware");
@@ -44,5 +45,8 @@ router.put("/shop/staff/:id", authenticate, authorize("STORE_DIRECTOR"), updateS
 
 //  Xóa nhân viên theo ID
 router.delete("/shop/staff/:id", authenticate, authorize("STORE_DIRECTOR"), deleteStaff);
+
+// Lấy chi tiết cửa hàng theo ID
+router.get("/shop/:shopId/detail", authenticate, authorize("STORE_DIRECTOR"), getShopDetailByID);
 
 module.exports = router;

@@ -160,6 +160,7 @@ const registerGoogle = async (req, res) => {
 
         account = new Account({
             email,
+            password_hash: null,
             provider: "google",
             provider_id: sub,
             email_verified: true,
