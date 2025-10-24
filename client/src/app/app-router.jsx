@@ -12,6 +12,7 @@ import {
   StoreDirectorLayout,
   StaffAuthLayout,
   ForbiddenLayout,
+  ManagerStaffLayout
 } from "@/components/layouts";
 
 import {
@@ -38,8 +39,12 @@ import {
   ShopListApprovePage,
   ShopDetailPage,
   Forbidden,
+  NotFound,
+  CreateFoodPage,
+  FoodListPage
   ProfilePage,
-  NotFound
+
+
 
 } from "@/pages";
 
@@ -115,6 +120,18 @@ export const router = createBrowserRouter([
           { path: "revenue", element: <div>Revenue</div> },
           { path: "approval", element: < ShopListApprovePage /> },
           { path: "shops/:shopId/detail", element: <ShopDetailPage /> },
+
+        ],
+      },
+      {
+        path: "manager-staff/manage",
+        element: <  ManagerStaffLayout />,
+        children: [
+          // { path: "home", element: <ManagerHomePage /> },
+          // { path: "dashboard", element: <div>Dashboard</div> },
+          { path: "create-food", element: <  CreateFoodPage /> },
+          { path: "list-food", element: <     FoodListPage /> },
+       
 
         ],
       },
