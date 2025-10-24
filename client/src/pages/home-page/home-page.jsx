@@ -1,14 +1,26 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MapPin, Crosshair, Star, Heart, Clock } from "lucide-react";
-import { getNearbyShops, getPopularShops, searchHome } from "@/services/home.service";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { useDebounce } from "use-debounce";
+import {
+  getNearbyShops,
+  getPopularShops,
+  searchHome,
+} from "@/services/home.service";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 
 const heroContent = {
   title: "Giao hàng nhanh ,",
   highlight: "mọi lúc!",
-  description: "Đặt món ăn yêu thích từ các nhà hàng tốt nhất trong thành phố. Giao hàng nhanh chóng, đảm bảo chất lượng.",
+  description:
+    "Đặt món ăn yêu thích từ các nhà hàng tốt nhất trong thành phố. Giao hàng nhanh chóng, đảm bảo chất lượng.",
 };
 const foodCategories = [
   {
@@ -25,12 +37,28 @@ const foodCategories = [
     image: "/img-home/fast-food.jpg",
     color: "from-orange-400 to-orange-600",
   },
-]
+];
 const heroSlides = [
-  { id: 1, image: "/img-home/img-hero-section.png", alt: "Delivery illustration" },
-  { id: 2, image: "/img-home/delicious-food-delivery-with-fresh-ingredients.jpg", alt: "Fresh food delivery" },
-  { id: 3, image: "/img-home/happy-customer-receiving-food-delivery.png", alt: "Happy customer" },
-  { id: 4, image: "/img-home/variety-of-restaurant-dishes-and-meals.jpg", alt: "Restaurant dishes" },
+  {
+    id: 1,
+    image: "/img-home/img-hero-section.png",
+    alt: "Delivery illustration",
+  },
+  {
+    id: 2,
+    image: "/img-home/delicious-food-delivery-with-fresh-ingredients.jpg",
+    alt: "Fresh food delivery",
+  },
+  {
+    id: 3,
+    image: "/img-home/happy-customer-receiving-food-delivery.png",
+    alt: "Happy customer",
+  },
+  {
+    id: 4,
+    image: "/img-home/variety-of-restaurant-dishes-and-meals.jpg",
+    alt: "Restaurant dishes",
+  },
 ];
 
 export const HomePage = () => {
@@ -39,6 +67,85 @@ export const HomePage = () => {
   const [nearbyShops, setNearbyShops] = useState([]);
   const [popularShops, setPopularShops] = useState([]);
   const navigate = useNavigate();
+
+
+
+  const [suggestions, setSuggestions] = useState([]);
+const [debouncedAddress] = useDebounce(address, 400);
+
+// Gợi ý địa chỉ (OpenStreetMap Photon API)
+// Sử dụng API Nominatim ổn định hơn Photon, không giới hạn ký tự
+useEffect(() => {
+  if (!debouncedAddress?.trim()) {
+    setSuggestions([]);
+    return;
+  }
+
+  const controller = new AbortController();
+
+  fetch(
+    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      debouncedAddress
+    )}&addressdetails=1&limit=5&accept-language=vi`,
+    { signal: controller.signal }
+  )
+    .then((res) => {
+      if (!res.ok) throw new Error("Request failed");
+      return res.json();
+    })
+    .then((data) => {
+      const results = data.map((f) => ({
+        name: f.display_name.split(",")[0],
+        display: f.display_name,
+        lat: f.lat,
+        lng: f.lon,
+      }));
+      setSuggestions(results);
+    })
+    .catch((err) => {
+      if (err.name !== "AbortError") {
+        console.error("Lỗi khi tìm địa chỉ:", err);
+      }
+      setSuggestions([]);
+    });
+
+  // cleanup tránh race condition
+  return () => controller.abort();
+}, [debouncedAddress]);
+
+
+
+const handleSelect = async (place) => {
+  setAddress(place.display);
+  setSuggestions([]);
+  const loc = { lat: place.lat, lng: place.lng };
+  sessionStorage.setItem("userLocation", JSON.stringify(loc));
+
+  const res = await getNearbyShops(place.lat, place.lng);
+  if (res.data?.shops) setNearbyShops(res.data.shops);
+};
+
+const handleGetLocation = () => {
+  if (!navigator.geolocation)
+    return alert("Trình duyệt của bạn không hỗ trợ định vị");
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      sessionStorage.setItem("userLocation", JSON.stringify({ lat, lng }));
+
+      const resGeo = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`
+      );
+      const dataGeo = await resGeo.json();
+      setAddress(dataGeo.display_name || `${lat}, ${lng}`);
+
+      const res = await getNearbyShops(lat, lng);
+      if (res.data?.shops) setNearbyShops(res.data.shops);
+    },
+    (err) => alert("Không lấy được vị trí: " + err.message)
+  );
+};
 
   // ✅ Lấy danh sách shop phổ biến khi vào trang
   useEffect(() => {
@@ -50,36 +157,11 @@ export const HomePage = () => {
       .catch((err) => console.error("Lỗi khi tải popular shops:", err));
   }, []);
 
-  const handleGetLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          const loc = { lat, lng };
-          const coords = `Vị trí của bạn (${lat},${lng})`;
-          setAddress(coords);
-          sessionStorage.setItem("userLocation", JSON.stringify(loc));
-
-          getNearbyShops(pos.coords.latitude, pos.coords.longitude)
-            .then((res) => {
-              console.log("Quán gần nhất:", res.data);
-              if (res.data?.shops) setNearbyShops(res.data.shops);
-            })
-            .catch((err) => console.log(err));
-        },
-        (err) => alert("Không lấy được vị trí: " + err.message),
-      )
-    } else {
-      alert("Trình duyệt không hỗ trợ định vị!")
-    }
-  }
-
   const toggleFavorite = (id) => {
     setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((fav) => fav !== id) : [...prev, id],
-    )
-  }
+      prev.includes(id) ? prev.filter((fav) => fav !== id) : [...prev, id]
+    );
+  };
 
   return (
     <div className="bg-[#FBF4E6] min-h-screen">
@@ -98,18 +180,35 @@ export const HomePage = () => {
             </div>
 
             {/* Địa chỉ người dùng */}
-            <div className="flex items-center w-full max-w-lg border border-blue-400 rounded-lg px-3 py-2 bg-white shadow-sm">
-              <MapPin className="w-5 h-5 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Nhập địa chỉ của bạn"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="flex-1 px-2 py-1 outline-none text-gray-700"
-              />
-              <button onClick={handleGetLocation}>
-                <Crosshair className="w-5 h-5 text-gray-500 hover:text-orange-500" />
-              </button>
+            {/* Địa chỉ người dùng (OpenStreetMap + Autocomplete) */}
+            <div className="w-full max-w-lg space-y-2">
+              <div className="flex items-center border border-blue-400 rounded-lg px-3 py-2 bg-white shadow-sm">
+                <MapPin className="w-5 h-5 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Nhập địa chỉ của bạn (ví dụ: Đại học FPT, Hòa Lạc)"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="flex-1 px-2 py-1 outline-none text-gray-700"
+                />
+                <button onClick={handleGetLocation}>
+                  <Crosshair className="w-5 h-5 text-gray-500 hover:text-orange-500" />
+                </button>
+              </div>
+
+              {suggestions.length > 0 && (
+                <ul className="bg-white border rounded-lg shadow-md mt-1 max-h-48 overflow-y-auto">
+                  {suggestions.map((s, i) => (
+                    <li
+                      key={i}
+                      onClick={() => handleSelect(s)}
+                      className="px-3 py-2 hover:bg-orange-100 cursor-pointer text-sm"
+                    >
+                      {s.display}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 
@@ -139,8 +238,6 @@ export const HomePage = () => {
         </div>
       </section>
 
-
-
       {/* Food Categories */}
       <section className="max-w-7xl mx-auto px-6 py-10 space-y-8">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">
@@ -159,9 +256,13 @@ export const HomePage = () => {
                   alt={category.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <div className={`absolute inset-0 bg-gradient-to-r ${category.color} opacity-60`} />
+                <div
+                  className={`absolute inset-0 bg-gradient-to-r ${category.color} opacity-60`}
+                />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <h3 className="text-white text-xl font-bold text-center px-4">{category.name}</h3>
+                  <h3 className="text-white text-xl font-bold text-center px-4">
+                    {category.name}
+                  </h3>
                 </div>
               </div>
             </Link>
@@ -199,10 +300,11 @@ export const HomePage = () => {
                     className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition"
                   >
                     <Heart
-                      className={`w-4 h-4 ${favorites.includes(shop._id)
-                        ? "fill-red-500 text-red-500"
-                        : "text-gray-600"
-                        }`}
+                      className={`w-4 h-4 ${
+                        favorites.includes(shop._id)
+                          ? "fill-red-500 text-red-500"
+                          : "text-gray-600"
+                      }`}
                     />
                   </button>
                 </div>
@@ -220,7 +322,8 @@ export const HomePage = () => {
                   </div>
 
                   <p className="text-xs text-gray-600 mb-2 line-clamp-1">
-                    {shop.address?.street}, {shop.address?.ward}, {shop.address?.district}, {shop.address?.city}
+                    {shop.address?.street}, {shop.address?.ward},{" "}
+                    {shop.address?.district}, {shop.address?.city}
                   </p>
 
                   <div className="flex items-center justify-between text-xs text-gray-500">
@@ -265,10 +368,11 @@ export const HomePage = () => {
                       className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition"
                     >
                       <Heart
-                        className={`w-4 h-4 ${favorites.includes(shop._id)
-                          ? "fill-red-500 text-red-500"
-                          : "text-gray-600"
-                          }`}
+                        className={`w-4 h-4 ${
+                          favorites.includes(shop._id)
+                            ? "fill-red-500 text-red-500"
+                            : "text-gray-600"
+                        }`}
                       />
                     </button>
                   </div>
@@ -284,9 +388,9 @@ export const HomePage = () => {
                       </span>
                     </div>
                     <p className="text-xs text-gray-600 mb-2 line-clamp-1">
-                      {shop.address?.street}, {shop.address?.ward}, {shop.address?.district}, {shop.address?.city}
+                      {shop.address?.street}, {shop.address?.ward},{" "}
+                      {shop.address?.district}, {shop.address?.city}
                     </p>
-
                   </div>
                 </div>
               ))}
@@ -295,7 +399,5 @@ export const HomePage = () => {
         </section>
       )}
     </div>
-  )
-}
-
-
+  );
+};
