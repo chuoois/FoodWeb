@@ -41,7 +41,7 @@ import {
   Forbidden,
   NotFound,
   CreateFoodPage,
-  FoodListPage
+  FoodListPage,
   ProfilePage,
 
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MapPin, Crosshair, Star, Heart, Clock } from "lucide-react";
-import { useDebounce } from "use-debounce";
+import  useDebounce  from "@/hooks/useDebounce";
 import {
   getNearbyShops,
   getPopularShops,
