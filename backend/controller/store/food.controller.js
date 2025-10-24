@@ -2,11 +2,17 @@ const Food = require("../../models/food.model");
 const Shop = require("../../models/shop.model");
 const FoodCategory = require("../../models/foodCategory.model");
 const Staff = require("../../models/staff.model");
+const { getShopIdByStaff } = require("../../services/shop.service");
 
 const createFoodWithCategory = async (req, res) => {
   try {
-    const { shop_id, category_name, category_description, name, description, price, discount, image_url, options } = req.body;
+    const { category_name, category_description, name, description, price, discount, image_url, options } = req.body;
     const { accountId } = req.user;
+
+    const shop_id = await getShopIdByStaff(accountId);
+    if (!shop_id) {
+      return res.status(404).json({ message: "Shop not found for this staff" });
+    }
     const created_by = accountId;
 
     // Kiểm tra shop có tồn tại
