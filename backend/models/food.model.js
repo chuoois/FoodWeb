@@ -58,11 +58,11 @@ const foodSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    // 👇 Nhúng mảng các options trực tiếp vào món ăn
+    // Nhúng mảng các options trực tiếp vào món ăn
     options: [optionSchema],
     created_by: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // MANAGER_STAFF tạo
+      ref: "Staff", // MANAGER_STAFF tạo
     },
   },
   {

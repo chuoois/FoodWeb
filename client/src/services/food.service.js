@@ -9,8 +9,3 @@ export const createFoodWithCategory = (data) => {
 export const getFoodsByShop = (params) => {
     return api.get("/food/all", { params });
 };
-
-// Lấy shop ID theo manager
-export const getShopIdByManager = () => {
-    return api.get("/food/shopId-by-manager");
-};
