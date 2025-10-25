@@ -10,3 +10,11 @@ export const listAccounts = (params) => {
 export const updateAccountStatus = (accountId) => {
   return api.patch(`/admin/accounts/${accountId}`);
 };
+
+export const listShops = (params) => {
+  return api.get("/admin/shops",{params});
+}
+
+export const updateShopStatus = (shopId) => {
+  return api.patch(`/admin/shops/${shopId}`)
+}

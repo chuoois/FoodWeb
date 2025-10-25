@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
   X,
@@ -10,45 +10,18 @@ import {
   Clock,
   LogOut,
 } from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
 
 export const HeaderHome = () => {
   const [openSearch, setOpenSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [userInfo, setUserInfo] = useState(null);
-
-  // Lấy thông tin user từ localStorage khi load trang
-  useEffect(() => {
-    const loadUser = () => {
-      try {
-        const storedUser = localStorage.getItem("userInfo");
-        if (storedUser && storedUser !== "undefined") {
-          setUserInfo(JSON.parse(storedUser));
-        } else {
-          setUserInfo(null);
-        }
-      } catch (error) {
-        console.error("Lỗi parse userInfo:", error);
-        localStorage.removeItem("userInfo");
-        setUserInfo(null);
-      }
-    };
-
-    loadUser(); // chạy lần đầu
-    window.addEventListener("storage", loadUser); // cập nhật khi login/logout
-    return () => window.removeEventListener("storage", loadUser);
-  }, []);
+  const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("userInfo");
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("userRole");  // ✅ Thêm
-    localStorage.removeItem("userData");
-
-    setUserInfo(null);
+    logout();
     setShowUserMenu(false);
-    window.location.href = "/"; // chuyển về trang chủ
+    navigate("/"); // Chuyển về trang chủ
   };
 
   const isLoggedIn = !!userInfo;
@@ -80,67 +53,61 @@ export const HeaderHome = () => {
             <span className="text-gray-500">Tìm món ăn hoặc nhà hàng</span>
           </div>
 
-          {/* CTA Button */}
+          {/* Account menu */}
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-full shadow-md transition-all duration-300"
             >
               <User className="w-4 h-4" />
-              <span>
-                {isLoggedIn ? userInfo?.name || "Tài khoản" : "Đăng nhập"}
-              </span>
+              <span>{user ? user.name || "Tài khoản" : "Đăng nhập"}</span>
               <ChevronDown className="w-4 h-4" />
             </button>
 
             {showUserMenu && (
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                {isLoggedIn ? (
+                {user ? (
                   <>
                     <Link
-                      to="/profile"
+                      to="/detail/profile"
                       className="w-full px-4 py-3 text-left text-sm hover:bg-orange-50 flex items-center gap-3 transition"
                       onClick={() => setShowUserMenu(false)}
                     >
                       <User className="w-5 h-5 text-orange-500" />
                       <div>
-                        <div className="font-medium text-gray-900">Profile</div>
+                        <div className="font-medium text-gray-900">Hồ sơ cá nhân</div>
                         <div className="text-xs text-gray-500">
-                          Thông tin cá nhân
+                          {user.name || "Người dùng"}
                         </div>
                       </div>
                     </Link>
+
                     <Link
-                      to="/favorites"
+                      to="/detail/favorite"
                       className="w-full px-4 py-3 text-left text-sm hover:bg-orange-50 flex items-center gap-3 transition"
                       onClick={() => setShowUserMenu(false)}
                     >
                       <Heart className="w-5 h-5 text-orange-500" />
                       <div>
-                        <div className="font-medium text-gray-900">
-                          Nhà hàng yêu thích
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Danh sách yêu thích
-                        </div>
+                        <div className="font-medium text-gray-900">Yêu thích</div>
+                        <div className="text-xs text-gray-500">Danh sách món</div>
                       </div>
                     </Link>
+
                     <Link
-                      to="/orderhistory"
+                      to="/detail/history"
                       className="w-full px-4 py-3 text-left text-sm hover:bg-orange-50 flex items-center gap-3 transition"
                       onClick={() => setShowUserMenu(false)}
                     >
                       <Clock className="w-5 h-5 text-orange-500" />
                       <div>
-                        <div className="font-medium text-gray-900">
-                          Lịch sử mua hàng
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Đơn hàng đã đặt
-                        </div>
+                        <div className="font-medium text-gray-900">Lịch sử đơn hàng</div>
+                        <div className="text-xs text-gray-500">Đơn đã đặt</div>
                       </div>
                     </Link>
+
                     <hr className="my-2" />
+
                     <button
                       onClick={handleLogout}
                       className="w-full px-4 py-3 text-left text-sm hover:bg-orange-50 flex items-center gap-3 transition"
@@ -173,7 +140,7 @@ export const HeaderHome = () => {
                     </Link>
                     <hr className="my-2" />
                     <Link
-                      to="/auth2"
+                      to="/store-director/login"
                       className="w-full px-4 py-3 text-left text-sm hover:bg-orange-50 flex items-center gap-3 transition"
                       onClick={() => setShowUserMenu(false)}
                     >

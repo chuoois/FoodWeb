@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react"
-import { Search, Loader2 } from "lucide-react"
+import { useState, useMemo, useEffect, useCallback } from "react"
+import { Search, Loader2, ImageIcon, Store, Users, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -21,248 +21,206 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import toast from "react-hot-toast"
-
-// Dữ liệu mẫu (giả lập từ schema MongoDB cho cửa hàng bán đồ ăn)
-const mockShops = [
-  {
-    _id: "1",
-    name: "Quán Ăn Ngon",
-    ownerEmail: "owner1@example.com",
-    status: "ACTIVE",
-    category: "nha-hang",
-    createdAt: "2025-10-01T10:00:00Z",
-  },
-  {
-    _id: "2",
-    name: "Cửa Hàng Bánh Mì",
-    ownerEmail: "owner2@example.com",
-    status: "INACTIVE",
-    category: "quan-an",
-    createdAt: "2025-10-02T12:00:00Z",
-  },
-  {
-    _id: "3",
-    name: "Nhà Hàng Hải Sản",
-    ownerEmail: "owner3@example.com",
-    status: "PENDING",
-    category: "hai-san",
-    createdAt: "2025-10-03T15:00:00Z",
-  },
-  {
-    _id: "4",
-    name: "Quán Cà Phê Đồ Ăn Nhẹ",
-    ownerEmail: "owner4@example.com",
-    status: "BANNED",
-    category: "ca-phe",
-    createdAt: "2025-10-04T09:00:00Z",
-  },
-  {
-    _id: "5",
-    name: "Siêu Thị Mini Ăn Uống",
-    ownerEmail: "owner5@example.com",
-    status: "ACTIVE",
-    category: "sieu-thi",
-    createdAt: "2025-10-04T11:00:00Z",
-  },
-  ...Array.from({ length: 10 }, (_, i) => ({
-    _id: `${i + 6}`,
-    name: `Cửa Hàng Đồ Ăn ${i + 6}`,
-    ownerEmail: `owner${i + 6}@example.com`,
-    status: ["ACTIVE", "INACTIVE", "PENDING", "BANNED"][i % 4],
-    category: ["nha-hang", "quan-an", "hai-san", "ca-phe", "sieu-thi"][i % 5],
-    createdAt: `2025-10-04T${(i + 10).toString().padStart(2, "0")}:00:00Z`,
-  })),
-]
-
-// Dữ liệu loại hình mẫu
-const categories = [
-  { _id: "nha-hang", name: "Nhà hàng" },
-  { _id: "quan-an", name: "Quán ăn" },
-  { _id: "hai-san", name: "Hải sản" },
-  { _id: "ca-phe", name: "Cà phê" },
-  { _id: "sieu-thi", name: "Siêu thị" },
-]
+import { listShops,updateShopStatus  } from "@/services/admin.service"
 
 export const ShopManagement = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [categoryFilter, setCategoryFilter] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [selectedShop, setSelectedShop] = useState(null)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [shops, setShops] = useState([])
+  const [totalPages, setTotalPages] = useState(1)
+  const [loading, setLoading] = useState(false)
 
   const itemsPerPage = 10
+  const params = useMemo(
+    () => ({
+      page: currentPage,
+      limit: itemsPerPage,
+      search: searchQuery || undefined,
+      status: statusFilter === "all" ? undefined : statusFilter,
+    }),
+    [currentPage, searchQuery, statusFilter],
+  )
 
-  // Lọc cửa hàng
-  const filteredShops = useMemo(() => {
-    return mockShops.filter((shop) => {
-      const matchesSearch = shop.name.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesStatus = statusFilter === "all" || shop.status === statusFilter
-      const matchesCategory = categoryFilter === "all" || shop.category === categoryFilter
-      return matchesSearch && matchesStatus && matchesCategory
-    })
-  }, [searchQuery, statusFilter, categoryFilter])
+  const fetchShops = useCallback(
+    async (fetchParams = params) => {
+      setLoading(true)
+      try {
+        const response = await listShops(fetchParams)
+        setShops(response.data.shops || [])
+        setTotalPages(response.data.totalPages || 1)
+      } catch (error) {
+        console.error("Error fetching shops:", error)
+        toast.error("Không thể tải danh sách cửa hàng. Vui lòng thử lại.")
+        setShops([])
+        setTotalPages(1)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [params],
+  )
 
-  // Phân trang
-  const paginatedShops = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredShops.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredShops, currentPage])
+  useEffect(() => {
+    fetchShops()
+  }, [fetchShops])
 
-  const totalPages = Math.ceil(filteredShops.length / itemsPerPage)
-
-  // Reset trang khi thay đổi bộ lọc
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, statusFilter, categoryFilter])
+    fetchShops({ ...params, page: 1 })
+  }, [searchQuery, statusFilter, fetchShops])
 
-  // Xử lý đổi trạng thái
   const handleStatusChange = async () => {
-    setIsUpdating(true)
-    try {
-      const newStatus = selectedShop.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"
-      const shop = mockShops.find((s) => s._id === selectedShop._id)
-      if (shop) {
-        shop.status = newStatus
-      }
-      toast.success(`Đã cập nhật trạng thái cửa hàng ${selectedShop.name} thành ${newStatus}`)
-      setDialogOpen(false)
-    } catch (error) {
-      toast.error("Không thể cập nhật trạng thái. Vui lòng thử lại.")
-    } finally {
-      setIsUpdating(false)
-    }
+  setIsUpdating(true)
+  try {
+    const res = await updateShopStatus(selectedShop._id) // 🟢 gọi API thật
+    toast.success(res.data.message || "Cập nhật trạng thái thành công")
+    setConfirmDialogOpen(false)
+    fetchShops() // load lại danh sách
+  } catch (error) {
+    toast.error(error.response?.data?.message || "Không thể cập nhật trạng thái. Vui lòng thử lại.")
+  } finally {
+    setIsUpdating(false)
+  }
+}
+
+  const handleViewDetail = (shop) => {
+    setSelectedShop(shop)
+    setDetailDialogOpen(true)
   }
 
-  // Xử lý thay đổi trang
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page)
     }
   }
 
-  // Lấy tên loại hình từ category
-  const getCategoryName = (categoryId) => {
-    const category = categories.find((c) => c._id === categoryId)
-    return category ? category.name : "Unknown"
-  }
-
-  // Get status badge styling
   const getStatusBadge = (status) => {
     const styles = {
-      ACTIVE: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-      INACTIVE: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
-      PENDING: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-      BANNED: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+      ACTIVE: "bg-green-100 text-green-700 border border-green-200 shadow-sm",
+      INACTIVE: "bg-gray-100 text-gray-600 border border-gray-200 shadow-sm",
     }
     return styles[status] || styles.INACTIVE
   }
 
-  return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        {/* <div className="mb-8">
-          <h1 className="text-3xl font-semibold text-foreground mb-2">Quản lý cửa hàng bán đồ ăn</h1>
-          <p className="text-sm text-muted-foreground">
-            Quản lý và theo dõi tất cả cửa hàng bán đồ ăn trong hệ thống
-          </p>
-        </div> */}
+  const truncateDescription = (desc, maxLength = 50) => {
+    return desc?.length > maxLength ? `${desc.slice(0, maxLength)}...` : desc
+  }
 
-        {/* Filters Card */}
-        <div className="mb-6 rounded-lg border border-border bg-card p-4">
+  return (
+    <div className="min-h-screen bg-white p-6">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg">
+              <Store className="h-6 w-6 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
+              Quản Lý Cửa Hàng
+            </h1>
+          </div>
+          <p className="text-gray-600 ml-11">Quản lý và theo dõi tất cả cửa hàng trong hệ thống</p>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-gray-200 bg-gray-50 backdrop-blur-sm p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
               <Input
                 placeholder="Tìm kiếm theo tên cửa hàng..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-background border-border focus-visible:ring-1 focus-visible:ring-ring"
+                className="pl-10 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:border-transparent transition-all"
+                disabled={loading}
               />
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-[180px] bg-background border-border">
+              <Select value={statusFilter} onValueChange={setStatusFilter} disabled={loading}>
+                <SelectTrigger className="w-full sm:w-[200px] bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-orange-500">
                   <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="INACTIVE">Inactive</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="BANNED">Banned</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full sm:w-[180px] bg-background border-border">
-                  <SelectValue placeholder="Loại hình" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả loại hình</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category._id} value={category._id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="bg-white border-gray-300">
+                  <SelectItem value="all" className="text-gray-900">
+                    Tất cả trạng thái
+                  </SelectItem>
+                  <SelectItem value="ACTIVE" className="text-gray-900">
+                    Active
+                  </SelectItem>
+                  <SelectItem value="INACTIVE" className="text-gray-900">
+                    Inactive
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
         </div>
 
-        {/* Table Card */}
-        <div className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="rounded-xl border border-gray-200 bg-white backdrop-blur-sm overflow-hidden shadow-sm">
           <Table>
             <TableHeader>
-              <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="text-muted-foreground font-medium">Tên cửa hàng</TableHead>
-                <TableHead className="text-muted-foreground font-medium">Chủ sở hữu</TableHead>
-                <TableHead className="text-muted-foreground font-medium">Trạng thái</TableHead>
-                <TableHead className="text-muted-foreground font-medium">Loại hình</TableHead>
-                <TableHead className="text-muted-foreground font-medium">Ngày tạo</TableHead>
-                <TableHead className="text-muted-foreground font-medium text-right">Hành động</TableHead>
+              <TableRow className="border-gray-200 hover:bg-transparent bg-gray-50">
+                <TableHead className="text-gray-700 font-semibold">Tên cửa hàng</TableHead>
+                <TableHead className="text-gray-700 font-semibold">Chủ sở hữu</TableHead>
+                <TableHead className="text-gray-700 font-semibold">Trạng thái</TableHead>
+                <TableHead className="text-gray-700 font-semibold">Mô tả</TableHead>
+                <TableHead className="text-gray-700 font-semibold text-right">Hành động</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedShops.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+              {loading ? (
+                <TableRow className="hover:bg-transparent border-gray-200">
+                  <TableCell colSpan={5} className="h-32 text-center">
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-orange-500" />
+                  </TableCell>
+                </TableRow>
+              ) : shops.length === 0 ? (
+                <TableRow className="hover:bg-transparent border-gray-200">
+                  <TableCell colSpan={5} className="h-32 text-center text-gray-500">
                     Không tìm thấy cửa hàng nào
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedShops.map((shop) => (
-                  <TableRow key={shop._id} className="border-border hover:bg-accent/50 transition-colors">
-                    <TableCell className="font-medium text-foreground">{shop.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{shop.ownerEmail}</TableCell>
+                shops.map((shop) => (
+                  <TableRow
+                    key={shop._id}
+                    className="border-gray-200 hover:bg-gray-50 transition-all duration-200 cursor-pointer group"
+                    onDoubleClick={() => handleViewDetail(shop)}
+                  >
+                    <TableCell className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">
+                      {shop.name}
+                    </TableCell>
+                    <TableCell className="text-gray-600">{shop.ownerEmail}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span
-                          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${getStatusBadge(
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadge(
                             shop.status,
                           )}`}
                         >
-                          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                          <span className="h-2 w-2 rounded-full bg-current animate-pulse" />
                           {shop.status}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{getCategoryName(shop.category)}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(shop.createdAt).toLocaleDateString("vi-VN")}
+                    <TableCell className="text-gray-600" title={shop.description}>
+                      {truncateDescription(shop.description)}
                     </TableCell>
                     <TableCell className="text-right">
                       {(shop.status === "ACTIVE" || shop.status === "INACTIVE") && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation()
                             setSelectedShop(shop)
-                            setDialogOpen(true)
+                            setConfirmDialogOpen(true)
                           }}
-                          className="h-8 text-xs hover:bg-accent hover:text-accent-foreground"
+                          className="h-8 text-xs text-gray-700 hover:bg-orange-500/10 hover:text-orange-600 transition-all"
+                          disabled={isUpdating}
                         >
                           {shop.status === "ACTIVE" ? "Vô hiệu hóa" : "Kích hoạt"}
                         </Button>
@@ -283,7 +241,11 @@ export const ShopManagement = () => {
                 <PaginationItem>
                   <PaginationPrevious
                     onClick={() => handlePageChange(currentPage - 1)}
-                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-accent"}
+                    className={
+                      currentPage === 1
+                        ? "pointer-events-none opacity-50 text-gray-500"
+                        : "cursor-pointer hover:bg-gray-100 text-gray-700 hover:text-gray-900 transition-all"
+                    }
                   />
                 </PaginationItem>
                 {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
@@ -302,7 +264,7 @@ export const ShopManagement = () => {
                       <PaginationLink
                         isActive={currentPage === page}
                         onClick={() => handlePageChange(page)}
-                        className="cursor-pointer hover:bg-accent"
+                        className={`cursor-pointer transition-all ${currentPage === page ? "bg-orange-500 text-white" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"}`}
                       >
                         {page}
                       </PaginationLink>
@@ -313,7 +275,9 @@ export const ShopManagement = () => {
                   <PaginationNext
                     onClick={() => handlePageChange(currentPage + 1)}
                     className={
-                      currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-accent"
+                      currentPage === totalPages
+                        ? "pointer-events-none opacity-50 text-gray-500"
+                        : "cursor-pointer hover:bg-gray-100 text-gray-700 hover:text-gray-900 transition-all"
                     }
                   />
                 </PaginationItem>
@@ -322,32 +286,97 @@ export const ShopManagement = () => {
           </div>
         )}
 
-        {/* Dialog xác nhận đổi trạng thái */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="bg-card border-border">
+        <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+          <DialogContent className="bg-white border-gray-200 shadow-xl">
             <DialogHeader>
-              <DialogTitle className="text-foreground">Xác nhận đổi trạng thái</DialogTitle>
-              <DialogDescription className="text-muted-foreground">
+              <DialogTitle className="text-gray-900 text-xl">Xác nhận đổi trạng thái</DialogTitle>
+              <DialogDescription className="text-gray-600 mt-2">
                 Bạn có chắc muốn đổi trạng thái cửa hàng{" "}
-                <span className="font-semibold text-foreground">{selectedShop?.name}</span> từ{" "}
-                <span className="font-semibold text-foreground">{selectedShop?.status}</span> sang{" "}
-                <span className="font-semibold text-foreground">
+                <span className="font-semibold text-gray-900">{selectedShop?.name}</span> từ{" "}
+                <span className="font-semibold text-gray-900">{selectedShop?.status}</span> sang{" "}
+                <span className="font-semibold text-orange-600">
                   {selectedShop?.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"}
                 </span>
                 ?
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setDialogOpen(false)} className="hover:bg-accent">
+            <DialogFooter className="gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => setConfirmDialogOpen(false)}
+                className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-all"
+              >
                 Hủy
               </Button>
               <Button
                 onClick={handleStatusChange}
                 disabled={isUpdating}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                className="bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg"
               >
                 {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Xác nhận
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+          <DialogContent className="bg-white border-gray-200 max-w-2xl max-h-[80vh] overflow-y-auto shadow-xl">
+            <DialogHeader>
+              <DialogTitle className="text-gray-900 text-2xl">{selectedShop?.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6">
+              {selectedShop?.logoUrl && (
+                <div className="flex justify-center">
+                  <img
+                    src={selectedShop.logoUrl || "/placeholder.svg"}
+                    alt={`${selectedShop.name} logo`}
+                    className="w-32 h-32 object-cover rounded-lg border border-gray-200 shadow-sm"
+                    onError={(e) => {
+                      e.target.style.display = "none"
+                      e.target.nextSibling.style.display = "flex"
+                    }}
+                  />
+                  <ImageIcon className="w-32 h-32 text-gray-400 hidden" />
+                </div>
+              )}
+              {selectedShop?.coverUrl && (
+                <img
+                  src={selectedShop.coverUrl || "/placeholder.svg"}
+                  alt={`${selectedShop.name} cover`}
+                  className="w-full h-48 object-cover rounded-lg border border-gray-200 shadow-sm"
+                  onError={(e) => {
+                    e.target.style.display = "none"
+                  }}
+                />
+              )}
+              <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedShop?.description}</p>
+              <div className="space-y-3 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-orange-600" />
+                  <p className="text-sm text-gray-700">
+                    <span className="font-semibold text-gray-900">Chủ sở hữu:</span> {selectedShop?.ownerEmail}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <p className="text-sm text-gray-700">
+                    <span className="font-semibold text-gray-900">Trạng thái:</span>
+                    <span
+                      className={`ml-2 font-semibold ${selectedShop?.status === "ACTIVE" ? "text-green-600" : "text-gray-600"}`}
+                    >
+                      {selectedShop?.status}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => setDetailDialogOpen(false)}
+                className="bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg w-full"
+              >
+                Đóng
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -1,92 +1,161 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { MapPin, Crosshair } from "lucide-react";
-import { Star, Heart, Clock } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { MapPin, Crosshair, Star, Heart, Clock } from "lucide-react";
+import  useDebounce  from "@/hooks/useDebounce";
+import {
+  getNearbyShops,
+  getPopularShops,
+  searchHome,
+} from "@/services/home.service";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
 
+const heroContent = {
+  title: "Giao hàng nhanh ,",
+  highlight: "mọi lúc!",
+  description:
+    "Đặt món ăn yêu thích từ các nhà hàng tốt nhất trong thành phố. Giao hàng nhanh chóng, đảm bảo chất lượng.",
+};
 const foodCategories = [
   {
     id: 1,
     name: "Đồ uống",
-    slug: "do-uong",
+    slug: "Drink",
     image: "/img-home/drinks.jpg",
     color: "from-blue-400 to-blue-600",
   },
   {
     id: 2,
     name: "Thức Ăn",
-    slug: "do-an",
+    slug: "Food",
     image: "/img-home/fast-food.jpg",
     color: "from-orange-400 to-orange-600",
   },
 ];
-
-const popularRestaurants = [
+const heroSlides = [
   {
     id: 1,
-    name: "Bún Thịt Nướng Xuân Mai - Bún Mắm & Ăn Vặt - Chợ Bến Thành",
-    image: "/img-home/restaurant-1.jpg",
-    rating: 4.2,
-    reviews: 29,
-    address: "Sạp 1066/1090 Chợ Bến Thành, Lê Lợi...",
-    isPromo: true,
-    deliveryTime: "25-35 phút",
-    category: "Bún, Mắm",
+    image: "/img-home/img-hero-section.png",
+    alt: "Delivery illustration",
   },
   {
     id: 2,
-    name: "Cua Bắc - Juice & Fruit - Lê Thánh Tôn",
-    image: "/img-home/restaurant-2.jpg",
-    rating: 4.8,
-    reviews: 156,
-    address: "164 Lê Thánh Tôn, Phường Bến Thành...",
-    isPromo: true,
-    deliveryTime: "15-25 phút",
-    category: "Nước ép, Trái cây",
+    image: "/img-home/delicious-food-delivery-with-fresh-ingredients.jpg",
+    alt: "Fresh food delivery",
   },
   {
     id: 3,
-    name: "Pin Wei - Bánh Cuốn Tươi - Phan Bội Châu",
-    image: "/img-home/restaurant-3.jpg",
-    rating: 4.6,
-    reviews: 89,
-    address: "14 Phan Bội Châu, Phường Bến Thành...",
-    isPromo: true,
-    deliveryTime: "20-30 phút",
-    category: "Bánh cuốn",
+    image: "/img-home/happy-customer-receiving-food-delivery.png",
+    alt: "Happy customer",
   },
   {
     id: 4,
-    name: "Trà Sữa, Sinh Tố & Bánh Ngọt Dung - Lê Thánh Tôn",
-    image: "/img-home/restaurant-4.jpg",
-    rating: 5.0,
-    reviews: 17,
-    address: "195 - 197 Lê Thánh Tôn, Phường Bến T...",
-    isPromo: true,
-    deliveryTime: "10-20 phút",
-    category: "Trà sữa, Bánh ngọt",
+    image: "/img-home/variety-of-restaurant-dishes-and-meals.jpg",
+    alt: "Restaurant dishes",
   },
 ];
 
 export const HomePage = () => {
   const [favorites, setFavorites] = useState([]);
   const [address, setAddress] = useState("");
+  const [nearbyShops, setNearbyShops] = useState([]);
+  const [popularShops, setPopularShops] = useState([]);
   const navigate = useNavigate();
 
-  const handleGetLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const coords = `Lat: ${pos.coords.latitude}, Lng: ${pos.coords.longitude}`;
-          console.log("Vị trí hiện tại:", coords);
-          setAddress(coords); // ✅ đưa vào input
-        },
-        (err) => alert("Không lấy được vị trí: " + err.message)
+
+
+  const [suggestions, setSuggestions] = useState([]);
+const [debouncedAddress] = useDebounce(address, 400);
+
+// Gợi ý địa chỉ (OpenStreetMap Photon API)
+// Sử dụng API Nominatim ổn định hơn Photon, không giới hạn ký tự
+useEffect(() => {
+  if (!debouncedAddress?.trim()) {
+    setSuggestions([]);
+    return;
+  }
+
+  const controller = new AbortController();
+
+  fetch(
+    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      debouncedAddress
+    )}&addressdetails=1&limit=5&accept-language=vi`,
+    { signal: controller.signal }
+  )
+    .then((res) => {
+      if (!res.ok) throw new Error("Request failed");
+      return res.json();
+    })
+    .then((data) => {
+      const results = data.map((f) => ({
+        name: f.display_name.split(",")[0],
+        display: f.display_name,
+        lat: f.lat,
+        lng: f.lon,
+      }));
+      setSuggestions(results);
+    })
+    .catch((err) => {
+      if (err.name !== "AbortError") {
+        console.error("Lỗi khi tìm địa chỉ:", err);
+      }
+      setSuggestions([]);
+    });
+
+  // cleanup tránh race condition
+  return () => controller.abort();
+}, [debouncedAddress]);
+
+
+
+const handleSelect = async (place) => {
+  setAddress(place.display);
+  setSuggestions([]);
+  const loc = { lat: place.lat, lng: place.lng };
+  sessionStorage.setItem("userLocation", JSON.stringify(loc));
+
+  const res = await getNearbyShops(place.lat, place.lng);
+  if (res.data?.shops) setNearbyShops(res.data.shops);
+};
+
+const handleGetLocation = () => {
+  if (!navigator.geolocation)
+    return alert("Trình duyệt của bạn không hỗ trợ định vị");
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      sessionStorage.setItem("userLocation", JSON.stringify({ lat, lng }));
+
+      const resGeo = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`
       );
-    } else {
-      alert("Trình duyệt không hỗ trợ định vị!");
-    }
-  };
+      const dataGeo = await resGeo.json();
+      setAddress(dataGeo.display_name || `${lat}, ${lng}`);
+
+      const res = await getNearbyShops(lat, lng);
+      if (res.data?.shops) setNearbyShops(res.data.shops);
+    },
+    (err) => alert("Không lấy được vị trí: " + err.message)
+  );
+};
+
+  // ✅ Lấy danh sách shop phổ biến khi vào trang
+  useEffect(() => {
+    getPopularShops()
+      .then((res) => {
+        console.log("Popular shops:", res.data);
+        if (res.data?.shops) setPopularShops(res.data.shops);
+      })
+      .catch((err) => console.error("Lỗi khi tải popular shops:", err));
+  }, []);
 
   const toggleFavorite = (id) => {
     setFavorites((prev) =>
@@ -95,54 +164,82 @@ export const HomePage = () => {
   };
 
   return (
-    <div className="bg-[#FBF4E6]">
+    <div className="bg-[#FBF4E6] min-h-screen">
       {/* Hero Section */}
       <section className="w-full px-6 py-16">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
-          {/* Left Content */}
           <div className="space-y-8">
             <div className="space-y-4">
-              <h1 className="text-5xl lg:text-6xl font-bold text-foreground leading-tight text-balance">
+              <h1 className="text-5xl lg:text-6xl font-bold text-foreground leading-tight">
                 Giao hàng nhanh,{" "}
                 <span className="text-orange-500">mọi lúc!</span>
               </h1>
               <p className="text-lg text-muted-foreground leading-relaxed max-w-lg">
-                Đặt món ăn yêu thích từ các nhà hàng tốt nhất trong thành phố.
-                Giao hàng nhanh chóng, đảm bảo chất lượng.
+                {heroContent.description}
               </p>
             </div>
 
-            {/* Thanh nhập địa chỉ */}
-            <div className="flex items-center w-full max-w-lg border border-blue-400 rounded-lg px-3 py-2 bg-white shadow-sm">
-              <MapPin className="w-5 h-5 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Nhập địa chỉ của bạn"
-                value={address} // ✅ gắn value từ state
-                onChange={(e) => setAddress(e.target.value)}
-                className="flex-1 px-2 py-1 outline-none text-gray-700"
-              />
-              <button onClick={handleGetLocation}>
-                <Crosshair className="w-5 h-5 text-gray-500 hover:text-orange-500" />
-              </button>
+            {/* Địa chỉ người dùng */}
+            {/* Địa chỉ người dùng (OpenStreetMap + Autocomplete) */}
+            <div className="w-full max-w-lg space-y-2">
+              <div className="flex items-center border border-blue-400 rounded-lg px-3 py-2 bg-white shadow-sm">
+                <MapPin className="w-5 h-5 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Nhập địa chỉ của bạn (ví dụ: Đại học FPT, Hòa Lạc)"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="flex-1 px-2 py-1 outline-none text-gray-700"
+                />
+                <button onClick={handleGetLocation}>
+                  <Crosshair className="w-5 h-5 text-gray-500 hover:text-orange-500" />
+                </button>
+              </div>
+
+              {suggestions.length > 0 && (
+                <ul className="bg-white border rounded-lg shadow-md mt-1 max-h-48 overflow-y-auto">
+                  {suggestions.map((s, i) => (
+                    <li
+                      key={i}
+                      onClick={() => handleSelect(s)}
+                      className="px-3 py-2 hover:bg-orange-100 cursor-pointer text-sm"
+                    >
+                      {s.display}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 
-          {/* Right Illustration */}
           <div className="relative">
-            <div className="relative w-full h-96 rounded-3xl overflow-hidden shadow-2xl shadow-orange-200 transform hover:scale-105 transition-transform duration-500 ease-in-out animate-fade-in">
-              <img
-                src="/img-home/img-hero-section.png"
-                alt="Delivery illustration"
-                className="w-full h-full object-cover"
-              />
-            </div>
+            <Carousel
+              opts={{ align: "center", loop: true }}
+              plugins={[Autoplay({ delay: 3500 })]}
+              className="w-full"
+            >
+              <CarouselContent>
+                {heroSlides.map((slide) => (
+                  <CarouselItem key={slide.id}>
+                    <div className="relative w-full h-96 rounded-3xl overflow-hidden shadow-2xl shadow-orange-200 transform hover:scale-105 transition-transform duration-500 ease-in-out">
+                      <img
+                        src={slide.image || "/placeholder.svg"}
+                        alt={slide.alt}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="left-4" />
+              <CarouselNext className="right-4" />
+            </Carousel>
           </div>
         </div>
       </section>
 
       {/* Food Categories */}
-      <section className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <section className="max-w-7xl mx-auto px-6 py-10 space-y-8">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">
           Bộ sưu tập món ăn
         </h2>
@@ -151,11 +248,11 @@ export const HomePage = () => {
             <Link
               key={category.id}
               to={`/menu/list/${category.slug}`}
-              className="relative overflow-hidden cursor-pointer group hover:shadow-lg transition-all duration-300 rounded-lg bg-white"
+              className="relative overflow-hidden group rounded-lg bg-white hover:shadow-lg transition-all duration-300"
             >
               <div className="aspect-[3/2] relative">
                 <img
-                  src={category.image || "/placeholder.svg"}
+                  src={category.image}
                   alt={category.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
@@ -173,78 +270,134 @@ export const HomePage = () => {
         </div>
       </section>
 
-      {/* Popular Restaurants */}
-      <section className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Quán ngon hot</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {popularRestaurants.map((restaurant) => (
-            <div
-              key={restaurant.id}
-              onClick={() => navigate(`/detail/${restaurant.id}`)}
-              className="overflow-hidden hover:shadow-lg transition-all duration-300 group rounded-lg bg-white"
-            >
-              <div className="relative">
-                <img
-                  src={restaurant.image || "/placeholder.svg"}
-                  alt={restaurant.name}
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                {restaurant.isPromo && (
-                  <div className="absolute top-3 left-3">
-                    <span className="bg-green-500 text-white text-xs font-medium px-2 py-1 rounded">
-                      PROMO
-                    </span>
-                  </div>
-                )}
-                <button
-                  onClick={() => toggleFavorite(restaurant.id)}
-                  className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors"
-                >
-                  <Heart
-                    className={`w-4 h-4 ${
-                      favorites.includes(restaurant.id)
-                        ? "fill-red-500 text-red-500"
-                        : "text-gray-600"
-                    }`}
+      {/* ================== Hiển thị nội dung chính ================== */}
+      {address && nearbyShops.length > 0 ? (
+        /* Khi có địa chỉ → hiện quán ăn gần bạn */
+        <section className="max-w-7xl mx-auto px-6 py-10 space-y-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-800">
+              Quán ăn gần bạn
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {nearbyShops.map((shop) => (
+              <div
+                key={shop._id}
+                onClick={() => navigate(`/detail/${shop._id}`)}
+                className="overflow-hidden bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group"
+              >
+                <div className="relative">
+                  <img
+                    src={shop.coverUrl || "/placeholder.svg"}
+                    alt={shop.name}
+                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                </button>
-              </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(shop._id);
+                    }}
+                    className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition"
+                  >
+                    <Heart
+                      className={`w-4 h-4 ${
+                        favorites.includes(shop._id)
+                          ? "fill-red-500 text-red-500"
+                          : "text-gray-600"
+                      }`}
+                    />
+                  </button>
+                </div>
 
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">
-                  {restaurant.name}
-                </h3>
+                <div className="p-4">
+                  <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">
+                    {shop.name}
+                  </h3>
 
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2 mb-2">
                     <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                     <span className="text-sm font-medium">
-                      {restaurant.rating}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      ({restaurant.reviews})
+                      {shop.rating?.toFixed(1) || "N/A"}
                     </span>
                   </div>
-                </div>
 
-                <p className="text-xs text-gray-600 mb-2 line-clamp-1">
-                  {restaurant.address}
-                </p>
+                  <p className="text-xs text-gray-600 mb-2 line-clamp-1">
+                    {shop.address?.street}, {shop.address?.ward},{" "}
+                    {shop.address?.district}, {shop.address?.city}
+                  </p>
 
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{restaurant.deliveryTime}</span>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      <span>{shop.distance}m</span>
+                    </div>
                   </div>
-                  <span className="text-orange-600 font-medium">
-                    {restaurant.category}
-                  </span>
                 </div>
               </div>
+            ))}
+          </div>
+        </section>
+      ) : (
+        /* Khi chưa có địa chỉ → hiện quán ngon hot từ API */
+        <section className="max-w-7xl mx-auto px-6 py-10 space-y-8">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">
+            Quán ngon hot
+          </h2>
+
+          {popularShops.length === 0 ? (
+            <p className="text-gray-500 italic">Đang tải quán nổi bật...</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {popularShops.map((shop) => (
+                <div
+                  key={shop._id}
+                  onClick={() => navigate(`/detail/${shop._id}`)}
+                  className="overflow-hidden bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group"
+                >
+                  <div className="relative">
+                    <img
+                      src={shop.coverUrl || "/placeholder.svg"}
+                      alt={shop.name}
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(shop._id);
+                      }}
+                      className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition"
+                    >
+                      <Heart
+                        className={`w-4 h-4 ${
+                          favorites.includes(shop._id)
+                            ? "fill-red-500 text-red-500"
+                            : "text-gray-600"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="p-4">
+                    <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">
+                      {shop.name}
+                    </h3>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                      <span className="text-sm font-medium">
+                        {shop.rating?.toFixed(1) || "N/A"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 mb-2 line-clamp-1">
+                      {shop.address?.street}, {shop.address?.ward},{" "}
+                      {shop.address?.district}, {shop.address?.city}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </section>
+          )}
+        </section>
+      )}
     </div>
   );
 };

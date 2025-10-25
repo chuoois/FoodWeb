@@ -75,4 +75,35 @@ const updateAccountStatus = async (req, res) => {
   }
 };
 
-module.exports = { listAccounts, updateAccountStatus };
+
+const updateAccountRole = async (req, res) => {
+  try {
+    const { accountId } = req.params;
+    const { role_id } = req.body;
+
+    if (!accountId || !role_id) {
+      return res.status(400).json({ message: "Thiếu accountId hoặc role_id" });
+    }
+
+    const account = await Account.findById(accountId);
+    if (!account) {
+      return res.status(404).json({ message: "Không tìm thấy tài khoản" });
+    }
+
+    // Cập nhật role
+    const updatedAccount = await Account.findByIdAndUpdate(
+      accountId,
+      { role_id },
+      { new: true }
+    ).populate("role_id", "name description");
+
+    return res.json({
+      message: "Cập nhật vai trò thành công",
+      account: updatedAccount
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { listAccounts, updateAccountStatus, updateAccountRole };

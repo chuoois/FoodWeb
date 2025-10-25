@@ -1,16 +1,19 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react";
-import { useFormik } from "formik";
-import * as Yup from "yup";
-import toast from "react-hot-toast";
-import { login, loginGoogle } from "@/services/auth.service";
-import { GoogleLogin } from "@react-oauth/google";
-import Cookies from "js-cookie";
+import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import { Eye, EyeOff, Mail, Lock } from "lucide-react"
+import { useFormik } from "formik"
+import * as Yup from "yup"
+import toast from "react-hot-toast"
+import { login, loginGoogle } from "@/services/auth.service"
+import { GoogleLogin } from "@react-oauth/google"
+import Cookies from "js-cookie"
+import { useContext } from "react";
+import { AuthContext } from "@/context/AuthContext";
 
 export function LoginForm() {
-  const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false)
+  const navigate = useNavigate()
+  const { login: loginContext } = useContext(AuthContext);
 
   // Lấy email đã lưu trong cookie (nếu có)
   const savedEmail = Cookies.get("rememberedEmail") || "";
@@ -38,68 +41,36 @@ export function LoginForm() {
         const res = await login(values);
         toast.success("Đăng nhập thành công!");
 
-        // ✅ Lưu token và role
+        // ✅ Gọi hàm login của context để cập nhật user toàn app
+        loginContext(res.data.token);
 
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("role", res.data.role);
-        localStorage.setItem(
-          "userInfo",
-          JSON.stringify({
-            name: res.data.name, // hoặc res.data.user.name tùy API
-            email: res.data.email, // hoặc res.data.user.email
-            // thêm các field khác nếu cần
-          })
-        );
-
-        // ✅ Điều hướng theo role
-        switch (res.data.role) {
-          case "ADMIN":
-            navigate("/admin/list-user");
-            break;
-          case "MANAGER_STAFF":
-            navigate("/manager/dashboard");
-            break;
-          default:
-            navigate("/"); // CUSTOMER hoặc mặc định
-            break;
+        // ✅ Xử lý Remember Me
+        if (values.rememberMe) {
+          Cookies.set("rememberedEmail", values.email, { expires: 7 });
+        } else {
+          Cookies.remove("rememberedEmail");
         }
+
+        navigate("/"); // Chuyển về trang chủ
       } catch (error) {
         toast.error(error.response?.data?.message || "Đăng nhập thất bại");
       } finally {
         setSubmitting(false);
       }
-    },
-  });
+    }
+  })
 
   // Xử lý Google Login
   const handleGoogleLogin = async (credentialResponse) => {
     try {
       const tokenId = credentialResponse.credential;
       const res = await loginGoogle(tokenId);
-
       toast.success("Đăng nhập Google thành công!");
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("role", res.data.role);
-      localStorage.setItem(
-        "userInfo",
-        JSON.stringify({
-          name: res.data.name, // hoặc res.data.user.name tùy API
-          email: res.data.email, // hoặc res.data.user.email
-          // thêm các field khác nếu cần
-        })
-      );
 
-      switch (res.data.role) {
-        case "ADMIN":
-          navigate("/admin/list-user");
-          break;
-        case "MANAGER_STAFF":
-          navigate("/manager/dashboard");
-          break;
-        default:
-          navigate("/");
-          break;
-      }
+      // ✅ Cập nhật vào context
+      loginContext(res.data.token);
+
+      navigate("/");
     } catch (error) {
       toast.error(error.response?.data?.message || "Đăng nhập Google thất bại");
     }
