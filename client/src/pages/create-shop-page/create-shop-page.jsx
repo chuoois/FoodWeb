@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -20,7 +20,6 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
 } from "@/components/ui/command";
 import {
   Popover,
@@ -30,11 +29,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Store, MapPin, ImageIcon, Crosshair, Check, Users } from "lucide-react";
 import { createShop, getAllManagerStaffNames } from "@/services/shop.service";
+import { getAddressFromCoordinates } from "@/services/goong.service";
 import { uploadImages } from "@/utils/cloudinary";
+import { fileToDataUrl, getCroppedImg } from "@/utils/imageCrop";
 import { toast } from "react-hot-toast";
 import Cropper from "react-easy-crop";
+import goongjs from "@goongmaps/goong-js";
 
-// Validation schema with Yup
+// Goong Maps API Key
+const GOONG_API_KEY = import.meta.env.VITE_GOONG_API_KEY_ALT;
+
+// Validation schema
 const validationSchema = Yup.object({
   name: Yup.string()
     .required("Tên cửa hàng là bắt buộc")
@@ -74,110 +79,63 @@ export const CreateShopPage = () => {
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [managers, setManagers] = useState([]);
-  const [open, setOpen] = useState(false);
+  const [openManagers, setOpenManagers] = useState(false);
   const [searchValue, setSearchValue] = useState("");
-
-  { /* thêm states cho crop */ }
+  const [addressSearch, setAddressSearch] = useState("");
   const [cropSrc, setCropSrc] = useState(null);
-  const [cropKey, setCropKey] = useState(null); // "logoUrl" hoặc "coverUrl"
+  const [cropKey, setCropKey] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [showCropModal, setShowCropModal] = useState(false);
   const [pendingFileName, setPendingFileName] = useState("cropped.jpg");
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null); // Thêm markerRef để quản lý marker
 
-  // helper: load image
-  const createImage = (url) =>
-    new Promise((resolve, reject) => {
-      const img = new Image();
-      img.addEventListener("load", () => resolve(img));
-      img.addEventListener("error", (err) => reject(err));
-      img.setAttribute("crossOrigin", "anonymous");
-      img.src = url;
+  // Initialize Goong Maps
+  useEffect(() => {
+    goongjs.accessToken = GOONG_API_KEY;
+    mapRef.current = new goongjs.Map({
+      container: mapContainerRef.current,
+      style: "https://tiles.goong.io/assets/goong_map_web.json",
+      center: [105.5276, 21.0134], // Hà Nội default
+      zoom: 12,
     });
 
-  // helper: crop to blob
-  const getCroppedImg = async (imageSrc, pixelCrop, fileType = "image/jpeg") => {
-    const image = await createImage(imageSrc);
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(pixelCrop.width);
-    canvas.height = Math.round(pixelCrop.height);
-    const ctx = canvas.getContext("2d");
+    // Khởi tạo marker
+    markerRef.current = new goongjs.Marker().setLngLat([105.5276, 21.0134]).addTo(mapRef.current);
 
-    ctx.drawImage(
-      image,
-      pixelCrop.x,
-      pixelCrop.y,
-      pixelCrop.width,
-      pixelCrop.height,
-      0,
-      0,
-      pixelCrop.width,
-      pixelCrop.height
-    );
+    mapRef.current.on("click", async (e) => {
+      const { lng, lat } = e.lngLat;
+      markerRef.current.setLngLat([lng, lat]); // Cập nhật vị trí marker
+      formik.setFieldValue("gps.latitude", lat);
+      formik.setFieldValue("gps.longitude", lng);
 
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        resolve(blob);
-      }, fileType);
-    });
-  };
-
-  // khi user chọn file -> mở cropper
-  const handleSelectFileForCrop = (e, key) => {
-    const files = e.target.files;
-    if (!files || !files.length) return;
-    const file = files[0];
-    const reader = new FileReader();
-    reader.onload = () => {
-      setCropSrc(reader.result);
-      setCropKey(key);
-      setPendingFileName(file.name || `${key}.jpg`);
-      setShowCropModal(true);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // khi crop xong -> tạo file và upload
-  const handleCropAndUpload = async () => {
-    if (!cropSrc || !croppedAreaPixels || !cropKey) {
-      setShowCropModal(false);
-      return;
-    }
-    setShowCropModal(false);
-    const blob = await getCroppedImg(cropSrc, croppedAreaPixels);
-    const file = new File([blob], pendingFileName, { type: blob.type || "image/jpeg" });
-
-    // reuse uploadImages util
-    try {
-      setUploading((prev) => ({ ...prev, [cropKey]: true }));
-      const uploadToast = toast.loading(`Đang tải ảnh ${cropKey === "logoUrl" ? "logo" : "bìa"}...`);
-      const urls = await uploadImages([file], () => { });
-      if (urls.length > 0) {
-        formik.setFieldValue(cropKey, urls[0]);
-        toast.success(`Tải ảnh thành công!`, { id: uploadToast });
-      } else {
-        toast.error("Không nhận được URL ảnh.", { id: uploadToast });
+      try {
+        const address = await getAddressFromCoordinates(lat, lng);
+        formik.setFieldValue("address", {
+          street: address.street || "",
+          ward: address.ward || "",
+          district: address.district || "",
+          city: address.city || "",
+          province: address.province || "Việt Nam",
+        });
+        setAddressSearch(`${address.street}, ${address.ward}, ${address.district}, ${address.city}`);
+      } catch (err) {
+        toast.error("Không thể lấy thông tin địa chỉ.");
+        console.error("[Lỗi lấy địa chỉ từ tọa độ]", err);
       }
-    } catch (err) {
-      console.error("[Lỗi tải ảnh sau crop]", err);
-      toast.error("Có lỗi xảy ra khi tải ảnh.");
-    } finally {
-      setUploading((prev) => ({ ...prev, [cropKey]: false }));
-      setCropSrc(null);
-      setCropKey(null);
-      setZoom(1);
-      setCrop({ x: 0, y: 0 });
-      setCroppedAreaPixels(null);
-    }
-  };
+    });
 
-  // Fetch managers on component mount
+    return () => mapRef.current.remove();
+  }, []);
+
+  // Fetch managers
   useEffect(() => {
     const fetchManagers = async () => {
       try {
         const response = await getAllManagerStaffNames();
-        console.log("API Response:", response); // Debug log
         const managerData = Array.isArray(response.data.data) ? response.data.data : [];
         setManagers(managerData);
       } catch (err) {
@@ -189,6 +147,7 @@ export const CreateShopPage = () => {
     fetchManagers();
   }, []);
 
+  // Formik setup
   const formik = useFormik({
     initialValues: {
       name: "",
@@ -212,7 +171,6 @@ export const CreateShopPage = () => {
     },
     validationSchema,
     onSubmit: async (values, { setSubmitting }) => {
-      console.log("Form Values:", values); // Debug log
       if (uploading.logo || uploading.cover) {
         toast.error("Vui lòng chờ tải ảnh xong trước khi gửi!");
         return;
@@ -239,14 +197,13 @@ export const CreateShopPage = () => {
           managers: values.managers,
         };
         const res = await createShop(payload);
-        console.log("[✅ Tạo shop thành công]", res.data);
         toast.success("Tạo cửa hàng thành công! Đơn đăng ký của bạn đang chờ phê duyệt.", {
           id: submitToast,
         });
         setHasSubmitted(true);
         setTimeout(() => navigate("/store-director/manage/approval"), 2000);
       } catch (err) {
-        console.error("[❌ Lỗi tạo cửa hàng]", err);
+        console.error("[Lỗi tạo cửa hàng]", err);
         const errorMessage = err.response?.data?.message || "Có lỗi xảy ra khi tạo cửa hàng.";
         toast.error(errorMessage, { id: submitToast });
       } finally {
@@ -255,7 +212,54 @@ export const CreateShopPage = () => {
     },
   });
 
-  // Filter managers based on search
+  // Handle file selection for cropping
+  const handleSelectFileForCrop = async (e, key) => {
+    const files = e.target.files;
+    if (!files || !files.length) return;
+    const file = files[0];
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setCropSrc(dataUrl);
+      setCropKey(key);
+      setPendingFileName(file.name || `${key}.jpg`);
+      setShowCropModal(true);
+    } catch (err) {
+      toast.error("Không thể đọc file ảnh.");
+    }
+  };
+
+  // Handle crop and upload
+  const handleCropAndUpload = async () => {
+    if (!cropSrc || !croppedAreaPixels || !cropKey) {
+      setShowCropModal(false);
+      return;
+    }
+    setShowCropModal(false);
+    try {
+      setUploading((prev) => ({ ...prev, [cropKey]: true }));
+      const uploadToast = toast.loading(`Đang tải ảnh ${cropKey === "logoUrl" ? "logo" : "bìa"}...`);
+      const file = await getCroppedImg(cropSrc, croppedAreaPixels, pendingFileName);
+      const urls = await uploadImages([file], () => {});
+      if (urls.length > 0) {
+        formik.setFieldValue(cropKey, urls[0]);
+        toast.success(`Tải ảnh thành công!`, { id: uploadToast });
+      } else {
+        toast.error("Không nhận được URL ảnh.", { id: uploadToast });
+      }
+    } catch (err) {
+      console.error("[Lỗi tải ảnh sau crop]", err);
+      toast.error("Có lỗi xảy ra khi tải ảnh.");
+    } finally {
+      setUploading((prev) => ({ ...prev, [cropKey]: false }));
+      setCropSrc(null);
+      setCropKey(null);
+      setZoom(1);
+      setCrop({ x: 0, y: 0 });
+      setCroppedAreaPixels(null);
+    }
+  };
+
+  // Filter managers
   const filteredManagers = managers.filter((manager) =>
     manager.full_name?.toLowerCase().includes(searchValue.toLowerCase())
   );
@@ -274,19 +278,36 @@ export const CreateShopPage = () => {
     formik.setFieldTouched("managers", true);
   };
 
-  // Handle getting GPS location
+  // Get current location
   const handleGetLocation = () => {
     if (navigator.geolocation) {
       setIsGettingLocation(true);
       const locationToast = toast.loading("Đang lấy vị trí...");
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           formik.setFieldValue("gps.latitude", lat);
           formik.setFieldValue("gps.longitude", lng);
-          toast.success("Lấy vị trí thành công!", { id: locationToast });
-          setIsGettingLocation(false);
+          mapRef.current.setCenter([lng, lat]);
+          markerRef.current.setLngLat([lng, lat]); // Cập nhật marker
+
+          try {
+            const address = await getAddressFromCoordinates(lat, lng);
+            formik.setFieldValue("address", {
+              street: address.street || "",
+              ward: address.ward || "",
+              district: address.district || "",
+              city: address.city || "",
+              province: address.province || "Việt Nam",
+            });
+            setAddressSearch(`${address.street}, ${address.ward}, ${address.district}, ${address.city}`);
+            toast.success("Lấy vị trí thành công!", { id: locationToast });
+          } catch (err) {
+            toast.error("Không thể lấy thông tin địa chỉ.", { id: locationToast });
+          } finally {
+            setIsGettingLocation(false);
+          }
         },
         (err) => {
           toast.error("Không lấy được vị trí: " + err.message, { id: locationToast });
@@ -393,13 +414,12 @@ export const CreateShopPage = () => {
               )}
             </div>
 
-            {/* Managers Multi-Select */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 Quản lý *
               </Label>
-              <Popover open={open} onOpenChange={setOpen}>
+              <Popover open={openManagers} onOpenChange={setOpenManagers}>
                 <PopoverTrigger asChild>
                   <Button
                     type="button"
@@ -429,17 +449,16 @@ export const CreateShopPage = () => {
                             <CommandItem
                               key={manager.account_id}
                               value={manager.full_name}
-                              onSelect={() => {
-                                handleManagerSelect(manager.account_id);
-                              }}
+                              onSelect={() => handleManagerSelect(manager.account_id)}
                               className="cursor-pointer"
                             >
                               <div className="mr-2 flex items-center">
                                 <Check
-                                  className={`h-4 w-4 ${formik.values.managers.includes(manager.account_id)
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                    }`}
+                                  className={`h-4 w-4 ${
+                                    formik.values.managers.includes(manager.account_id)
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  }`}
                                 />
                               </div>
                               <span>{manager.full_name}</span>
@@ -456,7 +475,6 @@ export const CreateShopPage = () => {
                 </PopoverContent>
               </Popover>
 
-              {/* Selected Managers Tags */}
               {formik.values.managers.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   {formik.values.managers.map((managerId) => {
@@ -506,6 +524,7 @@ export const CreateShopPage = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+
             <div className="space-y-2">
               <Label htmlFor="address.street">Địa chỉ cụ thể *</Label>
               <Input
@@ -591,25 +610,33 @@ export const CreateShopPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Lấy vị trí hiện tại</Label>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-start"
-                onClick={handleGetLocation}
-                disabled={isGettingLocation || formik.isSubmitting || hasSubmitted}
-              >
-                {isGettingLocation ? (
-                  <>
-                    Đang lấy vị trí...
-                  </>
-                ) : (
-                  <>
-                    <Crosshair className="mr-2 h-4 w-4" />
-                    Lấy vị trí hiện tại
-                  </>
-                )}
-              </Button>
+              <Label>Lấy vị trí</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={handleGetLocation}
+                  disabled={isGettingLocation || formik.isSubmitting || hasSubmitted}
+                >
+                  {isGettingLocation ? (
+                    <>Đang lấy vị trí...</>
+                  ) : (
+                    <>
+                      <Crosshair className="mr-2 h-4 w-4" />
+                      Lấy vị trí hiện tại
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Bản đồ</Label>
+              <div
+                ref={mapContainerRef}
+                className="w-full h-[300px] rounded-md border"
+              />
             </div>
 
             <div className="space-y-2">
@@ -684,10 +711,7 @@ export const CreateShopPage = () => {
                 />
                 {uploading.logo && (
                   <div className="flex items-center gap-2">
-                    <svg
-                      className="animate-spin h-4 w-4"
-                      viewBox="0 0 24 24"
-                    >
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                       <circle
                         className="opacity-25"
                         cx="12"
@@ -728,10 +752,7 @@ export const CreateShopPage = () => {
                 />
                 {uploading.cover && (
                   <div className="flex items-center gap-2">
-                    <svg
-                      className="animate-spin h-4 w-4"
-                      viewBox="0 0 24 24"
-                    >
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                       <circle
                         className="opacity-25"
                         cx="12"
@@ -780,37 +801,34 @@ export const CreateShopPage = () => {
           className="min-w-[140px]"
           disabled={formik.isSubmitting || uploading.logo || uploading.cover || hasSubmitted}
         >
-          {formik.isSubmitting
-            ? (
-              <>
-                <svg
-                  className="mr-2 h-4 w-4 animate-spin"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8a7.962 7.962 0 014.709 2.291l-2.52 2.52a4.996 4.996 0 00-1.492-1.402l-.31-.31a7 7 0 00-9.9 9.9l.31.31a4.996 4.996 0 001.492 1.402l2.52-2.52A7.962 7.962 0 0112 20c4.411 0 8-3.589 8-8h-4z"
-                  />
-                </svg>
-                Đang gửi...
-              </>
-            )
-            : hasSubmitted
-              ? "Đã gửi thành công"
-              : "Gửi đăng ký"}
+          {formik.isSubmitting ? (
+            <>
+              <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8a7.962 7.962 0 014.709 2.291l-2.52 2.52a4.996 4.996 0 00-1.492-1.402l-.31-.31a7 7 0 00-9.9 9.9l.31.31a4.996 4.996 0 001.492 1.402l2.52-2.52A7.962 7.962 0 0112 20c4.411 0 8-3.589 8-8h-4z"
+                />
+              </svg>
+              Đang gửi...
+            </>
+          ) : hasSubmitted ? (
+            "Đã gửi thành công"
+          ) : (
+            "Gửi đăng ký"
+          )}
         </Button>
       </div>
 
-      { /* thêm modal croper (đặt ở cuối return hoặc ngay trong Images Card) */}
+      {/* Crop Modal */}
       {showCropModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-[90%] max-w-3xl bg-white rounded shadow-lg p-4">
@@ -839,7 +857,14 @@ export const CreateShopPage = () => {
                 />
               </label>
               <div className="flex gap-2">
-                <Button type="button" variant="ghost" onClick={() => { setShowCropModal(false); setCropSrc(null); }}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowCropModal(false);
+                    setCropSrc(null);
+                  }}
+                >
                   Hủy
                 </Button>
                 <Button type="button" onClick={handleCropAndUpload}>
