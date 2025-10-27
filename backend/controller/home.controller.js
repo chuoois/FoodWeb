@@ -70,9 +70,9 @@ const getShopsByType = async (req, res) => {
             newLat = parseFloat(lat);
             newLng = parseFloat(lng);
         }
-        const shops = await findNearbyShops(parseFloat(newLat), parseFloat(newLng));
-        const shopsByType = shops.filter(shop => shop.type === type && shop.status === 'ACTIVE');
-        res.json({ success: true, shopsByType });
+    // Pass `type` to service so DB filters before expensive OSRM matrix call
+    const shops = await findNearbyShops(parseFloat(newLat), parseFloat(newLng), 5000, 20, type);
+    res.json({ success: true, shopsByType: shops });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
