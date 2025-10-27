@@ -46,8 +46,9 @@ const checkIsAtlas = async () => {
 };
 
 // Lấy danh sách cửa hàng gần nhất
-const findNearbyShops = async (lat, lng, radius = 5000, limit = 20) => {
-  const shops = await Shop.find({
+// Accept optional `type` to filter shops before calling external OSRM matrix (faster when searching by type)
+const findNearbyShops = async (lat, lng, radius = 5000, limit = 20, type = null) => {
+  const query = {
     gps: {
       $near: {
         $geometry: { type: "Point", coordinates: [lng, lat] },
@@ -55,8 +56,14 @@ const findNearbyShops = async (lat, lng, radius = 5000, limit = 20) => {
       }
     },
     status: "ACTIVE"
-  }).limit(limit * 2)
-    .lean();
+  };
+
+  if (type) {
+    // only include shops of requested type (reduces number of docs and external OSRM calls)
+    query.type = type;
+  }
+
+  const shops = await Shop.find(query).limit(limit * 2).lean();
 
   if (!shops.length) return [];
 
