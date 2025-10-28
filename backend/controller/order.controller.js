@@ -8,6 +8,7 @@ const User = require("../models/user.model");
 const Shop = require("../models/shop.model");
 const UserAddress = require("../models/userAddress.model");
 const Food = require("../models/food.model");
+const orderManager = require("../controller/orderManager.controller")
 
 const generateOrderCode = () => {
   const date = new Date();
@@ -26,7 +27,6 @@ exports.createOrder = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
     const user_id = user._id;
-    console.log("User ID:", user_id.toString());
 
     if (!shop_id || !delivery_address_id || !payment_method) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -37,14 +37,11 @@ exports.createOrder = async (req, res) => {
       _id: delivery_address_id,
       user: user_id,
     }).lean();
-    console.log("Shop:", shop);
-    console.log("Address:", address);
     if (!shop || !address) {
       return res.status(404).json({ message: "Shop or address not found" });
     }
 
     const cartItems = await CartItem.find({ user_id, shop_id, status: "ACTIVE" }).populate("food_id");
-    console.log("Cart Items:", cartItems);
     if (cartItems.length === 0) {
       return res.status(400).json({ message: "Cart is empty" });
     }
@@ -52,8 +49,6 @@ exports.createOrder = async (req, res) => {
     let subtotal = 0;
     const orderDetails = [];
     for (const item of cartItems) {
-      console.log("Cart Item:", item);
-      console.log("Food Data:", item.food_id);
       if (!item.food_id) {
         return res.status(400).json({ message: "Food data not found for an item" });
       }
@@ -121,6 +116,7 @@ exports.createOrder = async (req, res) => {
     });
 
     await order.save();
+    orderManager.notifyNewOrder(order)
     orderDetails.forEach((detail) => (detail.order_id = order._id));
     await OrderDetail.insertMany(orderDetails);
     await CartItem.updateMany({ user_id, shop_id, status: "ACTIVE" }, { status: "CHECKOUT" });
