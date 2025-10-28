@@ -14,7 +14,7 @@ import {
   ChevronLeft,
   Trash2,
 } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -30,99 +30,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import toast from "react-hot-toast"
-
-const products = [
-  {
-    id: 1,
-    title: "BLACK COFFEE - Cà phê đen kiểu Tonkin",
-    desc: "Tràn đầy cảm hứng bắt đầu ngày mới",
-    sold: 6,
-    price: 49000,
-    img: "https://images.unsplash.com/photo-1509042239860-f550ce710b93",
-    category: "CAFE VIỆT NAM",
-  },
-  {
-    id: 2,
-    title: "MILK COFFEE - Cà phê Bạc xỉu kiểu Tonkin",
-    desc: "Công thức Bạc xỉu độc quyền tại quán",
-    sold: 50,
-    price: 49000,
-    img: "https://winci.com.vn/wp-content/uploads/2023/12/2-Huong-Dan-Cach-Pha-Ca-Phe-Bac-Xiu-Ngon-Va-Don-Gian.jpg",
-    category: "CAFE VIỆT NAM",
-  },
-  {
-    id: 3,
-    title: "COCONUT MILK COFFEE - Cà phê sữa dừa kiểu Tonkin",
-    desc: "Hương vị sữa dừa thơm béo kết hợp độc đáo",
-    sold: 10,
-    price: 59000,
-    img: "https://file.hstatic.net/200000721249/file/ac_ngot_ngao_va_nuoc_cot_dua_beo_ngay_d69e37c5c6394aef9f932fed83616e80.jpg",
-    category: "TONKIN SIGNATURE",
-  },
-  {
-    id: 4,
-    title: "NUT MILK COFFEE - Cà phê sữa hạt kiểu Tonkin",
-    desc: "Lựa chọn tinh tế cho sức khỏe với sữa hạt",
-    sold: 0,
-    price: 55000,
-    img: "https://thienanbakery-cafe.vn/wp-content/uploads/2025/09/image.png",
-    category: "TONKIN SIGNATURE",
-  },
-  {
-    id: 5,
-    title: "ESPRESSO - Cà phê Espresso đậm đà",
-    desc: "Hương vị cà phê nguyên chất, đậm đà",
-    sold: 15,
-    price: 45000,
-    img: "https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04",
-    category: "CAFE PHA MÁY",
-  },
-  {
-    id: 6,
-    title: "CAPPUCCINO - Cà phê Cappuccino kem sữa",
-    desc: "Lớp foam mịn màng, hương vị cân bằng",
-    sold: 25,
-    price: 52000,
-    img: "https://images.unsplash.com/photo-1572442388796-11668a67e53d",
-    category: "CAFE PHA MÁY",
-  },
-  {
-    id: 7,
-    title: "COLD BREW ORIGINAL - Cà phê ủ lạnh nguyên bản",
-    desc: "Hương vị êm dịu, ít đắng, nhiều tầng hương",
-    sold: 30,
-    price: 55000,
-    img: "https://images.unsplash.com/photo-1517487881594-2787fef5ebf7",
-    category: "COLD BREW",
-  },
-  {
-    id: 8,
-    title: "COLD BREW MILK - Cà phê ủ lạnh sữa tươi",
-    desc: "Sự kết hợp hoàn hảo giữa cold brew và sữa tươi",
-    sold: 22,
-    price: 59000,
-    img: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735",
-    category: "COLD BREW",
-  },
-  {
-    id: 9,
-    title: "COLD BREW MILK - Cà phê ủ lạnh sữa tươi",
-    desc: "Sự kết hợp hoàn hảo giữa cold brew và sữa tươi",
-    sold: 22,
-    price: 59000,
-    img: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735",
-    category: "COLD BREW",
-  },
-  {
-    id: 10,
-    title: "COLD BREW MILK - Cà phê ủ lạnh sữa tươi",
-    desc: "Sự kết hợp hoàn hảo giữa cold brew và sữa tươi",
-    sold: 22,
-    price: 59000,
-    img: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735",
-    category: "COLD BREW",
-  },
-]
+import { getShopWithFoods } from "@/services/home.service" // Adjust the import path as necessary
 
 const similarRestaurants = [
   {
@@ -179,6 +87,7 @@ const openingHours = [
 ]
 
 export const DetailPage = () => {
+  const { id  } = useParams()
   const [cartItems, setCartItems] = useState([])
   const [liked, setLiked] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState("Tất cả")
@@ -187,23 +96,41 @@ export const DetailPage = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [shop, setShop] = useState(null)
+  const [foods, setFoods] = useState([])
 
   useEffect(() => {
     const token = localStorage.getItem("token")
     setIsLoggedIn(!!token)
   }, [])
+
+  useEffect(() => {
+    if (id) {
+      getShopWithFoods(id)
+        .then((response) => {
+          setShop(response.data.shop)
+          setFoods(response.data.foods.filter(food => food.is_available))
+        })
+        .catch((error) => {
+          console.error("Error fetching shop data:", error)
+          toast.error("Không thể tải thông tin quán")
+        })
+    }
+  }, [id])
+
   const itemsPerPage = 9
 
   const categories = useMemo(() => {
     const allCategories = ["Tất cả"]
-    const categoryCounts = { "Tất cả": products.length }
+    const categoryCounts = { "Tất cả": foods.length }
 
-    products.forEach((product) => {
-      if (!allCategories.includes(product.category)) {
-        allCategories.push(product.category)
-        categoryCounts[product.category] = 1
-      } else if (product.category) {
-        categoryCounts[product.category]++
+    foods.forEach((food) => {
+      const catName = food.category_id?.name
+      if (catName && !allCategories.includes(catName)) {
+        allCategories.push(catName)
+        categoryCounts[catName] = 1
+      } else if (catName) {
+        categoryCounts[catName]++
       }
     })
 
@@ -211,24 +138,24 @@ export const DetailPage = () => {
       name,
       count: categoryCounts[name] || 0,
     }))
-  }, [])
+  }, [foods])
 
-  const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const matchesCategory = selectedCategory === "Tất cả" || product.category === selectedCategory
+  const filteredFoods = useMemo(() => {
+    return foods.filter((food) => {
+      const matchesCategory = selectedCategory === "Tất cả" || food.category_id?.name === selectedCategory
       const matchesSearch =
-        product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.desc.toLowerCase().includes(searchQuery.toLowerCase())
+        food.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        food.description?.toLowerCase().includes(searchQuery.toLowerCase())
       return matchesCategory && matchesSearch
     })
-  }, [selectedCategory, searchQuery])
+  }, [selectedCategory, searchQuery, foods])
 
-  const paginatedProducts = useMemo(() => {
+  const paginatedFoods = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredProducts.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredProducts, currentPage])
+    return filteredFoods.slice(startIndex, startIndex + itemsPerPage)
+  }, [filteredFoods, currentPage])
 
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage)
+  const totalPages = Math.ceil(filteredFoods.length / itemsPerPage)
 
   useEffect(() => {
     setCurrentPage(1)
@@ -252,27 +179,33 @@ export const DetailPage = () => {
     setCartItems((prev) => prev.filter((item) => item.id !== id))
   }
 
-  const addToCart = (product) => {
-    const existingItem = cartItems.find((item) => item.id === product.id)
+  const addToCart = (food) => {
+    const existingItem = cartItems.find((item) => item.id === food._id)
     if (existingItem) {
-      handleIncrease(product.id)
-      toast.success(`Đã thêm ${product.title} vào giỏ hàng`)
+      handleIncrease(food._id)
+      toast.success(`Đã thêm ${food.name} vào giỏ hàng`)
     } else {
       setCartItems((prev) => [
         {
-          id: product.id,
+          id: food._id,
           qty: 1,
-          title: product.title,
-          price: product.price,
-          img: product.img,
+          title: food.name,
+          price: food.price,
+          img: food.image_url,
         },
         ...prev,
       ])
-      toast.success(`Đã thêm ${product.title} vào giỏ hàng`)
+      toast.success(`Đã thêm ${food.name} vào giỏ hàng`)
     }
   }
 
   const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0)
+
+  if (!shop || foods.length === 0) {
+    return <div className="flex justify-center items-center min-h-screen">Đang tải...</div>
+  }
+
+  const fullAddress = `${shop.address.street}, ${shop.address.ward}, ${shop.address.district}, ${shop.address.city}`
 
   return (
     <main className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 min-h-screen pt-4">
@@ -282,8 +215,8 @@ export const DetailPage = () => {
             <div className="flex flex-col lg:flex-row gap-6">
               <div className="w-full lg:w-96 h-64 lg:h-56 rounded-2xl overflow-hidden shadow-lg flex-shrink-0">
                 <img
-                  src="https://images.unsplash.com/photo-1554118811-1e0d58224f24"
-                  alt="Bún Bò Huế 72 - Dường 72"
+                  src={shop.coverUrl}
+                  alt={shop.name}
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                 />
               </div>
@@ -292,7 +225,7 @@ export const DetailPage = () => {
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
                   <div className="flex items-start gap-3">
                     <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
-                      Bún Bò Huế 72 - Dường 72
+                      {shop.name}
                     </CardTitle>
                   </div>
                   <Button
@@ -311,7 +244,7 @@ export const DetailPage = () => {
 
                 <div className="flex items-center gap-2 text-gray-600 mb-3">
                   <MapPin className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                  <p className="text-sm">318 Dương 72, Xã An Khánh, H. Nghi</p>
+                  <p className="text-sm">{fullAddress}</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4 mb-4">
@@ -321,13 +254,13 @@ export const DetailPage = () => {
                       className="flex items-center gap-1 bg-gradient-to-r from-orange-100 to-amber-100 text-orange-600 px-3 py-1.5 border border-orange-200"
                     >
                       <Star className="w-4 h-4 fill-orange-500 text-orange-500" />
-                      <span className="font-bold text-gray-900">4.7</span>
+                      <span className="font-bold text-gray-900">{shop.rating}</span>
                     </Badge>
                     <Button
                       variant="link"
                       className="text-sm text-orange-600 hover:text-orange-700 hover:underline p-0 h-auto font-medium"
                     >
-                      (63 Đánh giá)
+                      ({shop.reviews.length} Đánh giá)
                     </Button>
                     <Button
                       variant="link"
@@ -344,7 +277,7 @@ export const DetailPage = () => {
                   </div>
                   <div className="flex items-center gap-2 text-gray-600 text-sm">
                     <Phone className="w-4 h-4 text-orange-500" />
-                    <span className="font-medium">1900 1234</span>
+                    <span className="font-medium">{shop.phone}</span>
                   </div>
                 </div>
 
@@ -431,7 +364,7 @@ export const DetailPage = () => {
                 >
                   <ChevronLeft className="w-5 h-5 text-gray-600" />
                 </Button>
-                <span className="text-sm font-medium text-gray-600 truncate">THCS Giáp Bát – Điện Đồng Tả, 35</span>
+                <span className="text-sm font-medium text-gray-600 truncate">{shop.name}</span>
               </div>
               <Button
                 variant="ghost"
@@ -447,10 +380,10 @@ export const DetailPage = () => {
               <div className="p-6">
                 <h3 className="text-xl font-bold mb-5 text-gray-900">Thông tin quán</h3>
                 <div className="mb-6 p-5 bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl border border-orange-100">
-                  <h4 className="text-base font-bold text-gray-900 mb-3">Bún Bò Huế 72 - Dường 72</h4>
+                  <h4 className="text-base font-bold text-gray-900 mb-3">{shop.name}</h4>
                   <div className="flex items-start gap-2 text-gray-600 text-sm mb-2">
                     <MapPin className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                    <span>318 Dương 72, Xã An Khánh, H. Nghi</span>
+                    <span>{fullAddress}</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600 text-sm">
                     <Clock className="w-4 h-4 text-orange-500 flex-shrink-0" />
@@ -551,7 +484,7 @@ export const DetailPage = () => {
               {selectedCategory === "Tất cả" ? "TẤT CẢ SẢN PHẨM" : selectedCategory.toUpperCase()}
             </h2>
 
-            {filteredProducts.length === 0 ? (
+            {filteredFoods.length === 0 ? (
               <div className="text-center py-16">
                 <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 text-lg">Không tìm thấy sản phẩm nào</p>
@@ -559,43 +492,34 @@ export const DetailPage = () => {
             ) : (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {paginatedProducts.map((product) => (
+                  {paginatedFoods.map((food) => (
                     <Card
-                      key={product.id}
+                      key={food._id}
                       className="overflow-hidden border-gray-200 shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 group"
                     >
                       <div className="relative overflow-hidden">
                         <img
-                          src={product.img || "/placeholder.svg"}
-                          alt={product.title}
+                          src={food.image_url || "/placeholder.svg"}
+                          alt={food.name}
                           className="w-full h-52 object-cover group-hover:scale-110 transition-transform duration-500"
                         />
-                        {product.sold > 20 && (
-                          <Badge className="absolute top-3 left-3 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold px-3 py-1 shadow-lg">
-                            Bán chạy
-                          </Badge>
-                        )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       </div>
                       <CardContent className="p-5">
                         <CardTitle className="font-bold text-gray-900 mb-2 line-clamp-2 text-base leading-snug min-h-[3rem]">
-                          {product.title}
+                          {food.name}
                         </CardTitle>
                         <CardDescription className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.5rem]">
-                          {product.desc}
+                          {food.description}
                         </CardDescription>
-                        <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
-                          <ShoppingCart className="w-4 h-4 text-orange-500" />
-                          <span className="font-medium">{product.sold}+ đã bán</span>
-                        </div>
                         <div className="flex justify-between items-center">
                           <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                            {product.price.toLocaleString()}đ
+                            {food.price.toLocaleString()}đ
                           </span>
                           <Button
                             size="icon"
                             className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-xl shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300"
-                            onClick={() => addToCart(product)}
+                            onClick={() => addToCart(food)}
                           >
                             <Plus className="w-5 h-5 text-white" />
                           </Button>
