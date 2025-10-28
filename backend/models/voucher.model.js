@@ -58,10 +58,7 @@ const voucherSchema = new mongoose.Schema(
   }
 );
 
-// Tạo index phục vụ tìm kiếm nhanh
-voucherSchema.index({ code: 1 });
-voucherSchema.index({ is_active: 1 });
-voucherSchema.index({ start_date: 1, end_date: 1 });
+
 
 const Voucher = mongoose.model("Voucher", voucherSchema);
 module.exports = Voucher;
