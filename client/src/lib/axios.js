@@ -7,7 +7,7 @@ const baseURL = "http://localhost:9999/api";
 const api = axios.create({
   baseURL,
   headers: { "Content-Type": "application/json" },
-  timeout: 30000, // 30 seconds
+  timeout: 15000, // 15 seconds
 });
 
 // Request Interceptor

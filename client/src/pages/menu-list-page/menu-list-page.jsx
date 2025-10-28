@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Star, Heart } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Star, Heart, MapPin } from "lucide-react";
 import { getShopsByType } from "@/services/home.service";
 
 export const MenuListPage = () => {
@@ -10,39 +9,33 @@ export const MenuListPage = () => {
 
   const [shops, setShops] = useState([]);
   const [favorites, setFavorites] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   // 🔹 Lấy lat/lng từ sessionStorage
   const locationData = JSON.parse(sessionStorage.getItem("userLocation"));
-  const lat = locationData?.lat || null;
-  const lng = locationData?.lng || null;
+  const DEFAULT_LOCATION = { lat: 21.0135, lng: 105.5262 }; // Đại học FPT Hà Nội
+
+  const lat = locationData?.lat || DEFAULT_LOCATION.lat;
+  const lng = locationData?.lng || DEFAULT_LOCATION.lng;
 
   // 🔹 Gọi API khi category thay đổi
   useEffect(() => {
-  if (!category) return;
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await getShopsByType(category, lat, lng);
-      setShops(res?.data?.shopsByType || []);
-    } catch (err) {
-      console.error(err);
-      setShops([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchData();
-}, [category]);
+    if (!category) return;
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const res = await getShopsByType(category, lat, lng);
+        setShops(res?.data?.shopsByType || []);
+      } catch (err) {
+        console.error(err);
+        setShops([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [category]);
 
-
-  // 🔹 Lọc theo tên hoặc loại
-  const filteredItems = shops.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.type.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   // 🔹 Thêm/bỏ yêu thích
   const toggleFavorite = (id) => {
@@ -78,91 +71,63 @@ export const MenuListPage = () => {
         <h2 className="text-5xl font-bold text-gray-800 mb-6">
           {category === "Drink" ? "Đồ uống" : "Đồ ăn"}
         </h2>
-
-        {/* Ô tìm kiếm */}
-        <div className="mb-6">
-          <input
-            type="text"
-            placeholder="Tìm kiếm cửa hàng..."
-            className="w-full md:w-1/2 border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-orange-400"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-
         {/* Menu Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItems.map((item) => (
-            <Card
-              key={item._id}
-              onClick={() => navigate(`/detail/${item._id}`)}
-              className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer"
+          {shops.map((shop) => (
+            <div
+              key={shop._id}
+              onClick={() => navigate(`/detail/${shop._id}`)}
+              className="overflow-hidden bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group"
             >
               <div className="relative">
                 <img
-                  src={item.coverUrl || "/placeholder.svg"}
-                  alt={item.name}
+                  src={shop.coverUrl || "/placeholder.svg"}
+                  alt={shop.name}
                   className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                {item.isPromo && (
-                  <div className="absolute top-3 left-3">
-                    <span className="bg-green-500 text-white text-xs font-medium px-2 py-1 rounded">
-                      PROMO
-                    </span>
-                  </div>
-                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleFavorite(item._id);
+                    toggleFavorite(shop._id);
                   }}
-                  className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors"
+                  className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition"
                 >
                   <Heart
-                    className={`w-4 h-4 ${
-                      favorites.includes(item._id)
-                        ? "fill-red-500 text-red-500"
-                        : "text-gray-600"
-                    }`}
+                    className={`w-4 h-4 ${favorites.includes(shop._id)
+                      ? "fill-red-500 text-red-500"
+                      : "text-gray-600"
+                      }`}
                   />
                 </button>
               </div>
 
               <div className="p-4">
-                <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm leading-tight">
-                  {item.name}
+                <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">
+                  {shop.name}
                 </h3>
-                <p className="text-xs text-gray-600 mb-3 line-clamp-1">
-                  {`${item.address?.street || ""}, ${item.address?.district || ""}, ${item.address?.city || ""}`}
-                </p>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-medium">
-                      {item.rating || "N/A"}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      ({item.reviews?.length || 0})
-                    </span>
-                  </div>
-                  <span className="text-xs text-orange-600 font-medium">
-                    {item.type}
+                <div className="flex items-center gap-2 mb-2">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  <span className="text-sm font-medium">
+                    {shop.rating?.toFixed(1) || "N/A"}
                   </span>
                 </div>
+
+                <p className="text-xs text-gray-600 mb-2 line-clamp-1">
+                  {shop.address?.street}, {shop.address?.ward},{" "}
+                  {shop.address?.district}, {shop.address?.city}
+                </p>
+
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    <span>{shop.distance}m</span>
+                  </div>
+                </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
-
-        {/* No Results */}
-        {filteredItems.length === 0 && searchQuery && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">
-              Không tìm thấy kết quả cho "{searchQuery}"
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
