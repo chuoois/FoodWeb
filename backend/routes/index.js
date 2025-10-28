@@ -8,6 +8,7 @@ const shopRoutes = require('./shop.routes')
 const foodRoutes = require('./food.routes');
 const orderRouter = require('./order.routes');
 const cartRoutes = require('./cart.routes');
+const orderManageRoutes = require('./orderManager.routes');
 
 router.use(homeRoutes);
 router.use(authRoutes);
@@ -17,5 +18,6 @@ router.use(shopRoutes);
 router.use(foodRoutes);
 router.use(orderRouter)
 router.use(cartRoutes);
+router.use(orderManageRoutes);
 
 module.exports = router;
