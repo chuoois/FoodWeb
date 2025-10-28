@@ -73,10 +73,12 @@ export const AccountManagement = () => {
     }
   };
 
+  // FIX: Thêm searchQuery, statusFilter, roleFilter vào deps để trigger fetch khi filter thay đổi
   useEffect(() => {
     fetchAccounts();
-  }, [currentPage]);
+  }, [currentPage, searchQuery, statusFilter, roleFilter]); // <-- Thay đổi ở đây
 
+  // Reset về trang 1 khi filter thay đổi (giữ nguyên)
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, roleFilter]);
