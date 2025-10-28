@@ -61,7 +61,7 @@ export function StoreDirectorLogin() {
             navigate("/store-director/manage/dashboard");
             break;
           case "MANAGER_STAFF":
-            navigate("/cmanager-staff/manage");
+            navigate("/manager-staff/manage");
             break;
           case "SELLER_STAFF":
             navigate("/seller/dashboard");
