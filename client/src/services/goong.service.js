@@ -53,22 +53,41 @@ export const getAddressFromCoordinates = async (latitude, longitude) => {
 };
 
 // Tìm kiếm địa chỉ dựa trên từ khóa (Place Autocomplete)
-export const searchAddress = async (query) => {
-  try {
-    const response = await api.get(`${GOONG_API_BASE_URL}/Place/AutoComplete`, {
-      params: {
-        input: query,
-        api_key: GOONG_API_KEY,
-      },
-    });
+const FPT_HANOI = { lat: 21.0133, lng: 105.5259 };
 
-    if (response.data.status === "OK") {
-      return response.data.predictions || [];
-    } else {
-      throw new Error("Không tìm thấy kết quả tìm kiếm.");
+export const searchAddress = async (input) => {
+  if (!input.trim()) return [];
+
+  // Lấy vị trí người dùng từ sessionStorage (nếu có)
+  let location = FPT_HANOI;
+  const savedLoc = sessionStorage.getItem("userLocation");
+  if (savedLoc) {
+    try {
+      const parsed = JSON.parse(savedLoc);
+      if (parsed.lat && parsed.lng) {
+        location = parsed;
+      }
+    } catch (e) {
+      console.warn("Lỗi parse userLocation");
     }
-  } catch (error) {
-    console.error("[Lỗi tìm kiếm địa chỉ]", error);
-    throw new Error("Không thể tìm kiếm địa chỉ từ Goong Maps API.");
   }
+
+  const params = new URLSearchParams({
+    input: input,
+    api_key: import.meta.env.VITE_GOONG_API_KEY,
+    location: `${location.lat},${location.lng}`,
+    radius: "50000", // 50km quanh khu vực
+    strictbounds: "true", // Ưu tiên trong bán kính
+  });
+
+  const response = await fetch(
+    `https://rsapi.goong.io/Place/AutoComplete?${params}`
+  );
+  const data = await response.json();
+
+  if (data.status !== "OK") {
+    throw new Error(data.error_message || "Lỗi tìm kiếm địa chỉ");
+  }
+
+  return data.predictions;
 };

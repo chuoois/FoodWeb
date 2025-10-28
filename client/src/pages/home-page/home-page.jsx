@@ -1,12 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MapPin, Crosshair, Star, Heart, Clock } from "lucide-react";
-import  useDebounce  from "@/hooks/useDebounce";
+import { MapPin, Crosshair, Star, Heart } from "lucide-react";
+import useDebounce from "@/hooks/useDebounce";
 import {
   getNearbyShops,
   getPopularShops,
-  searchHome,
 } from "@/services/home.service";
+import {
+  searchAddress,
+  getAddressFromCoordinates,
+} from "@/services/goong.service";
 import {
   Carousel,
   CarouselContent,
@@ -22,6 +25,7 @@ const heroContent = {
   description:
     "Đặt món ăn yêu thích từ các nhà hàng tốt nhất trong thành phố. Giao hàng nhanh chóng, đảm bảo chất lượng.",
 };
+
 const foodCategories = [
   {
     id: 1,
@@ -38,27 +42,12 @@ const foodCategories = [
     color: "from-orange-400 to-orange-600",
   },
 ];
+
 const heroSlides = [
-  {
-    id: 1,
-    image: "/img-home/img-hero-section.png",
-    alt: "Delivery illustration",
-  },
-  {
-    id: 2,
-    image: "/img-home/delicious-food-delivery-with-fresh-ingredients.jpg",
-    alt: "Fresh food delivery",
-  },
-  {
-    id: 3,
-    image: "/img-home/happy-customer-receiving-food-delivery.png",
-    alt: "Happy customer",
-  },
-  {
-    id: 4,
-    image: "/img-home/variety-of-restaurant-dishes-and-meals.jpg",
-    alt: "Restaurant dishes",
-  },
+  { id: 1, image: "/img-home/img-hero-section.png", alt: "Delivery illustration" },
+  { id: 2, image: "/img-home/delicious-food-delivery-with-fresh-ingredients.jpg", alt: "Fresh food" },
+  { id: 3, image: "/img-home/happy-customer-receiving-food-delivery.png", alt: "Happy customer" },
+  { id: 4, image: "/img-home/variety-of-restaurant-dishes-and-meals.jpg", alt: "Restaurant dishes" },
 ];
 
 export const HomePage = () => {
@@ -66,100 +55,167 @@ export const HomePage = () => {
   const [address, setAddress] = useState("");
   const [nearbyShops, setNearbyShops] = useState([]);
   const [popularShops, setPopularShops] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const navigate = useNavigate();
 
+  const debouncedAddress = useDebounce(address, 400);
 
-
-  const [suggestions, setSuggestions] = useState([]);
-const [debouncedAddress] = useDebounce(address, 400);
-
-// Gợi ý địa chỉ (OpenStreetMap Photon API)
-// Sử dụng API Nominatim ổn định hơn Photon, không giới hạn ký tự
-useEffect(() => {
-  if (!debouncedAddress?.trim()) {
-    setSuggestions([]);
-    return;
-  }
-
-  const controller = new AbortController();
-
-  fetch(
-    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-      debouncedAddress
-    )}&addressdetails=1&limit=5&accept-language=vi`,
-    { signal: controller.signal }
-  )
-    .then((res) => {
-      if (!res.ok) throw new Error("Request failed");
-      return res.json();
-    })
-    .then((data) => {
-      const results = data.map((f) => ({
-        name: f.display_name.split(",")[0],
-        display: f.display_name,
-        lat: f.lat,
-        lng: f.lon,
-      }));
-      setSuggestions(results);
-    })
-    .catch((err) => {
-      if (err.name !== "AbortError") {
-        console.error("Lỗi khi tìm địa chỉ:", err);
-      }
-      setSuggestions([]);
-    });
-
-  // cleanup tránh race condition
-  return () => controller.abort();
-}, [debouncedAddress]);
-
-
-
-const handleSelect = async (place) => {
-  setAddress(place.display);
-  setSuggestions([]);
-  const loc = { lat: place.lat, lng: place.lng };
-  sessionStorage.setItem("userLocation", JSON.stringify(loc));
-
-  const res = await getNearbyShops(place.lat, place.lng);
-  if (res.data?.shops) setNearbyShops(res.data.shops);
-};
-
-const handleGetLocation = () => {
-  if (!navigator.geolocation)
-    return alert("Trình duyệt của bạn không hỗ trợ định vị");
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      sessionStorage.setItem("userLocation", JSON.stringify({ lat, lng }));
-
-      const resGeo = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi`
-      );
-      const dataGeo = await resGeo.json();
-      setAddress(dataGeo.display_name || `${lat}, ${lng}`);
-
-      const res = await getNearbyShops(lat, lng);
-      if (res.data?.shops) setNearbyShops(res.data.shops);
-    },
-    (err) => alert("Không lấy được vị trí: " + err.message)
-  );
-};
-
-  // ✅ Lấy danh sách shop phổ biến khi vào trang
+  // === TẢI QUÁN PHỔ BIẾN ===
   useEffect(() => {
     getPopularShops()
-      .then((res) => {
-        console.log("Popular shops:", res.data);
-        if (res.data?.shops) setPopularShops(res.data.shops);
+      .then((res) => res.data?.shops && setPopularShops(res.data.shops))
+      .catch((err) => console.error("Lỗi tải quán phổ biến:", err));
+  }, []);
+
+  // === TÌM KIẾM GỢI Ý ĐỊA CHỈ (chỉ khi >= 2 ký tự) ===
+  useEffect(() => {
+    const query = debouncedAddress.trim();
+
+    if (isLocating || query.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    let mounted = true;
+    setLoading(true);
+
+    searchAddress(query)
+      .then((predictions) => {
+        if (!mounted) return;
+
+        const results = predictions.map((p) => {
+          const main = p.structured_formatting?.main_text || p.description.split(",")[0];
+          const secondary = p.structured_formatting?.secondary_text ||
+            p.description.replace(main, "").replace(/^,\s*/, "").trim();
+
+          return {
+            place_id: p.place_id,
+            display: p.description,
+            main_text: main,
+            secondary_text: secondary,
+          };
+        });
+
+        setSuggestions(results);
       })
-      .catch((err) => console.error("Lỗi khi tải popular shops:", err));
+      .catch((err) => {
+        if (mounted) console.error("Lỗi tìm kiếm địa chỉ:", err);
+        if (mounted) setSuggestions([]);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => { mounted = false; };
+  }, [debouncedAddress, isLocating]);
+
+  // === CHỌN GỢI Ý ===
+  const handleSelect = useCallback(async (suggestion) => {
+    setIsLocating(true);
+    setSuggestions([]);
+    setLoading(true);
+
+    try {
+      // Lấy chi tiết địa điểm
+      const detailResponse = await fetch(
+        `https://rsapi.goong.io/Place/Detail?place_id=${suggestion.place_id}&api_key=${import.meta.env.VITE_GOONG_API_KEY}`
+      );
+      const detailData = await detailResponse.json();
+
+      if (detailData.status !== "OK" || !detailData.result?.geometry?.location) {
+        throw new Error("Không lấy được tọa độ");
+      }
+
+      const { lat, lng } = detailData.result.geometry.location;
+      const loc = { lat, lng };
+      sessionStorage.setItem("userLocation", JSON.stringify(loc));
+
+      // Lấy địa chỉ chi tiết từ tọa độ
+      const addressData = await getAddressFromCoordinates(lat, lng);
+      const fullAddress = [
+        addressData.street,
+        addressData.ward,
+        addressData.district,
+        addressData.city,
+      ].filter(Boolean).join(", ");
+
+      setAddress(fullAddress);
+      sessionStorage.setItem("userAddress", fullAddress);
+
+      // Lấy quán gần
+      const res = await getNearbyShops(lat, lng);
+      if (res.data?.shops) setNearbyShops(res.data.shops);
+    } catch (err) {
+      console.error("Lỗi chọn địa chỉ:", err);
+      alert("Không thể xác định vị trí. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+      setTimeout(() => setIsLocating(false), 100);
+    }
+  }, []);
+
+  // === LẤY VỊ TRÍ HIỆN TẠI ===
+  const handleGetLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      return alert("Trình duyệt không hỗ trợ định vị");
+    }
+
+    setIsLocating(true);
+    setLoading(true);
+    setSuggestions([]);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const loc = { lat, lng };
+        sessionStorage.setItem("userLocation", JSON.stringify(loc));
+
+        try {
+          const addressData = await getAddressFromCoordinates(lat, lng);
+          const fullAddress = [
+            addressData.street,
+            addressData.ward,
+            addressData.district,
+            addressData.city,
+          ].filter(Boolean).join(", ");
+
+          setAddress(fullAddress);
+          sessionStorage.setItem("userAddress", fullAddress);
+
+          const res = await getNearbyShops(lat, lng);
+          if (res.data?.shops) setNearbyShops(res.data.shops);
+        } catch (err) {
+          console.error("Lỗi lấy địa chỉ:", err);
+          const fallback = `Vị trí: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          setAddress(fallback);
+          sessionStorage.setItem("userAddress", fallback);
+          alert("Lấy vị trí thành công nhưng không có địa chỉ chi tiết.");
+        } finally {
+          setLoading(false);
+          setTimeout(() => setIsLocating(false), 100);
+        }
+      },
+      (err) => {
+        alert("Không lấy được vị trí: " + err.message);
+        setLoading(false);
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  }, []);
+
+  // === KHỞI TẠO TỪ SESSIONSTORAGE ===
+  useEffect(() => {
+    const savedAddr = sessionStorage.getItem("userAddress");
+    if (savedAddr) setAddress(savedAddr);
   }, []);
 
   const toggleFavorite = (id) => {
     setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((fav) => fav !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
     );
   };
 
@@ -171,47 +227,86 @@ const handleGetLocation = () => {
           <div className="space-y-8">
             <div className="space-y-4">
               <h1 className="text-5xl lg:text-6xl font-bold text-foreground leading-tight">
-                Giao hàng nhanh,{" "}
-                <span className="text-orange-500">mọi lúc!</span>
+                Giao hàng nhanh, <span className="text-orange-500">mọi lúc!</span>
               </h1>
               <p className="text-lg text-muted-foreground leading-relaxed max-w-lg">
                 {heroContent.description}
               </p>
             </div>
 
-            {/* Địa chỉ người dùng */}
-            {/* Địa chỉ người dùng (OpenStreetMap + Autocomplete) */}
-            <div className="w-full max-w-lg space-y-2">
+            {/* Input + Autocomplete */}
+            <div className="w-full max-w-lg space-y-2 relative">
               <div className="flex items-center border border-blue-400 rounded-lg px-3 py-2 bg-white shadow-sm">
                 <MapPin className="w-5 h-5 text-gray-500" />
                 <input
                   type="text"
-                  placeholder="Nhập địa chỉ của bạn (ví dụ: Đại học FPT, Hòa Lạc)"
+                  placeholder="Nhập địa chỉ giao hàng..."
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   className="flex-1 px-2 py-1 outline-none text-gray-700"
+                  disabled={loading || isLocating}
                 />
-                <button onClick={handleGetLocation}>
-                  <Crosshair className="w-5 h-5 text-gray-500 hover:text-orange-500" />
+                <button
+                  onClick={handleGetLocation}
+                  disabled={loading || isLocating}
+                  className="disabled:opacity-50"
+                >
+                  <Crosshair
+                    className={`w-5 h-5 transition-all ${
+                      isLocating
+                        ? "text-orange-500 animate-pulse"
+                        : "text-gray-500 hover:text-orange-500"
+                    }`}
+                  />
                 </button>
               </div>
 
-              {suggestions.length > 0 && (
-                <ul className="bg-white border rounded-lg shadow-md mt-1 max-h-48 overflow-y-auto">
-                  {suggestions.map((s, i) => (
+              {/* Thông báo input ngắn */}
+              {address.length > 0 && address.length < 2 && !loading && !isLocating && (
+                <div className="text-xs text-gray-500 px-2 mt-1">
+                  Nhập ít nhất 2 ký tự để tìm kiếm...
+                </div>
+              )}
+
+              {/* Loading */}
+              {(loading || isLocating) && (
+                <div className="text-sm text-orange-500 px-2 flex items-center gap-2">
+                  <div className="animate-spin w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full"></div>
+                  {isLocating ? "Đang định vị..." : "Đang tìm kiếm..."}
+                </div>
+              )}
+
+              {/* Gợi ý */}
+              {suggestions.length > 0 && !loading && !isLocating && (
+                <ul className="absolute z-20 w-full bg-white border rounded-lg shadow-xl mt-1 max-h-64 overflow-y-auto">
+                  {suggestions.map((s) => (
                     <li
-                      key={i}
+                      key={s.place_id}
                       onClick={() => handleSelect(s)}
-                      className="px-3 py-2 hover:bg-orange-100 cursor-pointer text-sm"
+                      className="px-4 py-3 hover:bg-orange-50 cursor-pointer border-b last:border-b-0 transition"
                     >
-                      {s.display}
+                      <div className="font-medium text-gray-800">{s.main_text}</div>
+                      {s.secondary_text && (
+                        <div className="text-xs text-gray-500">{s.secondary_text}</div>
+                      )}
                     </li>
                   ))}
                 </ul>
               )}
+
+              {/* Không có gợi ý */}
+              {suggestions.length === 0 && debouncedAddress.length >= 2 && !loading && !isLocating && (
+                <div className="text-sm text-gray-500 px-2 italic">
+                  Không tìm thấy. Hãy thử nhập chi tiết hơn hoặc
+                  <button onClick={handleGetLocation} className="underline ml-1 text-orange-500">
+                    dùng vị trí hiện tại
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
+          {/* Carousel */}
           <div className="relative">
             <Carousel
               opts={{ align: "center", loop: true }}
@@ -221,9 +316,9 @@ const handleGetLocation = () => {
               <CarouselContent>
                 {heroSlides.map((slide) => (
                   <CarouselItem key={slide.id}>
-                    <div className="relative w-full h-96 rounded-3xl overflow-hidden shadow-2xl shadow-orange-200 transform hover:scale-105 transition-transform duration-500 ease-in-out">
+                    <div className="relative w-full h-96 rounded-3xl overflow-hidden shadow-2xl shadow-orange-200 transform hover:scale-105 transition-transform duration-500">
                       <img
-                        src={slide.image || "/placeholder.svg"}
+                        src={slide.image}
                         alt={slide.alt}
                         className="w-full h-full object-cover"
                       />
@@ -238,31 +333,25 @@ const handleGetLocation = () => {
         </div>
       </section>
 
-      {/* Food Categories */}
-      <section className="max-w-7xl mx-auto px-6 py-10 space-y-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">
-          Bộ sưu tập món ăn
-        </h2>
+      {/* Danh mục */}
+      <section className="max-w-7xl mx-auto px-6 py-10">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Bộ sưu tập món ăn</h2>
         <div className="grid grid-cols-2 gap-4">
-          {foodCategories.map((category) => (
+          {foodCategories.map((cat) => (
             <Link
-              key={category.id}
-              to={`/menu/list/${category.slug}`}
+              key={cat.id}
+              to={`/menu/list/${cat.slug}`}
               className="relative overflow-hidden group rounded-lg bg-white hover:shadow-lg transition-all duration-300"
             >
               <div className="aspect-[3/2] relative">
                 <img
-                  src={category.image}
-                  alt={category.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  src={cat.image}
+                  alt={cat.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
-                <div
-                  className={`absolute inset-0 bg-gradient-to-r ${category.color} opacity-60`}
-                />
+                <div className={`absolute inset-0 bg-gradient-to-r ${cat.color} opacity-60`} />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <h3 className="text-white text-xl font-bold text-center px-4">
-                    {category.name}
-                  </h3>
+                  <h3 className="text-white text-xl font-bold px-4">{cat.name}</h3>
                 </div>
               </div>
             </Link>
@@ -270,129 +359,25 @@ const handleGetLocation = () => {
         </div>
       </section>
 
-      {/* ================== Hiển thị nội dung chính ================== */}
+      {/* Nội dung chính */}
       {address && nearbyShops.length > 0 ? (
-        /* Khi có địa chỉ → hiện quán ăn gần bạn */
-        <section className="max-w-7xl mx-auto px-6 py-10 space-y-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-800">
-              Quán ăn gần bạn
-            </h2>
-          </div>
+        <section className="max-w-7xl mx-auto px-6 py-10">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Quán ăn gần bạn</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {nearbyShops.map((shop) => (
-              <div
-                key={shop._id}
-                onClick={() => navigate(`/detail/${shop._id}`)}
-                className="overflow-hidden bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group"
-              >
-                <div className="relative">
-                  <img
-                    src={shop.coverUrl || "/placeholder.svg"}
-                    alt={shop.name}
-                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(shop._id);
-                    }}
-                    className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition"
-                  >
-                    <Heart
-                      className={`w-4 h-4 ${
-                        favorites.includes(shop._id)
-                          ? "fill-red-500 text-red-500"
-                          : "text-gray-600"
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">
-                    {shop.name}
-                  </h3>
-
-                  <div className="flex items-center gap-2 mb-2">
-                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-medium">
-                      {shop.rating?.toFixed(1) || "N/A"}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-gray-600 mb-2 line-clamp-1">
-                    {shop.address?.street}, {shop.address?.ward},{" "}
-                    {shop.address?.district}, {shop.address?.city}
-                  </p>
-
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      <span>{shop.distance}m</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <ShopCard key={shop._id} shop={shop} favorites={favorites} toggleFavorite={toggleFavorite} navigate={navigate} />
             ))}
           </div>
         </section>
       ) : (
-        /* Khi chưa có địa chỉ → hiện quán ngon hot từ API */
-        <section className="max-w-7xl mx-auto px-6 py-10 space-y-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">
-            Quán ngon hot
-          </h2>
-
+        <section className="max-w-7xl mx-auto px-6 py-10">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Quán ngon hot</h2>
           {popularShops.length === 0 ? (
             <p className="text-gray-500 italic">Đang tải quán nổi bật...</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {popularShops.map((shop) => (
-                <div
-                  key={shop._id}
-                  onClick={() => navigate(`/detail/${shop._id}`)}
-                  className="overflow-hidden bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group"
-                >
-                  <div className="relative">
-                    <img
-                      src={shop.coverUrl || "/placeholder.svg"}
-                      alt={shop.name}
-                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(shop._id);
-                      }}
-                      className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition"
-                    >
-                      <Heart
-                        className={`w-4 h-4 ${
-                          favorites.includes(shop._id)
-                            ? "fill-red-500 text-red-500"
-                            : "text-gray-600"
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  <div className="p-4">
-                    <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">
-                      {shop.name}
-                    </h3>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm font-medium">
-                        {shop.rating?.toFixed(1) || "N/A"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-600 mb-2 line-clamp-1">
-                      {shop.address?.street}, {shop.address?.ward},{" "}
-                      {shop.address?.district}, {shop.address?.city}
-                    </p>
-                  </div>
-                </div>
+                <ShopCard key={shop._id} shop={shop} favorites={favorites} toggleFavorite={toggleFavorite} navigate={navigate} />
               ))}
             </div>
           )}
@@ -401,3 +386,53 @@ const handleGetLocation = () => {
     </div>
   );
 };
+
+// === SHOP CARD COMPONENT ===
+const ShopCard = ({ shop, favorites, toggleFavorite, navigate }) => (
+  <div
+    onClick={() => navigate(`/detail/${shop._id}`)}
+    className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group overflow-hidden"
+  >
+    <div className="relative">
+      <img
+        src={shop.coverUrl || "/placeholder.svg"}
+        alt={shop.name}
+        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+      />
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleFavorite(shop._id);
+        }}
+        className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition"
+      >
+        <Heart
+          className={`w-4 h-4 transition ${
+            favorites.includes(shop._id)
+              ? "fill-red-500 text-red-500"
+              : "text-gray-600"
+          }`}
+        />
+      </button>
+    </div>
+
+    <div className="p-4">
+      <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">
+        {shop.name}
+      </h3>
+      <div className="flex items-center gap-2 mb-2">
+        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+        <span className="text-sm font-medium">{shop.rating?.toFixed(1) || "N/A"}</span>
+      </div>
+      <p className="text-xs text-gray-600 mb-2 line-clamp-1">
+        {shop.address?.street}, {shop.address?.ward}, {shop.address?.district}
+      </p>
+      {shop.distance !== undefined && (
+        <div className="flex items-center gap-1 text-xs text-gray-500">
+          <MapPin className="w-3 h-3" />
+          <span>{Math.round(shop.distance)}m</span>
+        </div>
+      )}
+    </div>
+  </div>
+);

@@ -1,4 +1,4 @@
-const { findNearbyShops, searchByKeyword,getShopDetailsWithMenu } = require("../services/shop.service");
+const { findNearbyShops, searchByKeyword, getShopDetailsWithMenu } = require("../services/shop.service");
 const Shop = require("../models/shop.model");
 // Định nghĩa vị trí mặc định (ĐH FPT Hà Nội) bằng biến môi trường
 const DEFAULT_LOCATION = {
@@ -7,19 +7,19 @@ const DEFAULT_LOCATION = {
 };
 
 const getNearbyShopsByCoords = async (req, res) => {
-  try {
-    const limit = 20;
-    const { lat, lng } = req.query;
-    if (!lat || !lng) {
-      return res.status(400).json({ success: false, message: "Missing lat/lng" });
-    }
+    try {
+        const limit = 20;
+        const { lat, lng } = req.query;
+        if (!lat || !lng) {
+            return res.status(400).json({ success: false, message: "Missing lat/lng" });
+        }
 
-    const shops = await findNearbyShops(parseFloat(lat), parseFloat(lng));
-   
-    res.json({ success: true, shops });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+        const shops = await findNearbyShops(parseFloat(lat), parseFloat(lng));
+
+        res.json({ success: true, shops });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 };
 
 const searchHome = async (req, res) => {
@@ -57,22 +57,16 @@ const searchHome = async (req, res) => {
 
 const getShopsByType = async (req, res) => {
     try {
-        const {type,lat,lng } = req.query;
-        let newLat, newLng ;
+        const { type, lat, lng } = req.query;
         if (!type) {
-            console.log('Type param:', type);
             return res.status(400).json({ success: false, message: "Loại quán là bắt buộc." });
         }
         if (!lat || !lng) {
-            newLat = DEFAULT_LOCATION.lat;
-            newLng = DEFAULT_LOCATION.lng;
-        } else {
-            newLat = parseFloat(lat);
-            newLng = parseFloat(lng);
+            return res.status(400).json({ success: false, message: "Missing lat/lng" });
         }
-    // Pass `type` to service so DB filters before expensive OSRM matrix call
-    const shops = await findNearbyShops(parseFloat(newLat), parseFloat(newLng), 5000, 20, type);
-    res.json({ success: true, shopsByType: shops });
+        // Pass `type` to service so DB filters before expensive OSRM matrix call
+        const shops = await findNearbyShops(parseFloat(lat), parseFloat(lng), 5000, 20, type);
+        res.json({ success: true, shopsByType: shops });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -98,6 +92,4 @@ const getShopsById = async (req, res) => {
     }
 };
 
-module.exports = { getNearbyShopsByCoords, searchHome,getShopsByRate,getShopsByType,getShopsById };
-
-
+module.exports = { getNearbyShopsByCoords, searchHome, getShopsByRate, getShopsByType, getShopsById };
