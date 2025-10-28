@@ -50,3 +50,4 @@ export const deleteStaff = (staffId) => {
 export const getShopDetailByID = (shopId) => {
   return api.get(`/shop/${shopId}/detail`);
 };
+

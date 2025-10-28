@@ -7,7 +7,9 @@ const listAccounts = async (req, res) => {
     const limit = 8;
     const skip = (page - 1) * limit;
 
-    const query = {};
+    const query = {
+      status: { $ne: "PENDING" } // 🔹 loại bỏ tài khoản pending
+    };
 
     if (search) {
       query.email = { $regex: search, $options: "i" };
@@ -30,12 +32,11 @@ const listAccounts = async (req, res) => {
     const total = await Account.countDocuments(query);
     const totalPages = Math.ceil(total / limit);
 
-    // 🔹 Lấy thêm danh sách role để gửi về frontend
     const roles = await Role.find({}, "_id name description");
 
     return res.json({
       accounts,
-      roles,           // ✅ thêm dòng này
+      roles,
       totalPages,
       currentPage: parseInt(page),
     });
@@ -43,6 +44,39 @@ const listAccounts = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+
+const listPendingAccounts = async (req, res) => {
+  try {
+    const { search, page = 1 } = req.query;
+    const limit = 8;
+    const skip = (page - 1) * limit;
+
+    const query = { status: "PENDING" }; // 🔹 chỉ lấy tài khoản pending
+
+    if (search) {
+      query.email = { $regex: search, $options: "i" };
+    }
+
+    const accounts = await Account.find(query)
+      .populate("role_id", "name description")
+      .select("email status email_verified role_id createdAt provider")
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Account.countDocuments(query);
+    const totalPages = Math.ceil(total / limit);
+
+    return res.json({
+      accounts,
+      totalPages,
+      currentPage: parseInt(page),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 
 
 
@@ -106,4 +140,4 @@ const updateAccountRole = async (req, res) => {
   }
 };
 
-module.exports = { listAccounts, updateAccountStatus, updateAccountRole };
+module.exports = { listAccounts, listPendingAccounts, updateAccountStatus, updateAccountRole };

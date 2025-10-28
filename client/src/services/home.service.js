@@ -25,3 +25,7 @@ export const getShopWithFoods = (id) => {
     return api.get(`home/shop/${id}/foods`);
 };
 
+export const getRandomShops = () => {
+    return api.get("home/detail/random");
+};
+

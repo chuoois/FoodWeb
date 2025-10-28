@@ -18,3 +18,7 @@ export const listShops = (params) => {
 export const updateShopStatus = (shopId) => {
   return api.patch(`/admin/shops/${shopId}`)
 }
+
+export const listPendingAccounts = (params) => {
+  return api.get("/admin/accounts/pending", { params });
+};

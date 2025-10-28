@@ -151,4 +151,13 @@ const listCategoryByShopId = async (req, res) => {
   }
 };
 
-module.exports = { getNearbyShopsByCoords, searchHome,getShopsByRate,getShopsByType,getShopsById,getShopWithFoods, listCategoryByShopId };
+const getRandomShops = async (req, res) => {
+  try {
+    const shops = await Shop.aggregate([{ $sample: { size: 4 } }]);
+    res.status(200).json({ success: true, data: shops });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+module.exports = { getNearbyShopsByCoords, searchHome,getShopsByRate,getShopsByType,getShopsById,getShopWithFoods, listCategoryByShopId, getRandomShops };
