@@ -21,4 +21,11 @@ export const searchHome = (q, lat, lng, options) => {
     if (lat && lng) params.lng = lng;
     return api.get("home/search", { params });
 }
+export const getShopWithFoods = (id) => {
+    return api.get(`home/shop/${id}/foods`);
+};
+
+export const getRandomShops = () => {
+    return api.get("home/detail/random");
+};
 

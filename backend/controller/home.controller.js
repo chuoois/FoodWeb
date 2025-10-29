@@ -1,5 +1,7 @@
-const { findNearbyShops, searchByKeyword,getShopDetailsWithMenu } = require("../services/shop.service");
+const { findNearbyShops, searchByKeyword, getShopDetailsWithMenu } = require("../services/shop.service");
 const Shop = require("../models/shop.model");
+const Food = require("../models/food.model");
+const FoodCategory = require("../models/foodCategory.model");
 // Định nghĩa vị trí mặc định (ĐH FPT Hà Nội) bằng biến môi trường
 const DEFAULT_LOCATION = {
     lat: parseFloat(process.env.DEFAULT_LAT || '21.0135'),
@@ -7,19 +9,19 @@ const DEFAULT_LOCATION = {
 };
 
 const getNearbyShopsByCoords = async (req, res) => {
-  try {
-    const limit = 20;
-    const { lat, lng } = req.query;
-    if (!lat || !lng) {
-      return res.status(400).json({ success: false, message: "Missing lat/lng" });
-    }
+    try {
+        const limit = 20;
+        const { lat, lng } = req.query;
+        if (!lat || !lng) {
+            return res.status(400).json({ success: false, message: "Missing lat/lng" });
+        }
 
-    const shops = await findNearbyShops(parseFloat(lat), parseFloat(lng));
-   
-    res.json({ success: true, shops });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+        const shops = await findNearbyShops(parseFloat(lat), parseFloat(lng));
+
+        res.json({ success: true, shops });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 };
 
 const searchHome = async (req, res) => {
@@ -57,22 +59,16 @@ const searchHome = async (req, res) => {
 
 const getShopsByType = async (req, res) => {
     try {
-        const {type,lat,lng } = req.query;
-        let newLat, newLng ;
+        const { type, lat, lng } = req.query;
         if (!type) {
-            console.log('Type param:', type);
             return res.status(400).json({ success: false, message: "Loại quán là bắt buộc." });
         }
         if (!lat || !lng) {
-            newLat = DEFAULT_LOCATION.lat;
-            newLng = DEFAULT_LOCATION.lng;
-        } else {
-            newLat = parseFloat(lat);
-            newLng = parseFloat(lng);
+            return res.status(400).json({ success: false, message: "Missing lat/lng" });
         }
-        const shops = await findNearbyShops(parseFloat(newLat), parseFloat(newLng));
-        const shopsByType = shops.filter(shop => shop.type === type && shop.status === 'ACTIVE');
-        res.json({ success: true, shopsByType });
+        // Pass `type` to service so DB filters before expensive OSRM matrix call
+        const shops = await findNearbyShops(parseFloat(lat), parseFloat(lng), 5000, 20, type);
+        res.json({ success: true, shopsByType: shops });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -98,6 +94,70 @@ const getShopsById = async (req, res) => {
     }
 };
 
-module.exports = { getNearbyShopsByCoords, searchHome,getShopsByRate,getShopsByType,getShopsById };
+const getShopWithFoods = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const shop = await Shop.findById(id)
+      .populate("owner", "name email")
+      .populate("managers", "name phone")
+      .populate("reviews.user", "name avatar")
+      .lean();
+
+    if (!shop) return res.status(404).json({ message: "Không tìm thấy quán" });
+
+    const [foods, categories] = await Promise.all([
+      Food.find({ shop_id: id, is_available: true })
+        .populate("category_id", "name")
+        .sort({ created_at: -1 })
+        .lean(),
+      FoodCategory.find({ shop_id: id }).lean(),
+    ]);
+
+    res.status(200).json({ shop, foods, categories });
+  } catch (error) {
+    console.error("Lỗi khi lấy thông tin quán:", error);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+};
 
 
+const listCategoryByShopId = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+
+    // Kiểm tra shop có tồn tại không (nếu cần)
+    const shopExists = await Shop.exists({ _id: shopId });
+    if (!shopExists) {
+      return res.status(404).json({ message: "Không tìm thấy quán" });
+    }
+
+    // Lấy tất cả danh mục thuộc quán đó
+    const categories = await FoodCategory.find({ shop_id: shopId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (categories.length === 0) {
+      return res.status(404).json({ message: "Quán chưa có danh mục nào" });
+    }
+
+    return res.status(200).json({
+      message: "Danh sách danh mục món ăn",
+      categories,
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy danh mục:", error);
+    res.status(500).json({ message: "Lỗi server", error: error.message });
+  }
+};
+
+const getRandomShops = async (req, res) => {
+  try {
+    const shops = await Shop.aggregate([{ $sample: { size: 4 } }]);
+    res.status(200).json({ success: true, data: shops });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+module.exports = { getNearbyShopsByCoords, searchHome,getShopsByRate,getShopsByType,getShopsById,getShopWithFoods, listCategoryByShopId, getRandomShops };

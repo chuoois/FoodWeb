@@ -1,12 +1,12 @@
 import { Outlet } from "react-router-dom";
-import { HeaderDetail } from "./header-detail";
+import { HeaderHome } from "../home-layout/header-home";
 import { FooterHome } from "../home-layout/footer-home";
 
 
 export const DetailMainLayout = () => {
     return (
         <>
-            <HeaderDetail />
+            <HeaderHome />
             <Outlet />
             <FooterHome />
         </>

@@ -13,7 +13,8 @@ export const SidebarAdmin = () => {
 
   const menuItems = [
     { to: "list-user", label: "List Account", icon: Home },
-    { to: "list-shop", label: "List Shop", icon: ShoppingBag, badge: 3 },
+    { to: "list-acc-pending", label: "Pending Accounts", icon: ShoppingBag },
+    { to: "list-shop", label: "List Shop", icon: ShoppingBag },
     { to: "setting", label: "Settings", icon: Settings },
   ];
 
