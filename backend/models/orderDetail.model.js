@@ -23,8 +23,6 @@ const orderDetailSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Index phục vụ truy vấn nhanh
-orderDetailSchema.index({ order_id: 1 });
-orderDetailSchema.index({ food_id: 1 });
+
 
 module.exports = mongoose.model("OrderDetail", orderDetailSchema);

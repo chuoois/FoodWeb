@@ -42,7 +42,7 @@ const orderSchema = new mongoose.Schema(
     // Thanh toán
     payment_method: {
       type: String,
-      enum: ["COD", "MOMO", "VNPAY", "ZALOPAY"],
+      enum: ["COD", "PAYOS"],
       required: true,
     },
     payment_status: {
@@ -64,11 +64,6 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Index phục vụ truy vấn
-orderSchema.index({ customer_id: 1 });
-orderSchema.index({ shop_id: 1 });
-orderSchema.index({ order_code: 1 });
-orderSchema.index({ status: 1 });
-orderSchema.index({ payment_status: 1 });
+
 
 module.exports = mongoose.model("Order", orderSchema);
