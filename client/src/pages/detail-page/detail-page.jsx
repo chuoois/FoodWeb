@@ -393,14 +393,6 @@ export const DetailPage = () => {
                       }`}
                     ></span>
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2 border-2 border-orange-300 text-gray-700 hover:bg-orange-50 hover:border-orange-400 rounded-full px-4 transition-all bg-transparent"
-                  >
-                    <User className="w-4 h-4" />
-                    <span className="font-medium">Đặt theo nhóm</span>
-                  </Button>
                 </div>
 
                 <div className="relative">

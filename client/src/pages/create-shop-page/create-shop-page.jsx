@@ -70,7 +70,8 @@ const validationSchema = Yup.object({
   coverUrl: Yup.string().url("Ảnh bìa phải là một URL hợp lệ"),
   managers: Yup.array()
     .of(Yup.string())
-    .min(1, "Phải chọn ít nhất một quản lý"),
+    .min(1, "Phải chọn một quản lý")
+    .max(1, "Chỉ được chọn một quản lý"),
 });
 
 export const CreateShopPage = () => {
@@ -81,7 +82,6 @@ export const CreateShopPage = () => {
   const [managers, setManagers] = useState([]);
   const [openManagers, setOpenManagers] = useState(false);
   const [searchValue, setSearchValue] = useState("");
-  const [addressSearch, setAddressSearch] = useState("");
   const [cropSrc, setCropSrc] = useState(null);
   const [cropKey, setCropKey] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -91,7 +91,7 @@ export const CreateShopPage = () => {
   const [pendingFileName, setPendingFileName] = useState("cropped.jpg");
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
-  const markerRef = useRef(null); // Thêm markerRef để quản lý marker
+  const markerRef = useRef(null);
 
   // Initialize Goong Maps
   useEffect(() => {
@@ -99,16 +99,15 @@ export const CreateShopPage = () => {
     mapRef.current = new goongjs.Map({
       container: mapContainerRef.current,
       style: "https://tiles.goong.io/assets/goong_map_web.json",
-      center: [105.5276, 21.0134], // Hà Nội default
+      center: [105.5276, 21.0134],
       zoom: 12,
     });
 
-    // Khởi tạo marker
     markerRef.current = new goongjs.Marker().setLngLat([105.5276, 21.0134]).addTo(mapRef.current);
 
     mapRef.current.on("click", async (e) => {
       const { lng, lat } = e.lngLat;
-      markerRef.current.setLngLat([lng, lat]); // Cập nhật vị trí marker
+      markerRef.current.setLngLat([lng, lat]);
       formik.setFieldValue("gps.latitude", lat);
       formik.setFieldValue("gps.longitude", lng);
 
@@ -121,7 +120,6 @@ export const CreateShopPage = () => {
           city: address.city || "",
           province: address.province || "Việt Nam",
         });
-        setAddressSearch(`${address.street}, ${address.ward}, ${address.district}, ${address.city}`);
       } catch (err) {
         toast.error("Không thể lấy thông tin địa chỉ.");
         console.error("[Lỗi lấy địa chỉ từ tọa độ]", err);
@@ -139,7 +137,7 @@ export const CreateShopPage = () => {
         const managerData = Array.isArray(response.data.data) ? response.data.data : [];
         setManagers(managerData);
       } catch (err) {
-        console.error("[❌ Lỗi lấy danh sách quản lý]", err);
+        console.error("[Lỗi lấy danh sách quản lý]", err);
         toast.error("Không thể tải danh sách quản lý.");
         setManagers([]);
       }
@@ -194,9 +192,10 @@ export const CreateShopPage = () => {
           },
           logoUrl: values.logoUrl,
           coverUrl: values.coverUrl,
-          managers: values.managers,
+          managers: values.managers, // Mảng 1 phần tử
         };
         const res = await createShop(payload);
+        console.log("[Tạo cửa hàng thành công]", res.data);
         toast.success("Tạo cửa hàng thành công! Đơn đăng ký của bạn đang chờ phê duyệt.", {
           id: submitToast,
         });
@@ -224,6 +223,7 @@ export const CreateShopPage = () => {
       setPendingFileName(file.name || `${key}.jpg`);
       setShowCropModal(true);
     } catch (err) {
+      console.error("[Lỗi đọc file ảnh]", err);
       toast.error("Không thể đọc file ảnh.");
     }
   };
@@ -264,18 +264,18 @@ export const CreateShopPage = () => {
     manager.full_name?.toLowerCase().includes(searchValue.toLowerCase())
   );
 
-  // Handle manager selection
+  // Handle manager selection - CHỈ 1 QUẢN LÝ
   const handleManagerSelect = (managerId) => {
-    const currentManagers = formik.values.managers;
-    if (currentManagers.includes(managerId)) {
-      formik.setFieldValue(
-        "managers",
-        currentManagers.filter((id) => id !== managerId)
-      );
+    const current = formik.values.managers;
+
+    if (current.includes(managerId)) {
+      formik.setFieldValue("managers", []);
     } else {
-      formik.setFieldValue("managers", [...currentManagers, managerId]);
+      formik.setFieldValue("managers", [managerId]);
     }
+
     formik.setFieldTouched("managers", true);
+    setOpenManagers(false);
   };
 
   // Get current location
@@ -290,7 +290,7 @@ export const CreateShopPage = () => {
           formik.setFieldValue("gps.latitude", lat);
           formik.setFieldValue("gps.longitude", lng);
           mapRef.current.setCenter([lng, lat]);
-          markerRef.current.setLngLat([lng, lat]); // Cập nhật marker
+          markerRef.current.setLngLat([lng, lat]);
 
           try {
             const address = await getAddressFromCoordinates(lat, lng);
@@ -301,9 +301,9 @@ export const CreateShopPage = () => {
               city: address.city || "",
               province: address.province || "Việt Nam",
             });
-            setAddressSearch(`${address.street}, ${address.ward}, ${address.district}, ${address.city}`);
             toast.success("Lấy vị trí thành công!", { id: locationToast });
           } catch (err) {
+            console.error("[Lỗi lấy địa chỉ từ tọa độ]", err);
             toast.error("Không thể lấy thông tin địa chỉ.", { id: locationToast });
           } finally {
             setIsGettingLocation(false);
@@ -414,6 +414,7 @@ export const CreateShopPage = () => {
               )}
             </div>
 
+            {/* Quản lý - CHỈ 1 */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
@@ -429,7 +430,7 @@ export const CreateShopPage = () => {
                     disabled={formik.isSubmitting || hasSubmitted}
                   >
                     {formik.values.managers.length > 0
-                      ? `${formik.values.managers.length} quản lý đã chọn`
+                      ? managers.find(m => m.account_id === formik.values.managers[0])?.full_name || "Đang tải..."
                       : "Chọn quản lý..."}
                   </Button>
                 </PopoverTrigger>
@@ -475,29 +476,34 @@ export const CreateShopPage = () => {
                 </PopoverContent>
               </Popover>
 
+              {/* Badge: Chỉ 1 quản lý */}
               {formik.values.managers.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {formik.values.managers.map((managerId) => {
+                  {(() => {
+                    const managerId = formik.values.managers[0];
                     const manager = managers.find((m) => m.account_id === managerId);
-                    return (
+                    return manager ? (
                       <Badge
                         key={managerId}
                         variant="secondary"
                         className="flex items-center gap-1 px-2 py-1"
                       >
-                        {manager?.full_name || "Quản lý"}
+                        {manager.full_name}
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           className="h-4 w-4 p-0 ml-1"
-                          onClick={() => handleManagerSelect(managerId)}
+                          onClick={() => {
+                            formik.setFieldValue("managers", []);
+                            formik.setFieldTouched("managers", true);
+                          }}
                         >
                           X
                         </Button>
                       </Badge>
-                    );
-                  })}
+                    ) : null;
+                  })()}
                 </div>
               )}
 
@@ -524,7 +530,6 @@ export const CreateShopPage = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-
             <div className="space-y-2">
               <Label htmlFor="address.street">Địa chỉ cụ thể <span className="text-red-500">*</span></Label>
               <Input
@@ -712,19 +717,8 @@ export const CreateShopPage = () => {
                 {uploading.logo && (
                   <div className="flex items-center gap-2">
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8a7.962 7.962 0 014.709 2.291l-2.52 2.52a4.996 4.996 0 00-1.492-1.402l-.31-.31a7 7 0 00-9.9 9.9l.31.31a4.996 4.996 0 001.492 1.402l2.52-2.52A7.962 7.962 0 0112 20c4.411 0 8-3.589 8-8h-4z"
-                      />
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8a7.962 7.962 0 014.709 2.291l-2.52 2.52a4.996 4.996 0 00-1.492-1.402l-.31-.31a7 7 0 00-9.9 9.9l.31.31a4.996 4.996 0 001.492 1.402l2.52-2.52A7.962 7.962 0 0112 20c4.411 0 8-3.589 8-8h-4z" />
                     </svg>
                     <span className="text-sm text-muted-foreground">Đang tải...</span>
                   </div>
@@ -753,19 +747,8 @@ export const CreateShopPage = () => {
                 {uploading.cover && (
                   <div className="flex items-center gap-2">
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8a7.962 7.962 0 014.709 2.291l-2.52 2.52a4.996 4.996 0 00-1.492-1.402l-.31-.31a7 7 0 00-9.9 9.9l.31.31a4.996 4.996 0 001.492 1.402l2.52-2.52A7.962 7.962 0 0112 20c4.411 0 8-3.589 8-8h-4z"
-                      />
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8a7.962 7.962 0 014.709 2.291l-2.52 2.52a4.996 4.996 0 00-1.492-1.402l-.31-.31a7 7 0 00-9.9 9.9l.31.31a4.996 4.996 0 001.492 1.402l2.52-2.52A7.962 7.962 0 0112 20c4.411 0 8-3.589 8-8h-4z" />
                     </svg>
                     <span className="text-sm text-muted-foreground">Đang tải...</span>
                   </div>
@@ -804,19 +787,8 @@ export const CreateShopPage = () => {
           {formik.isSubmitting ? (
             <>
               <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8a7.962 7.962 0 014.709 2.291l-2.52 2.52a4.996 4.996 0 00-1.492-1.402l-.31-.31a7 7 0 00-9.9 9.9l.31.31a4.996 4.996 0 001.492 1.402l2.52-2.52A7.962 7.962 0 0112 20c4.411 0 8-3.589 8-8h-4z"
-                />
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12c0-4.411 3.589-8 8-8a7.962 7.962 0 014.709 2.291l-2.52 2.52a4.996 4.996 0 00-1.492-1.402l-.31-.31a7 7 0 00-9.9 9.9l.31.31a4.996 4.996 0 001.492 1.402l2.52-2.52A7.962 7.962 0 0112 20c4.411 0 8-3.589 8-8h-4z" />
               </svg>
               Đang gửi...
             </>
