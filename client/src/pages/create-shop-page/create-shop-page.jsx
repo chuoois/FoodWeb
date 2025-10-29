@@ -343,7 +343,7 @@ export const CreateShopPage = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Tên cửa hàng *</Label>
+              <Label htmlFor="name">Tên cửa hàng <span className="text-red-500">*</span></Label>
               <Input
                 id="name"
                 name="name"
@@ -377,7 +377,7 @@ export const CreateShopPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Số điện thoại *</Label>
+              <Label htmlFor="phone">Số điện thoại <span className="text-red-500">*</span></Label>
               <Input
                 id="phone"
                 name="phone"
@@ -395,7 +395,7 @@ export const CreateShopPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="type">Loại cửa hàng *</Label>
+              <Label htmlFor="type">Loại cửa hàng <span className="text-red-500">*</span></Label>
               <select
                 id="type"
                 name="type"
@@ -417,7 +417,7 @@ export const CreateShopPage = () => {
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Quản lý *
+                Quản lý <span className="text-red-500">*</span>
               </Label>
               <Popover open={openManagers} onOpenChange={setOpenManagers}>
                 <PopoverTrigger asChild>
@@ -526,7 +526,7 @@ export const CreateShopPage = () => {
           <CardContent className="space-y-4">
 
             <div className="space-y-2">
-              <Label htmlFor="address.street">Địa chỉ cụ thể *</Label>
+              <Label htmlFor="address.street">Địa chỉ cụ thể <span className="text-red-500">*</span></Label>
               <Input
                 id="address.street"
                 name="address.street"
@@ -544,7 +544,7 @@ export const CreateShopPage = () => {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="address.ward">Phường/Xã *</Label>
+                <Label htmlFor="address.ward">Phường/Xã <span className="text-red-500">*</span></Label>
                 <Input
                   id="address.ward"
                   name="address.ward"
@@ -560,7 +560,7 @@ export const CreateShopPage = () => {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="address.district">Quận/Huyện *</Label>
+                <Label htmlFor="address.district">Quận/Huyện <span className="text-red-500">*</span></Label>
                 <Input
                   id="address.district"
                   name="address.district"
@@ -579,7 +579,7 @@ export const CreateShopPage = () => {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="address.city">Tỉnh/Thành phố *</Label>
+                <Label htmlFor="address.city">Tỉnh/Thành phố <span className="text-red-500">*</span></Label>
                 <Input
                   id="address.city"
                   name="address.city"
@@ -595,7 +595,7 @@ export const CreateShopPage = () => {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="address.province">Quốc gia *</Label>
+                <Label htmlFor="address.province">Quốc gia </Label>
                 <Input
                   id="address.province"
                   name="address.province"
@@ -640,7 +640,7 @@ export const CreateShopPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Tọa độ GPS *</Label>
+              <Label>Tọa độ GPS <span className="text-red-500">*</span></Label>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="gps.latitude">Vĩ độ</Label>

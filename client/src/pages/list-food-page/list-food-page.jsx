@@ -12,6 +12,14 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Card,
   CardHeader,
   CardTitle,
@@ -28,73 +36,47 @@ import {
 import { Toaster, toast } from "react-hot-toast";
 import useDebounce from "@/hooks/useDebounce";
 import { useNavigate } from "react-router-dom";
+import { getFoodsByShop } from "@/services/food.service"; // 🔹 import API
 
 export function FoodListPage() {
+  const [selectedFood, setSelectedFood] = useState(null);
   const navigate = useNavigate();
-
-  const [foods, setFoods] = useState([
-    {
-      _id: "1",
-      name: "Phở Bò",
-      description: "Traditional Vietnamese beef noodle soup",
-      image:
-        "https://i.ytimg.com/vi/99tOr7JSr0k/sddefault.jpg",
-      price: 45000,
-      discount: 10,
-      is_available: true,
-      category: "Món nước",
-      options: [
-        { type: "Size", name: "Large", price: 5000 },
-        { type: "Size", name: "Small", price: 0 },
-      ],
-    },
-    {
-      _id: "2",
-      name: "Bánh Mì Thịt",
-      description: "Vietnamese baguette with pork and veggies",
-      image:
-        "https://mms.img.susercontent.com/vn-11134513-7r98o-lsvd5u9lp5eh10@resize_ss1242x600!@crop_w1242_h600_cT",
-      price: 25000,
-      discount: 0,
-      is_available: false,
-      category: "Ăn sáng",
-      options: [{ type: "Spice", name: "Extra chili", price: 2000 }],
-    },
-    {
-      _id: "3",
-      name: "Cơm Tấm",
-      description: "Broken rice with grilled pork and egg",
-      image:
-        "https://file.hstatic.net/1000394081/article/com-tam_e03b4325c9914def9d66619930a73432.jpg",
-      price: 50000,
-      discount: 5,
-      is_available: true,
-      category: "Cơm",
-      options: [
-        { type: "Add-on", name: "Extra egg", price: 5000 },
-        { type: "Add-on", name: "Extra pork", price: 10000 },
-      ],
-    },
-  ]);
-
+  const [foods, setFoods] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const debouncedSearch = useDebounce(search, 400);
+  const debouncedSearch = useDebounce(search, 500);
 
+  // 🧭 Gọi API khi search hoặc page thay đổi
   useEffect(() => {
-    setLoading(true);
-    const timeout = setTimeout(() => {
-      const filtered = foods.filter((f) =>
-        f.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-      );
-      setFoods(filtered);
-      setLoading(false);
-    }, 500);
-    return () => clearTimeout(timeout);
-  }, [debouncedSearch]);
+    const fetchFoods = async () => {
+      try {
+        setLoading(true);
+        const params = {
+          page,
+          limit: 10,
+          search: debouncedSearch,
+          sort_by: "created_at",
+          sort_order: "desc",
+        };
+
+        const res = await getFoodsByShop(params);
+
+        // API trả về { foods, pagination }
+        setFoods(res.data.foods || []);
+        setTotalPages(res.data.pagination?.total_pages || 1);
+      } catch (error) {
+        console.error("Error fetching foods:", error);
+        toast.error("Không thể tải danh sách món ăn");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFoods();
+  }, [debouncedSearch, page]);
 
   const handleClearSearch = () => setSearch("");
 
@@ -137,7 +119,7 @@ export function FoodListPage() {
         </p>
       </div>
 
-      {/* 🔍 Tìm kiếm + Thêm món */}
+      {/* 🔍 Thanh tìm kiếm + nút thêm món */}
       <div className="flex justify-between items-center gap-4 mb-4">
         <div className="relative flex-1 max-w-sm">
           <input
@@ -203,13 +185,14 @@ export function FoodListPage() {
                 ) : (
                   foods.map((food) => {
                     const finalPrice =
-                      food.price - (food.price * food.discount) / 100;
+                      food.price - (food.price * (food.discount || 0)) / 100;
+
                     return (
                       <TableRow key={food._id}>
                         <TableCell>
-                          {food.image ? (
+                          {food.image_url ? (
                             <img
-                              src={food.image}
+                              src={food.image_url}
                               alt={food.name}
                               className="w-14 h-14 rounded-md object-cover"
                             />
@@ -220,17 +203,15 @@ export function FoodListPage() {
                           )}
                         </TableCell>
 
-                        <TableCell className="font-medium">
-                          {food.name}
-                        </TableCell>
+                        <TableCell className="font-medium">{food.name}</TableCell>
 
-                        <TableCell>{food.category}</TableCell>
+                        <TableCell>{food.category_id?.name || "-"}</TableCell>
 
                         <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
-                          {food.description}
+                          {food.description || "Không có"}
                         </TableCell>
 
-                        <TableCell>{food.price.toLocaleString()}đ</TableCell>
+                        <TableCell>{food.price?.toLocaleString()}đ</TableCell>
 
                         <TableCell>
                           {food.discount > 0 ? (
@@ -246,15 +227,63 @@ export function FoodListPage() {
                           {finalPrice.toLocaleString()}đ
                         </TableCell>
 
-                        <TableCell>{food.options.length} tùy chọn</TableCell>
+                        {/* 🧩 Cột tùy chọn */}
+                        <TableCell>
+                          {food.options && food.options.length > 0 ? (
+                            <div className="text-sm text-muted-foreground">
+                              {food.options.slice(0, 2).map((opt) => opt.name).join(", ")}
+                              {food.options.length > 2 && "…"}
+
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <button
+                                    onClick={() => setSelectedFood(food)}
+                                    className="text-blue-600 hover:underline ml-1 text-xs"
+                                  >
+                                    Xem
+                                  </button>
+                                </DialogTrigger>
+
+                                <DialogContent className="max-w-md">
+                                  <DialogHeader>
+                                    <DialogTitle>
+                                      Tùy chọn của {selectedFood?.name}
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                      Danh sách các tùy chọn có sẵn cho món ăn này
+                                    </DialogDescription>
+                                  </DialogHeader>
+
+                                  <div className="mt-3 space-y-2">
+                                    {selectedFood?.options?.map((opt, index) => (
+                                      <div
+                                        key={index}
+                                        className="border p-2 rounded-md flex justify-between items-center"
+                                      >
+                                        <span>
+                                          <span className="font-medium">{opt.type}</span>: {opt.name}
+                                        </span>
+                                        <span className="text-sm text-green-700 font-semibold">
+                                          +{opt.price.toLocaleString()}đ
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">Không có</span>
+                          )}
+                        </TableCell>
+
 
                         <TableCell>
                           <span
-                            className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
-                              food.is_available
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
+                            className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${food.is_available
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                              }`}
                           >
                             {food.is_available ? "Đang bán" : "Ngừng bán"}
                           </span>
@@ -265,10 +294,7 @@ export function FoodListPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() =>
-                              handleToggleAvailability(
-                                food._id,
-                                !food.is_available
-                              )
+                              handleToggleAvailability(food._id, !food.is_available)
                             }
                           >
                             {food.is_available ? (

@@ -9,7 +9,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { Plus, X, ImageIcon, UtensilsCrossed, CircleDollarSign } from "lucide-react";
+import { Plus, X, ImageIcon, UtensilsCrossed, CircleDollarSign, ListChecks } from "lucide-react";
 import { createFoodWithCategory } from "@/services/food.service";
 import { uploadImages } from "@/utils/cloudinary";
 import toast from "react-hot-toast";
@@ -132,7 +132,9 @@ export function CreateFoodPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label>Tên món *</Label>
+                <Label>
+                  Tên món <span className="text-red-500">*</span>
+                </Label>
                 <Field
                   as={Input}
                   name="name"
@@ -152,7 +154,7 @@ export function CreateFoodPage() {
                 />
               </div>
               <div>
-                <Label>Tên danh mục *</Label>
+                <Label>Tên danh mục <span className="text-red-500">*</span></Label>
                 <Field
                   as={Input}
                   name="category_name"
@@ -179,7 +181,7 @@ export function CreateFoodPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Ảnh minh họa *</Label>
+                <Label>Ảnh minh họa <span className="text-red-500">*</span></Label>
                 <Input
                   type="file"
                   accept="image/*"
@@ -214,7 +216,7 @@ export function CreateFoodPage() {
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Giá (VND) *</Label>
+                  <Label>Giá (VND)<span className="text-red-500">*</span></Label>
                   <Field
                     as={Input}
                     type="number"
@@ -244,7 +246,10 @@ export function CreateFoodPage() {
           {/* Tuỳ chọn */}
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Tuỳ chọn món ăn</CardTitle>
+              <div className="flex items-center gap-2">
+                <ListChecks className="h-5 w-5 text-muted-foreground" />
+                <CardTitle>Tùy chọn món ăn</CardTitle>
+              </div>
               <CardDescription>
                 Thêm các tuỳ chọn như Size, Topping, Extra, hoặc Spicy
               </CardDescription>
