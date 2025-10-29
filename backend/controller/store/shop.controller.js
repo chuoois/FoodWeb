@@ -76,13 +76,15 @@ const createShop = async (req, res) => {
 
     const savedShop = await newShop.save();
 
+    console.log("New shop created with ID:", savedShop._id);
     // ===== CẬP NHẬT TRẠNG THÁI MANAGER =====
     if (managers.length > 0) {
       await Staff.updateMany(
-        { _id: { $in: managers } },
+        { account_id: { $in: managers } },
         { $set: { isAssigned: true } }
       );
     }
+    console.log("Shop created successfully:", savedShop);
 
     return res.status(201).json({
       message: "Tạo cửa hàng thành công",
@@ -193,7 +195,7 @@ const updateManager = async (req, res) => {
     // ===== CẬP NHẬT TRẠNG THÁI isAssigned =====
     if (removedManagers.length > 0) {
       await Staff.updateMany(
-        { _id: { $in: removedManagers } },
+        { account_id: { $in: removedManagers } },
         { $set: { isAssigned: false } }
       );
     }
@@ -263,7 +265,7 @@ const deleteShop = async (req, res) => {
     // ===== CẬP NHẬT TRẠNG THÁI MANAGER TRƯỚC KHI XOÁ SHOP =====
     if (shop.managers && shop.managers.length > 0) {
       await Staff.updateMany(
-        { _id: { $in: shop.managers } },
+        { account_id: { $in: shop.managers } },
         { $set: { isAssigned: false } }
       );
     }
