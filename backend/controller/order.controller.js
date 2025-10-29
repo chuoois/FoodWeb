@@ -21,7 +21,7 @@ exports.createOrder = async (req, res) => {
   try {
     const { shop_id, delivery_address_id, voucher_id, payment_method, note } = req.body;
     const accountId = req.user.accountId;
-
+     console.log("🧾 Request body:", req.body);
     const user = await User.findOne({ account_id: accountId });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -127,5 +127,27 @@ exports.createOrder = async (req, res) => {
     res.status(201).json({ message: "Order created successfully", order });
   } catch (error) {
     res.status(500).json({ message: "Error creating order", error: error.message });
+  }
+};
+
+exports.updatePaymentStatus = async (req, res) => {
+  try {
+    const { order_code, status } = req.body; // PayOS webhook gửi về
+    const order = await Order.findOne({ order_code });
+
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    if (status === 'PAID') {
+      order.payment_status = 'PAID';
+      order.status = 'CONFIRMED';
+    } else if (status === 'CANCELLED') {
+      order.payment_status = 'CANCELLED';
+      order.status = 'CANCELLED';
+    }
+
+    await order.save();
+    res.json({ message: 'Order updated', order });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating payment status', error: error.message });
   }
 };

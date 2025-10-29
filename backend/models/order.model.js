@@ -42,7 +42,7 @@ const orderSchema = new mongoose.Schema(
     // Thanh toán
     payment_method: {
       type: String,
-      enum: ["COD", "MOMO", "VNPAY", "ZALOPAY"],
+      enum: ["COD", "PAYOS"],
       required: true,
     },
     payment_status: {
