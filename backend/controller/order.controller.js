@@ -151,3 +151,31 @@ exports.updatePaymentStatus = async (req, res) => {
     res.status(500).json({ message: 'Error updating payment status', error: error.message });
   }
 };
+
+exports.getVouchers = async (req, res) => {
+  try {
+    // ✅ Chấp nhận cả shop_id và shop
+    const { shop_id, shop } = req.query;
+
+    let filter = { is_active: true };
+    if (shop_id || shop) {
+      filter.shop_id = shop_id || shop;
+    }
+
+    const vouchers = await Voucher.find(filter)
+      .sort({ created_at: -1 })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      count: vouchers.length,
+      data: vouchers
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching vouchers",
+      error: error.message
+    });
+  }
+};

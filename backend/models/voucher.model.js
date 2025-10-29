@@ -2,6 +2,11 @@ const mongoose = require("mongoose");
 
 const voucherSchema = new mongoose.Schema(
   {
+    shop_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Shop",
+      required: true, // mỗi voucher thuộc về một shop cụ thể
+    },
     code: {
       type: String,
       required: true,
@@ -20,16 +25,16 @@ const voucherSchema = new mongoose.Schema(
     discount_value: {
       type: mongoose.Decimal128,
       required: true,
-      get: v => parseFloat(v.toString()),
+      get: (v) => parseFloat(v.toString()),
     },
     min_order_amount: {
       type: mongoose.Decimal128,
       default: 0,
-      get: v => parseFloat(v.toString()),
+      get: (v) => parseFloat(v.toString()),
     },
     max_discount: {
       type: mongoose.Decimal128,
-      get: v => (v ? parseFloat(v.toString()) : null),
+      get: (v) => (v ? parseFloat(v.toString()) : null),
     },
     start_date: {
       type: Date,
@@ -57,8 +62,6 @@ const voucherSchema = new mongoose.Schema(
     toJSON: { getters: true },
   }
 );
-
-
 
 const Voucher = mongoose.model("Voucher", voucherSchema);
 module.exports = Voucher;
