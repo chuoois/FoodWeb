@@ -9,7 +9,6 @@ import { AuthProvider } from "@/context/AuthContext";
 import { LoadingProvider } from "@/context/LoadingContext"; 
 
 createRoot(document.getElementById("root")).render(
-  <StrictMode>
     <LoadingProvider> 
       <AuthProvider>
         <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
@@ -18,5 +17,4 @@ createRoot(document.getElementById("root")).render(
         </GoogleOAuthProvider>
       </AuthProvider>
     </LoadingProvider>
-  </StrictMode>
 );

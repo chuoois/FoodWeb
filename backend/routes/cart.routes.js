@@ -11,7 +11,7 @@ router.post("/cart/add", authenticate, authorize("CUSTOMER"), addToCart);
 router.get("/cart", authenticate, authorize("CUSTOMER"), getCart);
 
 // Update cart item (quantity / note)
-router.put("/cart/item/:itemId", authenticate, authorize("CUSTOMER"), updateCartItem);
+router.post("/cart/item/:itemId", authenticate, authorize("CUSTOMER"), updateCartItem);
 
 // Remove cart item
 router.delete("/cart/item/:itemId", authenticate, authorize("CUSTOMER"), removeCartItem);

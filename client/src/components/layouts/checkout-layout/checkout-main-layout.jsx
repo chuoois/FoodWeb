@@ -1,12 +1,12 @@
 import { Outlet } from "react-router-dom";
-import { HeaderCheckOut } from "./header-checkout";
+import { HeaderHome } from "../home-layout/header-home";
 import { FooterHome } from "../home-layout/footer-home";
 
 
 export const CheckOutMainLayout = () => {
     return (
         <>
-            <HeaderCheckOut />
+            <HeaderHome />
             <Outlet />
             <FooterHome />
         </>

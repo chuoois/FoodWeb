@@ -43,7 +43,7 @@ import {
   CreateFoodPage,
   FoodListPage,
   ProfilePage,
-
+  AccPendingManagement
 
 
 } from "@/pages";
@@ -87,6 +87,7 @@ export const router = createBrowserRouter([
         element: <DashboardMainLayout />,
         children: [
           { path: "list-user", element: <AccountManagement /> },
+          { path: "list-acc-pending", element: <AccPendingManagement /> },
           { path: "list-shop", element: <ShopManagement /> },
           { path: "setting", element: <AdminSettings /> },
         ],

@@ -34,9 +34,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import toast from "react-hot-toast";
-import { listAccounts, updateAccountStatus } from "@/services/admin.service";
+import { listPendingAccounts, updateAccountStatus } from "@/services/admin.service";
 
-export const AccountManagement = () => {
+export const AccPendingManagement = () => {
   const [accounts, setAccounts] = useState([]);
   const [roles, setRoles] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -62,7 +62,7 @@ export const AccountManagement = () => {
         page: currentPage,
         limit: itemsPerPage,
       };
-      const res = await listAccounts(params);
+      const res = await listPendingAccounts(params);
       setAccounts(res.data.accounts || []);
       setRoles(res.data.roles || []);
       setTotalPages(res.data.totalPages || 1);

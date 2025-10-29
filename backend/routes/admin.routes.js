@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { listAccounts, updateAccountStatus,updateAccountRole } = require("../controller/listAccount.admin.controller");
+const { listAccounts, updateAccountStatus,updateAccountRole,listPendingAccounts } = require("../controller/listAccount.admin.controller");
 const {listShops, updateShopStatus} = require('../controller/admin/shop.admin.controller')
 const authenticate = require('../middleware/authenticate.middleware')
 const authorize = require('../middleware/authorize.middleware')
@@ -12,6 +12,7 @@ router.patch("/admin/shops/:shopId",authenticate,authorize("ADMIN"), updateShopS
 
 router.patch("/admin/accounts/:accountId/role", authenticate, authorize("ADMIN"), updateAccountRole);
 
+router.get("/admin/accounts/pending", authenticate, authorize("ADMIN"), listPendingAccounts);
 
 module.exports = router;
  
