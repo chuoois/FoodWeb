@@ -285,6 +285,9 @@ const deleteShop = async (req, res) => {
  */
 const getAllManagerStaffNames = async (req, res) => {
   try {
+    // lây accountId cua nguoi dung
+    const { accountId } = req.user;
+
     // Tìm role MANAGER_STAFF
     const role = await Role.findOne({ name: "MANAGER_STAFF" });
     if (!role) {
@@ -300,6 +303,7 @@ const getAllManagerStaffNames = async (req, res) => {
     const managerStaff = await Staff.find({
       account_id: { $in: accounts.map(acc => acc._id) },
       isAssigned: false,
+      created_by: { $in: accountId } // Lấy những staff do người dùng hiện tại tạo
     })
       .select("_id full_name account_id")
       .lean();
