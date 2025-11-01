@@ -8,14 +8,13 @@ import {
   X,
   ChevronRight,
   LogOut,
-HelpCircle,
-
+  HelpCircle,
   Home,
   Settings,
-
   ChefHat,
   List,
-  Plus
+  Plus,
+  Package
 } from "lucide-react"
 
 export function ManagerSidebar({ children }) {
@@ -25,12 +24,13 @@ export function ManagerSidebar({ children }) {
   const location = useLocation()
 
   const navigation = [
-    { name: "Trang chủ", href: "#", icon: Home },
+    { name: "Trang chủ", href: "/manager-staff/manage/home", icon: Home },
     { name: "Dashboard", href: "#", icon: LayoutDashboard },
     { name: "Danh sách đồ ăn", href: "/manager-staff/manage/list-food", icon: List },
-    { name: "Tạo món ăn", href: "/manager-staff/manage/create-food", icon:  Plus },
- 
-  
+    { name: "Tạo món ăn", href: "/manager-staff/manage/create-food", icon: Plus },
+    { name: "Danh sách đơn hàng", href: "/manager-staff/manage/list-order", icon: Package },
+
+
   ]
 
   const handleLogout = () => {

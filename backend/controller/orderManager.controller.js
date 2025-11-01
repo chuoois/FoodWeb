@@ -45,9 +45,42 @@ class OrderManagerController {
   // GET /ordersManage → REST API: Lấy danh sách đơn
   static async getOrders(req, res) {
     try {
-      const staffId = await getStaffId(req.user.accountId);
-      const orders = await getShopOrders(staffId);
-      return res.status(200).json(orders);
+      const accountId = req.user.accountId;
+      const staffId = await OrderManagerController.getStaffIdFromAccountId(
+        accountId
+      );
+      const shop = await Shop.findOne({ managers: staffId }); // Chỉ kiểm tra managers vì staff không phải owner
+      console.log("Debug - Found Shop:", shop); // Debug
+      if (!shop) {
+        if (isSSE) {
+          res.write(
+            `data: ${JSON.stringify({
+              type: "error",
+              message: "Unauthorized",
+            })}\n\n`
+          );
+        } else {
+          return res.status(403).json({ message: "Unauthorized" });
+        }
+        return;
+      }
+
+      const orders = await Order.find({
+        shop_id: shop._id,
+        status: { $in: ["PENDING", "CONFIRMED"] },
+      })
+        .populate("customer_id", "full_name phone")
+        .populate("delivery_address_id", "address")
+        .lean();
+
+      if (isSSE) {
+        res.write(
+          `data: ${JSON.stringify({ type: "orders", data: orders })}\n\n`
+        );
+      } else {
+        console.log(orders);
+        res.status(200).json(orders);
+      }
     } catch (error) {
       return res.status(403).json({ message: error.message });
     }
@@ -57,8 +90,10 @@ class OrderManagerController {
   static async acceptOrder(req, res) {
     try {
       const { order_id } = req.params;
-      const staffId = await getStaffId(req.user.accountId);
-
+      const accountId = req.user.accountId;
+      const staffId = await OrderManagerController.getStaffIdFromAccountId(
+        accountId
+      );
       const order = await Order.findById(order_id);
       if (!order) return res.status(404).json({ message: "Order not found" });
 

@@ -115,7 +115,7 @@ export function FoodListPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-semibold">Quản lý món ăn</h1>
         <p className="text-muted-foreground">
-          Danh sách tất cả món ăn trong hệ thống
+          Danh sách tất cả món ăn trong cửa hàng
         </p>
       </div>
 
