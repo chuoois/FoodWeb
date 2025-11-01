@@ -1,18 +1,25 @@
+const mongoose = require("mongoose");
 const Order = require("../models/order.model");
 const Shop = require("../models/shop.model");
 const Staff = require("../models/staff.model");
 
-// Biến lưu SSE clients: Map<staffId(string), Array<res>>
+// SSE clients: Map<staffId(string), Array<res>>
 const sseClients = new Map();
 
-// === HÀM HỖ TRỢ CHUNG ===
+/**
+ * Lấy staffId từ accountId (dùng chung)
+ */
 const getStaffId = async (accountId) => {
   const staff = await Staff.findOne({ account_id: accountId }).lean();
   if (!staff) throw new Error("Staff not found");
   return staff._id;
 };
 
-const getShopOrders = async (staffId) => {
+/**
+ * Lấy danh sách đơn hàng của shop mà staff quản lý
+ * (Không dùng res → có thể dùng cho cả REST và SSE)
+ */
+const fetchShopOrders = async (staffId) => {
   const shop = await Shop.findOne({ managers: staffId }).lean();
   if (!shop) return [];
 
@@ -25,88 +32,65 @@ const getShopOrders = async (staffId) => {
     .lean();
 };
 
-const sendToStaff = (staffId, event) => {
+/**
+ * Gửi SSE event cho một staff
+ */
+const sendEventToStaff = (staffId, event) => {
   const clients = sseClients.get(staffId.toString()) || [];
-  clients.forEach((res) => {
-    if (!res.writableEnded) {
-      res.write(`data: ${JSON.stringify(event)}\n\n`);
+  clients.forEach((client) => {
+    if (!client.writableEnded) {
+      client.write(`data: ${JSON.stringify(event)}\n\n`);
     }
   });
 };
 
-const broadcastToShop = async (shopId, event) => {
+/**
+ * Gửi event cho tất cả manager của shop
+ */
+const broadcastToShopManagers = async (shopId, event) => {
   const shop = await Shop.findById(shopId).lean();
   if (!shop) return;
-  shop.managers.forEach((managerId) => sendToStaff(managerId, event));
+
+  shop.managers.forEach((managerId) => {
+    sendEventToStaff(managerId, event);
+  });
 };
 
-// === CONTROLLER CLASS ===
+/* ==============================
+   REST API CONTROLLERS
+   ============================== */
+
 class OrderManagerController {
-  // GET /ordersManage → REST API: Lấy danh sách đơn
+  // GET /shop/orders → Lấy danh sách đơn (REST)
   static async getOrders(req, res) {
     try {
-      const accountId = req.user.accountId;
-      const staffId = await OrderManagerController.getStaffIdFromAccountId(
-        accountId
-      );
-      const shop = await Shop.findOne({ managers: staffId }); // Chỉ kiểm tra managers vì staff không phải owner
-      console.log("Debug - Found Shop:", shop); // Debug
-      if (!shop) {
-        if (isSSE) {
-          res.write(
-            `data: ${JSON.stringify({
-              type: "error",
-              message: "Unauthorized",
-            })}\n\n`
-          );
-        } else {
-          return res.status(403).json({ message: "Unauthorized" });
-        }
-        return;
-      }
-
-      const orders = await Order.find({
-        shop_id: shop._id,
-        status: { $in: ["PENDING", "CONFIRMED"] },
-      })
-        .populate("customer_id", "full_name phone")
-        .populate("delivery_address_id", "address")
-        .lean();
-
-      if (isSSE) {
-        res.write(
-          `data: ${JSON.stringify({ type: "orders", data: orders })}\n\n`
-        );
-      } else {
-        console.log(orders);
-        res.status(200).json(orders);
-      }
+      const staffId = await getStaffId(req.user.accountId);
+      const orders = await fetchShopOrders(staffId);
+      res.status(200).json(orders);
     } catch (error) {
-      return res.status(403).json({ message: error.message });
+      res.status(403).json({ message: error.message });
     }
   }
 
-  // PUT /ordersManage/:order_id/accept
+  // PATCH /shop/orders/:order_id/accept
   static async acceptOrder(req, res) {
     try {
       const { order_id } = req.params;
-      const accountId = req.user.accountId;
-      const staffId = await OrderManagerController.getStaffIdFromAccountId(
-        accountId
-      );
+      const staffId = await getStaffId(req.user.accountId);
+
       const order = await Order.findById(order_id);
       if (!order) return res.status(404).json({ message: "Order not found" });
 
       const shop = await Shop.findById(order.shop_id).lean();
-      if (!shop || !shop.managers.some(m => m.toString() === staffId.toString())) {
+      if (!shop || !shop.managers.some((m) => m.toString() === staffId.toString())) {
         return res.status(403).json({ message: "Unauthorized" });
       }
 
       order.status = "CONFIRMED";
       await order.save();
 
-      // Gửi realtime
-      broadcastToShop(order.shop_id, {
+      // Gửi cập nhật realtime
+      broadcastToShopManagers(order.shop_id, {
         type: "order_updated",
         data: order.toObject(),
       });
@@ -117,7 +101,7 @@ class OrderManagerController {
     }
   }
 
-  // PUT /ordersManage/:order_id/status
+  // PATCH /shop/orders/:order_id/status
   static async updateOrderStatus(req, res) {
     try {
       const { order_id } = req.params;
@@ -132,14 +116,14 @@ class OrderManagerController {
       if (!order) return res.status(404).json({ message: "Order not found" });
 
       const shop = await Shop.findById(order.shop_id).lean();
-      if (!shop || !shop.managers.some(m => m.toString() === staffId.toString())) {
+      if (!shop || !shop.managers.some((m) => m.toString() === staffId.toString())) {
         return res.status(403).json({ message: "Unauthorized" });
       }
 
       order.status = status;
       await order.save();
 
-      broadcastToShop(order.shop_id, {
+      broadcastToShopManagers(order.shop_id, {
         type: "order_updated",
         data: order.toObject(),
       });
@@ -149,61 +133,64 @@ class OrderManagerController {
       res.status(500).json({ message: error.message });
     }
   }
-
-  // GET /ordersManage/sse → SSE Stream
-  static async registerSSE(req, res) {
-    let staffId;
-    try {
-      staffId = await getStaffId(req.user.accountId);
-    } catch (error) {
-      return res.status(401).json({ message: error.message });
-    }
-
-    // Thiết lập SSE
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    });
-
-    const key = staffId.toString();
-    if (!sseClients.has(key)) sseClients.set(key, []);
-    sseClients.get(key).push(res);
-
-    // Gửi danh sách đơn ban đầu
-    const orders = await getShopOrders(staffId);
-    res.write(`data: ${JSON.stringify({ type: "orders", data: orders })}\n\n`);
-
-    // Xử lý ngắt kết nối
-    req.on("close", () => {
-      const clients = sseClients.get(key) || [];
-      const idx = clients.indexOf(res);
-      if (idx !== -1) {
-        clients.splice(idx, 1);
-        if (clients.length === 0) sseClients.delete(key);
-      }
-      if (!res.writableEnded) res.end();
-    });
-  }
-
-  // Gọi từ createOrder để thông báo đơn mới
-  static async notifyNewOrder(order) {
-    try {
-      await broadcastToShop(order.shop_id, {
-        type: "new_order",
-        data: order.toObject ? order.toObject() : order,
-      });
-    } catch (error) {
-      console.error("SSE notify error:", error);
-    }
-  }
 }
 
-// Export đúng tên để router cũ dùng được
-module.exports = {
-  getOrders: OrderManagerController.getOrders,
-  acceptOrder: OrderManagerController.acceptOrder,
-  updateOrderStatus: OrderManagerController.updateOrderStatus,
-  registerSSE: OrderManagerController.registerSSE,
-  notifyNewOrder: OrderManagerController.notifyNewOrder,
+/* ==============================
+   SSE CONTROLLER
+   ============================== */
+
+// GET /shop/orders/stream → Kết nối SSE
+OrderManagerController.registerSSE = async (req, res) => {
+  let staffId;
+  try {
+    staffId = await getStaffId(req.user.accountId);
+  } catch (error) {
+    return res.status(401).json({ message: error.message });
+  }
+
+  // Thiết lập SSE headers
+  const headers = {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "Access-Control-Allow-Origin": "*", // tùy môi trường
+  };
+  res.writeHead(200, headers);
+
+  // Lưu client
+  const staffKey = staffId.toString();
+  if (!sseClients.has(staffKey)) sseClients.set(staffKey, []);
+  sseClients.get(staffKey).push(res);
+
+  // Gửi danh sách đơn ban đầu
+  const orders = await fetchShopOrders(staffId);
+  res.write(`data: ${JSON.stringify({ type: "orders", data: orders })}\n\n`);
+
+  // Xử lý ngắt kết nối
+  req.on("close", () => {
+    const clients = sseClients.get(staffKey) || [];
+    const index = clients.indexOf(res);
+    if (index !== -1) {
+      clients.splice(index, 1);
+      if (clients.length === 0) sseClients.delete(staffKey);
+    }
+    res.end();
+  });
 };
+
+/* ==============================
+   NOTIFY NEW ORDER (gọi từ createOrder)
+   ============================== */
+
+OrderManagerController.notifyNewOrder = async (order) => {
+  try {
+    await broadcastToShopManagers(order.shop_id, {
+      type: "new_order",
+      data: order.toObject ? order.toObject() : order,
+    });
+  } catch (error) {
+    console.error("SSE Notify Error:", error);
+  }
+};
+
+module.exports = OrderManagerController;
