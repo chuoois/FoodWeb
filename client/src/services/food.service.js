@@ -9,3 +9,18 @@ export const createFoodWithCategory = (data) => {
 export const getFoodsByShop = (params) => {
     return api.get("/food/all", { params });
 };
+
+// Cập nhật món ăn: http://localhost:9999/api/food/(id)
+export const updateFood = (foodId, data) => {
+    return api.put(`/food/${foodId}`, data);
+};
+
+// Xóa món ăn: http://localhost:9999/api/food/(id)
+export const deleteFood = (foodId) => {
+    return api.delete(`/food/${foodId}`);
+};
+
+// Cập nhật trạng thái món ăn: http://localhost:9999/api/food/(id)/toggle-status
+export const toggleFoodStatus = (foodId) => {
+    return api.patch(`/food/${foodId}/toggle-status`);
+}
