@@ -16,6 +16,8 @@ export * from './403-forbidden'
 export * from './404-not-found'
 export * from './create-food-page'
 export * from './list-food-page'
+export * from './manager-staff-home'
+export * from './manager-staff-order'
 
 
 
