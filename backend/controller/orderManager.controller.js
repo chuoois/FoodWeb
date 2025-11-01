@@ -57,7 +57,6 @@ class OrderManagerController {
       const staffId = await OrderManagerController.getStaffIdFromAccountId(
         accountId
       );
-
       const shop = await Shop.findOne({ managers: staffId }); // Chỉ kiểm tra managers vì staff không phải owner
       console.log("Debug - Found Shop:", shop); // Debug
       if (!shop) {
@@ -115,11 +114,6 @@ class OrderManagerController {
       const staffId = await OrderManagerController.getStaffIdFromAccountId(
         accountId
       );
-
-
-
-      
-
       const order = await Order.findById(order_id);
       if (!order) return res.status(404).json({ message: "Order not found" });
 

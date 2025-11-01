@@ -43,7 +43,9 @@ import {
   CreateFoodPage,
   FoodListPage,
   ProfilePage,
-  AccPendingManagement
+  AccPendingManagement,
+  ManagerStaffHomePage,
+  OrdersList
 
 
 } from "@/pages";
@@ -128,10 +130,11 @@ export const router = createBrowserRouter([
         path: "manager-staff/manage",
         element: <  ManagerStaffLayout />,
         children: [
-          // { path: "home", element: <ManagerHomePage /> },
-          // { path: "dashboard", element: <div>Dashboard</div> },
+          { path: "home", element: <ManagerStaffHomePage /> },
+          { path: "dashboard", element: <div>Dashboard</div> },
           { path: "create-food", element: <  CreateFoodPage /> },
-          { path: "list-food", element: <     FoodListPage /> },
+          { path: "list-food", element: <     FoodListPage /> }, 
+          { path: "list-order", element: <     OrdersList /> }, 
        
 
         ],
