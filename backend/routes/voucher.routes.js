@@ -5,7 +5,8 @@ const {
     getVouchersByShop,
     updateVoucher,
     deleteVoucher,
-    toggleVoucherStatus
+    toggleVoucherStatus,
+    getPublicVouchers
 } = require("../controller/store/voucher.controller");
 const authenticate = require("../middleware/authenticate.middleware");
 const authorize = require("../middleware/authorize.middleware");
@@ -24,5 +25,8 @@ router.delete("/voucher/:voucherId", authenticate, authorize("STORE_DIRECTOR", "
 
 // Cập nhật trạng thái voucher
 router.patch("/voucher/:voucherId/status", authenticate, authorize("STORE_DIRECTOR", "MANAGER_STAFF"), toggleVoucherStatus);
+
+// Lấy danh sách voucher công khai cho người dùng
+router.get("/voucher/public/:shop_id", getPublicVouchers);
 
 module.exports = router;
