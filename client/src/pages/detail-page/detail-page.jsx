@@ -13,6 +13,7 @@ import {
   X,
   ChevronLeft,
   Trash2,
+  Copy,
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ import {
   updateCartItem,
   removeFromCart,
 } from "@/services/cart.service";
+import { getPublicVouchers } from "@/services/voucher.service"; // Thêm import
 
 const openingHours = [
   { day: "Chủ nhật", time: "06:30 - 21:00", isToday: false },
@@ -69,6 +71,8 @@ export const DetailPage = () => {
   const [foods, setFoods] = useState([]);
   const [similarShops, setSimilarShops] = useState([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [vouchers, setVouchers] = useState([]);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
 
   // Kiểm tra đăng nhập
   useEffect(() => {
@@ -91,19 +95,19 @@ export const DetailPage = () => {
     }
   }, [id]);
 
-  // Load giỏ hàng theo shop_id
+  // Load giỏ hàng
   useEffect(() => {
     if (id && isLoggedIn) {
       setLoadingCart(true);
       getCart(id)
         .then((data) => {
           const items = (data.items || []).map((item) => ({
-            id: item.food_id, // string ID
-            cartItemId: item.id, // ID của cart item
+            id: item.food_id,
+            cartItemId: item.id,
             qty: item.quantity,
             title: item.name,
             price: item.unit_price,
-            img: null, // API không trả image → để null hoặc lấy từ foods nếu cần
+            img: null,
             note: item.note || "",
             is_available: item.is_available,
           }));
@@ -111,7 +115,6 @@ export const DetailPage = () => {
         })
         .catch((err) => {
           console.error("Lỗi load giỏ hàng:", err);
-          toast.error("Không thể tải giỏ hàng");
           setCartItems([]);
         })
         .finally(() => setLoadingCart(false));
@@ -137,6 +140,21 @@ export const DetailPage = () => {
         .finally(() => setLoadingSimilar(false));
     }
   }, [showSimilar, id, similarShops.length]);
+
+  // Load voucher công khai
+  useEffect(() => {
+    if (id) {
+      setLoadingVouchers(true);
+      getPublicVouchers(id, { page: 1, limit: 10 })
+        .then((response) => {
+          setVouchers(response.data.data.vouchers || []);
+        })
+        .catch((err) => {
+          console.error("Lỗi load voucher:", err);
+        })
+        .finally(() => setLoadingVouchers(false));
+    }
+  }, [id]);
 
   const itemsPerPage = 9;
 
@@ -201,10 +219,9 @@ export const DetailPage = () => {
         shop_id: id,
         food_id: food._id,
         quantity: 1,
-        note: "", // tùy chọn
+        note: "",
       });
 
-      // Reload giỏ hàng
       const data = await getCart(id);
       const items = (data.items || []).map((item) => ({
         id: item.food_id,
@@ -226,7 +243,7 @@ export const DetailPage = () => {
 
   const handleIncrease = async (cartItemId, currentQty) => {
     try {
-      await updateCartItem(cartItemId, currentQty + 1); // ✅ Giờ pass đúng format
+      await updateCartItem(cartItemId, currentQty + 1);
       const data = await getCart(id);
       const items = (data.items || []).map((item) => ({
         id: item.food_id,
@@ -247,7 +264,7 @@ export const DetailPage = () => {
   const handleDecrease = async (cartItemId, currentQty) => {
     if (currentQty <= 1) return;
     try {
-      await updateCartItem(cartItemId, currentQty - 1); // ✅ Giờ pass đúng format
+      await updateCartItem(cartItemId, currentQty - 1);
       const data = await getCart(id);
       const items = (data.items || []).map((item) => ({
         id: item.food_id,
@@ -265,7 +282,6 @@ export const DetailPage = () => {
     }
   };
 
-  // Xóa món
   const handleRemove = async (cartItemId) => {
     try {
       await removeFromCart(cartItemId);
@@ -322,17 +338,14 @@ export const DetailPage = () => {
                   <Button
                     variant={liked ? "destructive" : "outline"}
                     size="sm"
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all duration-300 ${
-                      liked
-                        ? "bg-red-50 border-red-400 text-red-600 hover:bg-red-100"
-                        : "border-gray-300 text-gray-600 hover:bg-orange-50 hover:border-orange-300"
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all duration-300 ${liked
+                      ? "bg-red-50 border-red-400 text-red-600 hover:bg-red-100"
+                      : "border-gray-300 text-gray-600 hover:bg-orange-50 hover:border-orange-300"
+                      }`}
                     onClick={() => setLiked(!liked)}
                   >
                     <Heart
-                      className={`w-4 h-4 transition-all ${
-                        liked ? "fill-red-500 scale-110" : ""
-                      }`}
+                      className={`w-4 h-4 transition-all ${liked ? "fill-red-500 scale-110" : ""}`}
                     />
                     <span className="text-sm font-medium">Yêu thích</span>
                   </Button>
@@ -370,10 +383,6 @@ export const DetailPage = () => {
                     </Button>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600 text-sm">
-                    <Clock className="w-4 h-4 text-orange-500" />
-                    <span className="font-medium">13.9 km • 41 phút</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600 text-sm">
                     <Phone className="w-4 h-4 text-orange-500" />
                     <span className="font-medium">{shop.phone}</span>
                   </div>
@@ -387,11 +396,6 @@ export const DetailPage = () => {
                     onClick={() => setShowSimilar(!showSimilar)}
                   >
                     <span className="font-medium">Nhà hàng tương tự</span>
-                    <span
-                      className={`text-xs transition-transform duration-300 ${
-                        showSimilar ? "rotate-180" : ""
-                      }`}
-                    ></span>
                   </Button>
                 </div>
 
@@ -417,27 +421,21 @@ export const DetailPage = () => {
               {categories.map((cat) => (
                 <Button
                   key={cat.name}
-                  variant={
-                    selectedCategory === cat.name ? "default" : "outline"
-                  }
+                  variant={selectedCategory === cat.name ? "default" : "outline"}
                   size="sm"
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold whitespace-nowrap transition-all duration-300 ${
-                    selectedCategory === cat.name
-                      ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg shadow-orange-200 scale-105"
-                      : "border-2 border-gray-300 text-gray-700 hover:bg-orange-50 hover:border-orange-300"
-                  }`}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold whitespace-nowrap transition-all duration-300 ${selectedCategory === cat.name
+                    ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg shadow-orange-200 scale-105"
+                    : "border-2 border-gray-300 text-gray-700 hover:bg-orange-50 hover:border-orange-300"
+                    }`}
                   onClick={() => setSelectedCategory(cat.name)}
                 >
                   {cat.name}
                   <Badge
-                    variant={
-                      selectedCategory === cat.name ? "default" : "secondary"
-                    }
-                    className={`text-xs font-bold ${
-                      selectedCategory === cat.name
-                        ? "bg-white/30 text-white"
-                        : "bg-orange-100 text-orange-600"
-                    }`}
+                    variant={selectedCategory === cat.name ? "default" : "secondary"}
+                    className={`text-xs font-bold ${selectedCategory === cat.name
+                      ? "bg-white/30 text-white"
+                      : "bg-orange-100 text-orange-600"
+                      }`}
                   >
                     {cat.count}
                   </Badge>
@@ -465,9 +463,7 @@ export const DetailPage = () => {
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </Button>
-                <span className="text-sm font-medium truncate">
-                  {shop.name}
-                </span>
+                <span className="text-sm font-medium truncate">{shop.name}</span>
               </div>
               <Button
                 variant="ghost"
@@ -486,33 +482,26 @@ export const DetailPage = () => {
                   <MapPin className="w-4 h-4 text-orange-500 mt-0.5" />
                   <span>{fullAddress}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Clock className="w-4 h-4 text-orange-500" />
-                  <span>13.9 km • 41 phút</span>
-                </div>
               </div>
               <h5 className="font-bold mb-4">Giờ hoạt động</h5>
               <div className="space-y-2">
                 {openingHours.map((hour) => (
                   <div
                     key={hour.day}
-                    className={`flex justify-between p-4 rounded-xl border ${
-                      hour.isToday
-                        ? "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200"
-                        : "bg-gray-50 border-gray-100"
-                    }`}
+                    className={`flex justify-between p-4 rounded-xl border ${hour.isToday
+                      ? "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200"
+                      : "bg-gray-50 border-gray-100"
+                      }`}
                   >
                     <span
-                      className={`text-sm font-medium ${
-                        hour.isToday ? "text-gray-900" : "text-gray-700"
-                      }`}
+                      className={`text-sm font-medium ${hour.isToday ? "text-gray-900" : "text-gray-700"
+                        }`}
                     >
                       {hour.day}
                     </span>
                     <span
-                      className={`text-sm font-semibold ${
-                        hour.isToday ? "text-orange-600" : "text-gray-600"
-                      }`}
+                      className={`text-sm font-semibold ${hour.isToday ? "text-orange-600" : "text-gray-600"
+                        }`}
                     >
                       {hour.time}
                     </span>
@@ -572,8 +561,7 @@ export const DetailPage = () => {
                           {restaurant.name}
                         </h4>
                         <p className="text-xs text-gray-500 mb-3 line-clamp-1">
-                          {restaurant.address.street},{" "}
-                          {restaurant.address.district}
+                          {restaurant.address.street}, {restaurant.address.district}
                         </p>
                         <div className="flex items-center justify-between text-xs">
                           <div className="flex items-center gap-1">
@@ -597,6 +585,115 @@ export const DetailPage = () => {
                   </Link>
                 ))}
               </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Chương trình khuyến mãi - Cuộn ngang */}
+      {(vouchers.length > 0 || loadingVouchers) && (
+        <Card className="border-0 shadow-md mx-auto max-w-7xl rounded-none sm:rounded-2xl mt-6">
+          <CardContent className="p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-5 flex items-center gap-2">
+              <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-1 rounded-full text-sm">
+                Ưu đãi
+              </span>
+              Chương trình khuyến mãi
+              {vouchers.length > 0 && (
+                <span className="text-sm font-medium text-gray-500 ml-auto">
+                  ({vouchers.length} ưu đãi)
+                </span>
+              )}
+            </h3>
+
+            {loadingVouchers ? (
+              <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
+                {[...Array(3)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex-shrink-0 w-80 h-28 bg-gray-200 rounded-xl animate-pulse snap-start"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
+                {vouchers.map((voucher) => (
+                  <div
+                    key={voucher._id}
+                    className="flex-shrink-0 w-80 snap-start border-2 border-dashed border-orange-300 rounded-2xl p-4 bg-gradient-to-r from-orange-50 to-amber-50 hover:shadow-lg transition-all cursor-pointer group"
+                    onClick={() => {
+                      navigator.clipboard.writeText(voucher.code);
+                      toast.success(`Đã copy mã: ${voucher.code}`);
+                    }}
+                  >
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        {/* Giảm giá */}
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge className="bg-red-500 text-white text-xs font-bold">
+                            {voucher.discount_type === "PERCENT"
+                              ? `-${voucher.discount_value}%`
+                              : `-${voucher.discount_value.toLocaleString()}đ`}
+                          </Badge>
+                          {voucher.max_discount && (
+                            <span className="text-xs text-gray-600">
+                              Tối đa {voucher.max_discount.toLocaleString()}đ
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Tiêu đề */}
+                        <h4 className="font-bold text-gray-900 text-sm line-clamp-1">
+                          {voucher.code}
+                        </h4>
+
+                        {/* Mô tả */}
+                        <p className="text-xs text-gray-700 mt-1 line-clamp-2">
+                          {voucher.description}
+                        </p>
+
+                        {/* Điều kiện */}
+                        <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <ShoppingCart className="w-3 h-3" />
+                            Đơn từ: {voucher.min_order_amount.toLocaleString()}đ
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            HSD: {new Date(voucher.end_date).toLocaleDateString("vi-VN")}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Mã + Copy */}
+                      <div className="flex flex-col items-center gap-1.5">
+                        <div className="bg-white border-2 border-orange-400 rounded-lg px-3 py-1.5 font-mono font-bold text-orange-600 text-sm tracking-wider shadow-sm">
+                          {voucher.code}
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="w-8 h-8 rounded-lg border-orange-400 hover:bg-orange-100 group-hover:border-orange-500 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(voucher.code);
+                            toast.success(`Đã copy mã: ${voucher.code}`);
+                          }}
+                        >
+                          <Copy className="w-3.5 h-3.5 text-orange-600" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Hướng dẫn lướt */}
+            {vouchers.length > 2 && !loadingVouchers && (
+              <p className="text-xs text-gray-500 text-center mt-3">
+                ← Lướt ngang để xem thêm ưu đãi →
+              </p>
             )}
           </CardContent>
         </Card>
@@ -694,8 +791,7 @@ export const DetailPage = () => {
                           }
                           if (
                             (page === 4 && currentPage > 4) ||
-                            (page === totalPages - 3 &&
-                              currentPage < totalPages - 3)
+                            (page === totalPages - 3 && currentPage < totalPages - 3)
                           ) {
                             return (
                               <PaginationItem key={`ellipsis-${page}`}>

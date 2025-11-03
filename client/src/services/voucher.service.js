@@ -29,3 +29,9 @@ export const deleteVoucher = (voucherId) => {
 export const toggleVoucherStatus = (voucherId, is_active) => {
   return api.patch(`/voucher/${voucherId}/status`, { is_active });
 };
+
+// Lấy danh sách voucher công khai cho người dùng
+// GET http://localhost:9999/api/voucher/public/:shopId?page=1&limit=10
+export const getPublicVouchers = (shopId, params) => {
+  return api.get(`/voucher/public/${shopId}`, { params });
+};
