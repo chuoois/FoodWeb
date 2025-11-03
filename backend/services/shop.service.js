@@ -16,7 +16,7 @@ const getShopIdByStaff = async (accountId) => {
   }
 
   // Tìm shop mà staff này quản lý
-  const shop = await Shop.findOne({ managers: staff.account_id });
+  const shop = await Shop.findOne({ managers: staff._id });
   if (!shop) {
     throw new Error("Shop not found for this staff");
   }
