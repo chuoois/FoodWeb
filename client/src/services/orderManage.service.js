@@ -1,4 +1,5 @@
-import api from "../api/axiosConfig";
+import api from "../lib/axios";
+import { EventSourcePolyfill } from "event-source-polyfill";
 
 /**
  * ===========================
@@ -21,11 +22,13 @@ export const getShopOrders = () => {
  */
 export const connectOrderSSE = (onMessage) => {
   const token = localStorage.getItem("token");
-
-  // ✅ Lấy baseURL từ chính config axios
   const baseURL = api.defaults.baseURL;
 
-  const eventSource = new EventSource(`${baseURL}/ordersManage/sse?token=${token}`);
+  const eventSource = new EventSourcePolyfill(`${baseURL}/ordersManage/sse`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 
   eventSource.onmessage = (event) => {
     try {
@@ -43,7 +46,6 @@ export const connectOrderSSE = (onMessage) => {
 
   return eventSource;
 };
-
 /**
  * Chấp nhận đơn hàng
  * @param {string} orderId - ID đơn hàng

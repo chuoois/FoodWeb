@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react"
 import { Package, Search, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { OrderDetailDialog } from "./order-detail"
+import { getShopOrders, connectOrderSSE } from "@/services/orderManage.service"
 import useDebounce from "@/hooks/useDebounce"
 
 const STATUS_CONFIG = {
@@ -29,31 +30,56 @@ export function OrdersList() {
 
   const debouncedSearch = useDebounce(search, 500)
 
+  // 🧩 Fetch danh sách đơn hàng
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true)
-        const params = new URLSearchParams({
-          page: page.toString(),
-          limit: "10",
-          search: debouncedSearch,
-          status: selectedStatus !== "ALL" ? selectedStatus : "",
+        const params = {
+          page,
+          limit: 10,
+          search: debouncedSearch || undefined,
+          status: selectedStatus !== "ALL" ? selectedStatus : undefined,
           sort_by: "created_at",
           sort_order: "desc",
-        })
-        const res = await fetch(`/api/orders?${params}`)
-        const data = await res.json()
+        }
+
+        const res = await getShopOrders(params)
+        const data = res.data
 
         setOrders(data.data?.orders || [])
         setTotalPages(data.data?.pagination?.total_pages || 1)
       } catch (error) {
-        console.error("Error fetching orders:", error)
+        console.error("❌ Lỗi khi tải đơn hàng:", error)
       } finally {
         setLoading(false)
       }
     }
+
     fetchOrders()
   }, [debouncedSearch, selectedStatus, page])
+
+  // ⚡ Realtime SSE - nhận update đơn hàng mới hoặc thay đổi trạng thái
+  useEffect(() => {
+    const eventSource = connectOrderSSE((data) => {
+      console.log("📡 Nhận dữ liệu SSE:", data)
+
+      setOrders((prev) => {
+        const index = prev.findIndex((o) => o._id === data._id)
+        if (index !== -1) {
+          const updated = [...prev]
+          updated[index] = { ...prev[index], ...data }
+          return updated
+        } else {
+          return [data, ...prev]
+        }
+      })
+    })
+
+    return () => {
+      eventSource.close()
+    }
+  }, [])
 
   const getStatusBadge = (status) => {
     const config = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING
@@ -86,58 +112,57 @@ export function OrdersList() {
 
   return (
     <div className="container mx-auto py-8">
-        
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold">Quản lý món ăn</h1>
+        <h1 className="text-3xl font-semibold">Quản lý đơn hàng</h1>
         <p className="text-muted-foreground">
-          Danh sách tất cả món ăn trong cửa hàng
+          Danh sách tất cả đơn hàng của cửa hàng
         </p>
       </div>
+
       {/* 🔍 Thanh tìm kiếm + filter */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
-            <div className="relative flex-1 max-w-sm">
-          
-              <input
-                type="text"
-                placeholder="Tìm mã đơn hàng hoặc cửa hàng..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="border p-2 rounded-md w-full pr-10"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-
-            <select
-              value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value)
-                setPage(1)
-              }}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        <div className="relative flex-1 max-w-sm">
+          <input
+            type="text"
+            placeholder="Tìm mã đơn hàng hoặc cửa hàng..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="border p-2 rounded-md w-full pr-10"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
-              <option value="ALL">Tất cả trạng thái</option>
-              {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-                <option key={key} value={key}>
-                  {config.label}
-                </option>
-              ))}
-            </select>
-          </div>
-      <Card>
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
 
-        <CardContent>         
+        <select
+          value={selectedStatus}
+          onChange={(e) => {
+            setSelectedStatus(e.target.value)
+            setPage(1)
+          }}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="ALL">Tất cả trạng thái</option>
+          {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+            <option key={key} value={key}>
+              {config.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <Card>
+        <CardContent>
           {/* Bảng đơn hàng */}
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow >
+                <TableRow>
                   <TableHead>Mã đơn</TableHead>
                   <TableHead>Cửa hàng</TableHead>
                   <TableHead>Ngày đặt</TableHead>
@@ -164,10 +189,13 @@ export function OrdersList() {
                       <TableCell className="text-sm">{formatDate(order.created_at)}</TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell className="font-semibold text-green-600">
-                        {order.total_amount.toLocaleString("vi-VN")}đ
+                        {order.total_amount?.toLocaleString("vi-VN")}đ
                       </TableCell>
                       <TableCell>
-                        <Button size="sm" variant="outline" onClick={() => setSelectedOrder(order)}>
+                        <Button size="sm" variant="outline" onClick={() => {
+                          setSelectedOrder(order)
+                          setIsDetailOpen(true)
+                        }}>
                           Xem chi tiết
                         </Button>
                       </TableCell>
@@ -181,7 +209,12 @@ export function OrdersList() {
           {/* Phân trang */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 pt-4">
-              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
                 Trang trước
               </Button>
               <span className="text-sm text-muted-foreground px-3">

@@ -142,8 +142,10 @@ class OrderManagerController {
 // GET /shop/orders/stream → Kết nối SSE
 OrderManagerController.registerSSE = async (req, res) => {
   let staffId;
+
   try {
     staffId = await getStaffId(req.user.accountId);
+  
   } catch (error) {
     return res.status(401).json({ message: error.message });
   }
