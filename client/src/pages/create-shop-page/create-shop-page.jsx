@@ -134,6 +134,7 @@ export const CreateShopPage = () => {
     const fetchManagers = async () => {
       try {
         const response = await getAllManagerStaffNames();
+        console.log("[Danh sách quản lý]", response.data);
         const managerData = Array.isArray(response.data.data) ? response.data.data : [];
         setManagers(managerData);
       } catch (err) {
@@ -430,7 +431,7 @@ export const CreateShopPage = () => {
                     disabled={formik.isSubmitting || hasSubmitted}
                   >
                     {formik.values.managers.length > 0
-                      ? managers.find(m => m.account_id === formik.values.managers[0])?.full_name || "Đang tải..."
+                      ? managers.find(m => m._id === formik.values.managers[0])?.full_name || "Đang tải..."
                       : "Chọn quản lý..."}
                   </Button>
                 </PopoverTrigger>
@@ -448,15 +449,15 @@ export const CreateShopPage = () => {
                         {filteredManagers.length > 0 ? (
                           filteredManagers.map((manager) => (
                             <CommandItem
-                              key={manager.account_id}
+                              key={manager._id}
                               value={manager.full_name}
-                              onSelect={() => handleManagerSelect(manager.account_id)}
+                              onSelect={() => handleManagerSelect(manager._id)}
                               className="cursor-pointer"
                             >
                               <div className="mr-2 flex items-center">
                                 <Check
                                   className={`h-4 w-4 ${
-                                    formik.values.managers.includes(manager.account_id)
+                                    formik.values.managers.includes(manager._id)
                                       ? "opacity-100"
                                       : "opacity-0"
                                   }`}
@@ -481,7 +482,7 @@ export const CreateShopPage = () => {
                 <div className="flex flex-wrap gap-2 mt-3">
                   {(() => {
                     const managerId = formik.values.managers[0];
-                    const manager = managers.find((m) => m.account_id === managerId);
+                    const manager = managers.find((m) => m._id === managerId);
                     return manager ? (
                       <Badge
                         key={managerId}

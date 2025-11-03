@@ -75,16 +75,13 @@ const createShop = async (req, res) => {
     });
 
     const savedShop = await newShop.save();
-
-    console.log("New shop created with ID:", savedShop._id);
     // ===== CẬP NHẬT TRẠNG THÁI MANAGER =====
     if (managers.length > 0) {
       await Staff.updateMany(
-        { account_id: { $in: managers } },
+        { _id: { $in: managers } },
         { $set: { isAssigned: true } }
       );
     }
-    console.log("Shop created successfully:", savedShop);
 
     return res.status(201).json({
       message: "Tạo cửa hàng thành công",

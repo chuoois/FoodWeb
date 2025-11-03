@@ -21,6 +21,7 @@ const getStaffId = async (accountId) => {
  */
 const fetchShopOrders = async (staffId) => {
   const shop = await Shop.findOne({ managers: staffId }).lean();
+  console.log("shop", shop._id);
   if (!shop) return [];
 
   return await Order.find({
@@ -65,7 +66,9 @@ class OrderManagerController {
   static async getOrders(req, res) {
     try {
       const staffId = await getStaffId(req.user.accountId);
+      console.log(staffId);
       const orders = await fetchShopOrders(staffId);
+      console.log(orders);
       res.status(200).json(orders);
     } catch (error) {
       res.status(403).json({ message: error.message });
