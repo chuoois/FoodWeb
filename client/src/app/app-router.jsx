@@ -12,7 +12,9 @@ import {
   StoreDirectorLayout,
   StaffAuthLayout,
   ForbiddenLayout,
-  ManagerStaffLayout
+  ManagerStaffLayout, 
+  MyOrderLayout,
+ 
 } from "@/components/layouts";
 
 import {
@@ -45,9 +47,10 @@ import {
   ProfilePage,
   AccPendingManagement,
   ManagerStaffHomePage,
-  OrdersList
-
-
+  OrdersList,
+  MyOrderPage,
+  MyOrderDetailPage
+  
 } from "@/pages";
 
 export const router = createBrowserRouter([
@@ -135,6 +138,20 @@ export const router = createBrowserRouter([
           { path: "create-food", element: <  CreateFoodPage /> },
           { path: "list-food", element: <     FoodListPage /> }, 
           { path: "list-order", element: <     OrdersList /> }, 
+       
+
+        ],
+      },
+      {
+        path: "myorder",
+        element: <  MyOrderLayout />,
+        children: [
+          { path: "", element: <MyOrderPage /> },
+          { path: ":id", element: <MyOrderDetailPage /> },
+          // { path: "dashboard", element: <div>Dashboard</div> },
+          // { path: "create-food", element: <  CreateFoodPage /> },
+          // { path: "list-food", element: <     FoodListPage /> }, 
+          // { path: "list-order", element: <     OrdersList /> }, 
        
 
         ],
