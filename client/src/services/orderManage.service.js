@@ -1,14 +1,10 @@
-import api from "../api/axiosConfig";
+import api from "../lib/axios";
+import { EventSourcePolyfill } from "event-source-polyfill";
 
-/**
- * ===========================
- * ORDER MANAGER SERVICE
- * ===========================
- */
+let eventSource = null;
 
 /**
  * Lấy danh sách đơn hàng mà nhân viên quản lý
- * @returns {Promise} Danh sách đơn hàng
  */
 export const getShopOrders = () => {
   return api.get("/ordersManage");
@@ -16,49 +12,75 @@ export const getShopOrders = () => {
 
 /**
  * Kết nối SSE (Server-Sent Events) để nhận realtime order update
- * @param {Function} onMessage - Callback khi có dữ liệu SSE gửi về
- * @returns {EventSource} - Trả về EventSource để có thể đóng khi cần
+ * @param {Function} onMessage - callback khi có dữ liệu SSE gửi về
  */
 export const connectOrderSSE = (onMessage) => {
   const token = localStorage.getItem("token");
-
-  // ✅ Lấy baseURL từ chính config axios
   const baseURL = api.defaults.baseURL;
 
-  const eventSource = new EventSource(`${baseURL}/ordersManage/sse?token=${token}`);
+  if (!token) {
+    console.error("❌ Không tìm thấy token. Chưa đăng nhập?");
+    return;
+  }
+
+  // Nếu đã có kết nối rồi thì đóng trước khi mở mới
+  if (eventSource) {
+    eventSource.close();
+  }
+
+  eventSource = new EventSourcePolyfill(`${baseURL}/ordersManage/sse`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    heartbeatTimeout: 300000, // 5 phút - giúp giữ kết nối
+  });
+
+  eventSource.onopen = () => {
+    console.log("✅ SSE Connected: /ordersManage/sse");
+  };
 
   eventSource.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
       onMessage(data);
     } catch (err) {
-      console.error("⚠️ Lỗi parse dữ liệu SSE:", err);
+      console.error("⚠️ Lỗi parse JSON SSE:", err);
     }
   };
 
   eventSource.onerror = (error) => {
-    console.error("❌ Lỗi SSE:", error);
-    eventSource.close();
+    console.error("❌ SSE Error:", error);
+
+    // Nếu lỗi (mất mạng, server down) → tự reconnect
+    if (eventSource.readyState === EventSource.CLOSED) {
+      console.log("🔄 SSE disconnected, trying to reconnect in 3s...");
+      setTimeout(() => connectOrderSSE(onMessage), 3000);
+    }
   };
 
   return eventSource;
 };
 
 /**
+ * Ngắt kết nối SSE khi không còn dùng
+ */
+export const disconnectOrderSSE = () => {
+  if (eventSource) {
+    eventSource.close();
+    console.log("🛑 SSE disconnected");
+  }
+};
+
+/**
  * Chấp nhận đơn hàng
- * @param {string} orderId - ID đơn hàng
- * @returns {Promise}
  */
 export const acceptOrder = (orderId) => {
-  return api.put(`/ordersManage/${orderId}/accept`);
+  return api.patch(`/ordersManage/${orderId}/accept`);
 };
 
 /**
  * Cập nhật trạng thái đơn hàng
- * @param {string} orderId - ID đơn hàng
- * @param {string} status - Trạng thái mới ("SHIPPED" | "DELIVERED" | "CANCELLED")
- * @returns {Promise}
  */
 export const updateOrderStatus = (orderId, status) => {
-  return api.put(`/ordersManage/${orderId}/status`, { status });
+  return api.patch(`/ordersManage/${orderId}/status`, { status });
 };

@@ -1,10 +1,17 @@
-import { useState, useEffect } from "react"
-import { Package, Search, X, Loader2 } from "lucide-react"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { Package, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { OrderDetailDialog } from "./order-detail"
+import { getShopOrders, connectOrderSSE, disconnectOrderSSE } from "@/services/orderManage.service"
 import useDebounce from "@/hooks/useDebounce"
+
+/**
+ * Ghi chú:
+ * - connectOrderSSE nên trả về EventSource (hoặc null nếu không thể kết nối)
+ * - disconnectOrderSSE() sẽ đóng kết nối toàn cục (nếu service quản lý singleton)
+ */
 
 const STATUS_CONFIG = {
   PENDING_PAYMENT: { label: "Chờ thanh toán", color: "text-orange-600", bgColor: "bg-orange-100" },
@@ -17,6 +24,17 @@ const STATUS_CONFIG = {
   REFUNDED: { label: "Đã hoàn tiền", color: "text-gray-600", bgColor: "bg-gray-100" },
 }
 
+const safeNumber = (v) => {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
+const sortByCreatedDesc = (a, b) => {
+  const ta = a.created_at ? new Date(a.created_at).getTime() : 0
+  const tb = b.created_at ? new Date(b.created_at).getTime() : 0
+  return tb - ta
+}
+
 export function OrdersList() {
   const [orders, setOrders] = useState([])
   const [search, setSearch] = useState("")
@@ -26,34 +44,161 @@ export function OrdersList() {
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [error, setError] = useState(null)
 
   const debouncedSearch = useDebounce(search, 500)
 
+  // refs để tránh race & giữ eventSource handle
+  const fetchAbortRef = useRef(null)
+  const mountedRef = useRef(true)
+  const eventSourceRef = useRef(null)
+
+  // Helper: merge SSE data vào state (không replace toàn bộ)
+  const mergeOrderFromSSE = useCallback((incoming) => {
+    if (!incoming || !incoming._id) return
+
+    // Validate created_at - nếu không có created_at, giữ nguyên nếu tồn tại, hoặc set thời điểm hiện tại
+    if (!incoming.created_at) incoming.created_at = new Date().toISOString()
+
+    setOrders((prev) => {
+      // Nếu prev rỗng, trả về mảng 1 phần tử
+      const idx = prev.findIndex((o) => o._id === incoming._id)
+      if (idx !== -1) {
+        const clone = [...prev]
+        clone[idx] = { ...clone[idx], ...incoming }
+        return clone.sort(sortByCreatedDesc)
+      } else {
+        // push mới lên đầu, giữ tối đa 200 item để tránh phình bộ nhớ
+        const merged = [incoming, ...prev]
+        merged.sort(sortByCreatedDesc)
+        return merged.slice(0, 200)
+      }
+    })
+  }, [])
+
+  // Fetch orders (safe) - dùng AbortController để cancel requests cũ
   useEffect(() => {
+    mountedRef.current = true
     const fetchOrders = async () => {
+      if (fetchAbortRef.current) {
+        fetchAbortRef.current.abort()
+      }
+      const ac = new AbortController()
+      fetchAbortRef.current = ac
+
+      setLoading(true)
+      setError(null)
+
       try {
-        setLoading(true)
-        const params = new URLSearchParams({
-          page: page.toString(),
-          limit: "10",
-          search: debouncedSearch,
-          status: selectedStatus !== "ALL" ? selectedStatus : "",
+        const params = {
+          page,
+          limit: 10,
+          search: debouncedSearch || undefined,
+          status: selectedStatus !== "ALL" ? selectedStatus : undefined,
           sort_by: "created_at",
           sort_order: "desc",
-        })
-        const res = await fetch(`/api/orders?${params}`)
-        const data = await res.json()
+        }
 
-        setOrders(data.data?.orders || [])
-        setTotalPages(data.data?.pagination?.total_pages || 1)
-      } catch (error) {
-        console.error("Error fetching orders:", error)
+        const res = await getShopOrders(params, { signal: ac.signal }) // nếu getShopOrders hỗ trợ signal
+        // HỖ TRỢ NHIỀU KIỂU RESPONSE:
+        // - { data: { orders: [...], pagination: { total_pages } } }
+        // - { orders: [...], pagination: {...} }
+        const payload = res?.data
+        const result = payload?.data ?? payload
+        const ordersFromApi = result?.orders ?? result?.orders // safe
+        const pagination = result?.pagination ?? payload?.pagination ?? {}
+
+        // Nếu API trả mảng orders (có khả năng rỗng) -> set. Nếu trả undefined, giữ nguyên (không ghi đè)
+        if (Array.isArray(ordersFromApi)) {
+          // Ensure created_at exists to avoid Invalid Date in UI
+          const normalized = ordersFromApi.map((o) => ({
+            ...o,
+            created_at: o.created_at || new Date().toISOString(),
+          }))
+          setOrders(normalized.sort(sortByCreatedDesc))
+        }
+
+        const tp = pagination?.total_pages ?? pagination?.totalPages ?? 1
+        setTotalPages(typeof tp === "number" ? tp : Number(tp) || 1)
+      } catch (err) {
+        if (err.name === "CanceledError" || err.name === "AbortError") {
+          // ignore aborted requests
+        } else {
+          console.error("❌ Lỗi khi tải đơn hàng:", err)
+          setError(err.message || "Lỗi khi tải đơn hàng")
+        }
       } finally {
-        setLoading(false)
+        if (mountedRef.current) setLoading(false)
       }
     }
+
     fetchOrders()
+
+    return () => {
+      // cleanup: abort fetch khi unmount hoặc khi deps thay đổi
+      if (fetchAbortRef.current) fetchAbortRef.current.abort()
+      fetchAbortRef.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, selectedStatus, page])
+
+  // SSE: connect once khi mount, disconnect on unmount
+  useEffect(() => {
+    mountedRef.current = true
+
+    // Kết nối SSE, truyền callback merge
+    const es = connectOrderSSE((msg) => {
+      // msg có thể là { type: "orders", data: [...] } hoặc single object
+      try {
+        if (!msg) return
+
+        // Nếu backend gửi event kiểu { type, data }
+        if (msg.type === "orders" && Array.isArray(msg.data)) {
+          // merge mọi phần tử (không overwrite toàn bộ nếu API đã tải)
+          const normalized = msg.data
+            .filter(Boolean)
+            .map((o) => ({ ...o, created_at: o.created_at || new Date().toISOString() }))
+          setOrders((prev) => {
+            const map = new Map(prev.map((p) => [p._id, p]))
+            normalized.forEach((o) => {
+              map.set(o._id, { ...(map.get(o._id) || {}), ...o })
+            })
+            const merged = Array.from(map.values()).sort(sortByCreatedDesc)
+            return merged.slice(0, 200)
+          })
+          return
+        }
+
+        // Nếu backend gửi single order object
+        const incoming = msg.data ?? msg
+        if (Array.isArray(incoming)) {
+          incoming.forEach((o) => mergeOrderFromSSE(o))
+        } else {
+          mergeOrderFromSSE(incoming)
+        }
+      } catch (err) {
+        console.error("⚠️ Lỗi xử lý SSE message:", err)
+      }
+    })
+
+    eventSourceRef.current = es
+
+    return () => {
+      mountedRef.current = false
+      // Đóng kết nối SSE an toàn
+      try {
+        if (eventSourceRef.current && typeof eventSourceRef.current.close === "function") {
+          eventSourceRef.current.close()
+        } else {
+          // nếu service quản lý singleton, gọi disconnect
+          disconnectOrderSSE?.()
+        }
+      } catch (err) {
+        console.warn("Lỗi đóng SSE:", err)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const getStatusBadge = (status) => {
     const config = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING
@@ -64,15 +209,26 @@ export function OrdersList() {
     )
   }
 
-  const formatDate = (date) =>
-    new Date(date).toLocaleDateString("vi-VN", {
+  const formatDate = (date) => {
+    if (!date) return "—"
+    const d = new Date(date)
+    if (Number.isNaN(d.getTime())) return "—"
+    return d.toLocaleDateString("vi-VN", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
     })
+  }
 
+  // Reset page khi user thay đổi search (tránh fetch page cũ gây rỗng)
+  const handleSearchChange = (e) => {
+    setSearch(e.target.value)
+    setPage(1)
+  }
+
+  // Render
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -86,58 +242,56 @@ export function OrdersList() {
 
   return (
     <div className="container mx-auto py-8">
-        
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold">Quản lý món ăn</h1>
-        <p className="text-muted-foreground">
-          Danh sách tất cả món ăn trong cửa hàng
-        </p>
+        <h1 className="text-3xl font-semibold">Quản lý đơn hàng</h1>
+        <p className="text-muted-foreground">Danh sách tất cả đơn hàng của cửa hàng</p>
       </div>
-      {/* 🔍 Thanh tìm kiếm + filter */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
-            <div className="relative flex-1 max-w-sm">
-          
-              <input
-                type="text"
-                placeholder="Tìm mã đơn hàng hoặc cửa hàng..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="border p-2 rounded-md w-full pr-10"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
 
-            <select
-              value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value)
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <input
+            type="text"
+            placeholder="Tìm mã đơn hàng hoặc cửa hàng..."
+            value={search}
+            onChange={handleSearchChange}
+            className="border p-2 rounded-md w-full pr-10"
+          />
+          {search && (
+            <button
+              onClick={() => {
+                setSearch("")
                 setPage(1)
               }}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
-              <option value="ALL">Tất cả trạng thái</option>
-              {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-                <option key={key} value={key}>
-                  {config.label}
-                </option>
-              ))}
-            </select>
-          </div>
-      <Card>
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
 
-        <CardContent>         
-          {/* Bảng đơn hàng */}
+        <select
+          value={selectedStatus}
+          onChange={(e) => {
+            setSelectedStatus(e.target.value)
+            setPage(1)
+          }}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="ALL">Tất cả trạng thái</option>
+          {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+            <option key={key} value={key}>
+              {config.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <Card>
+        <CardContent>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow >
+                <TableRow>
                   <TableHead>Mã đơn</TableHead>
                   <TableHead>Cửa hàng</TableHead>
                   <TableHead>Ngày đặt</TableHead>
@@ -159,15 +313,24 @@ export function OrdersList() {
                 ) : (
                   orders.map((order) => (
                     <TableRow key={order._id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell className="font-mono font-semibold text-sm">{order.order_code}</TableCell>
-                      <TableCell className="text-sm">{order.shop_id?.name || "-"}</TableCell>
+                      <TableCell className="font-mono font-semibold text-sm">{order.order_code ?? "—"}</TableCell>
+                      <TableCell className="text-sm">
+                        {order.shop_id?.name ?? order.shop?.name ?? "-"}
+                      </TableCell>
                       <TableCell className="text-sm">{formatDate(order.created_at)}</TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell className="font-semibold text-green-600">
-                        {order.total_amount.toLocaleString("vi-VN")}đ
+                        {safeNumber(order.total_amount).toLocaleString("vi-VN")}đ
                       </TableCell>
                       <TableCell>
-                        <Button size="sm" variant="outline" onClick={() => setSelectedOrder(order)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedOrder(order)
+                            setIsDetailOpen(true)
+                          }}
+                        >
                           Xem chi tiết
                         </Button>
                       </TableCell>
@@ -178,7 +341,9 @@ export function OrdersList() {
             </Table>
           </div>
 
-          {/* Phân trang */}
+          {error && <div className="text-red-600 mt-3">{error}</div>}
+
+          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 pt-4">
               <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
@@ -200,7 +365,6 @@ export function OrdersList() {
         </CardContent>
       </Card>
 
-      {/* Dialog chi tiết */}
       {selectedOrder && (
         <OrderDetailDialog
           order={selectedOrder}
