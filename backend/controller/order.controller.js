@@ -179,3 +179,141 @@ exports.getVouchers = async (req, res) => {
     });
   }
 };
+
+/**
+ * Hủy đơn hàng (chỉ khi đang PENDING)
+ * PATCH /orders/:order_code/cancel
+ */
+
+exports.cancelOrder = async (req, res) => {
+  try {
+    const { order_id } = req.params; 
+    const { reason } = req.body; // Lý do hủy (tùy chọn)
+    const accountId = req.user.accountId;
+
+    // 1. Tìm user
+    const user = await User.findOne({ account_id: accountId });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // 2. Tìm đơn hàng bằng order_code (đúng field trong model)
+    const order = await Order.findById(order_id).populate("voucher_id")
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    // 3. Kiểm tra quyền: chỉ khách hàng đặt đơn mới được hủy
+    if (order.customer_id.toString() !== user._id.toString()) {
+      return res.status(403).json({ message: "You can only cancel your own order" });
+    }
+
+    // 4. Chỉ hủy được khi status = PENDING
+    if (order.status !== "PENDING") {
+      return res.status(400).json({ 
+        message: "Cannot cancel order. Only PENDING orders can be cancelled.",
+        current_status: order.status
+      });
+    }
+
+    // 5. Cập nhật trạng thái + lý do + người hủy
+    order.status = "CANCELLED";
+    order.payment_status = order.payment_method === "COD" ? "CANCELLED" : "CANCELLED";
+    order.cancel_reason = reason || "Khách hàng hủy đơn";
+    order.cancelled_by = user._id;
+
+    await order.save();
+
+    // 6. Hoàn lại voucher (nếu có)
+    if (order.voucher_id) {
+      await Voucher.findByIdAndUpdate(order.voucher_id, {
+        $inc: { used_count: -1 }
+      });
+    }
+
+    // 7. Gửi thông báo realtime đến shop
+    try {
+      if (orderManager.notifyOrderCancelled) {
+        await orderManager.notifyOrderCancelled(order);
+      } else {
+        // Fallback: dùng notifyNewOrder với status mới
+        await orderManager.notifyNewOrder({ ...order.toObject(), status: "CANCELLED" });
+      }
+    } catch (notifyErr) {
+      console.warn("SSE notify failed (non-critical):", notifyErr.message);
+    }
+
+    // 8. Trả về kết quả
+    res.json({
+      success: true,
+      message: "Order cancelled successfully",
+      order: {
+        order_code: order.order_code,
+        status: order.status,
+        cancel_reason: order.cancel_reason,
+        cancelled_at: order.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error("Cancel order error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Error cancelling order", 
+      error: error.message 
+    });
+  }
+};
+
+/**
+ * Lấy danh sách đơn hàng của user hiện tại
+ * GET /orders?status=PENDING&page=1&limit=10
+ */
+exports.getUserOrders = async (req, res) => {
+  try {
+    const accountId = req.user.accountId;
+    const { status, page = 1, limit = 10 } = req.query;
+
+    // Tìm user
+    const user = await User.findOne({ account_id: accountId });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Xây filter
+    const filter = { customer_id: user._id };
+    if (status) {
+      filter.status = status.toUpperCase();
+    }
+
+    // Phân trang
+    const skip = (page - 1) * limit;
+    const orders = await Order.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate("shop_id", "name image_url")
+      .populate("delivery_address_id", "address recipient_name phone")
+      .populate("voucher_id", "code discount_type discount_value")
+      .lean();
+
+    // Lấy chi tiết món ăn cho từng đơn
+    const ordersWithDetails = await Promise.all(
+      orders.map(async (order) => {
+        const details = await OrderDetail.find({ order_id: order._id })
+          .select("food_name food_image_url quantity unit_price discount_percent subtotal")
+          .lean();
+        return { ...order, items: details };
+      })
+    );
+
+    const total = await Order.countDocuments(filter);
+
+    res.json({
+      success: true,
+      data: ordersWithDetails,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching orders", error: error.message });
+  }
+};

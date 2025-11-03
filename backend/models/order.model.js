@@ -47,7 +47,7 @@ const orderSchema = new mongoose.Schema(
     },
     payment_status: {
       type: String,
-      enum: ["UNPAID", "PAID", "REFUNDED", "COD_PENDING"],
+      enum: ["UNPAID", "PAID", "REFUNDED", "COD_PENDING", "CANCELLED"],
       default: "UNPAID",
     },
     paid_at: { type: Date },
