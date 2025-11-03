@@ -34,9 +34,11 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Toaster, toast } from "react-hot-toast";
+
 import useDebounce from "@/hooks/useDebounce";
 import { useNavigate } from "react-router-dom";
-import { getFoodsByShop } from "@/services/food.service"; // 🔹 import API
+
+import { getFoodsByShop, updateFood, deleteFood, toggleFoodStatus } from "@/services/food.service"; // 🔹 import API
 
 export function FoodListPage() {
   const [selectedFood, setSelectedFood] = useState(null);
@@ -46,8 +48,56 @@ export function FoodListPage() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
+  // ✨ Thêm mới: Dialog chi tiết món ăn
+  const [openDetailDialog, setOpenDetailDialog] = useState(false);
+  const [formData, setFormData] = useState({});
   const debouncedSearch = useDebounce(search, 500);
+
+
+  const handleOpenDetail = (food) => {
+    setSelectedFood(food);
+    setFormData({
+      name: food.name,
+      description: food.description || "",
+      price: food.price,
+      discount: food.discount || 0,
+      is_available: food.is_available,
+      category_id: food.category_id?._id || "",
+      options: food.options || [],
+    });
+    setOpenDetailDialog(true);
+  };
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+  // 🟢 Thêm option mới
+  const handleAddOption = () => {
+    setFormData((prev) => ({
+      ...prev,
+      options: [...prev.options, { name: "", type: "", price: 0 }],
+    }));
+  };
+
+  // 🟡 Sửa option
+  const handleOptionChange = (index, field, value) => {
+    const newOptions = [...formData.options];
+    newOptions[index][field] = value;
+    setFormData((prev) => ({ ...prev, options: newOptions }));
+  };
+
+  // 🔴 Xóa option
+  const handleRemoveOption = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      options: prev.options.filter((_, i) => i !== index),
+    }));
+  };
+
 
   // 🧭 Gọi API khi search hoặc page thay đổi
   useEffect(() => {
@@ -80,33 +130,72 @@ export function FoodListPage() {
 
   const handleClearSearch = () => setSearch("");
 
-  const handleEdit = (food) => toast(`Sửa món: ${food.name}`);
 
-  const handleDelete = (id) => {
-    if (window.confirm("Bạn có chắc muốn xóa món này không?")) {
-      setFoods(foods.filter((f) => f._id !== id));
-      toast.success("Đã xóa món thành công");
+  const handleSaveUpdate = async () => {
+    if (!selectedFood?._id) return;
+
+    try {
+      toast.loading("Đang cập nhật món ăn...", { id: "update-food" });
+
+      const res = await updateFood(selectedFood._id, formData);
+
+      // Giả sử API trả về { data: {...food} }
+      const updatedFood = res.data?.data || res.data;
+
+      // Cập nhật danh sách món trong state
+      setFoods((prev) =>
+        prev.map((f) => (f._id === selectedFood._id ? updatedFood : f))
+      );
+
+      toast.success("Cập nhật món ăn thành công!", { id: "update-food" });
+      setOpenDetailDialog(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Lỗi khi cập nhật món ăn", {
+        id: "update-food",
+      });
     }
   };
 
-  const handleToggleAvailability = (id, available) => {
-    setFoods(
-      foods.map((f) =>
-        f._id === id ? { ...f, is_available: available } : f
-      )
-    );
-    toast.success(
-      available ? "Món đã được bật bán" : "Món đã được tạm ngưng bán"
-    );
+  const handleDelete = async (id) => {
+    if (!window.confirm("Bạn có chắc muốn xóa món này không?")) return;
+
+    try {
+      toast.loading("Đang xóa món...", { id: "delete-food" });
+
+      await deleteFood(id);
+
+      setFoods((prev) => prev.filter((f) => f._id !== id));
+      toast.success("Xóa món thành công!", { id: "delete-food" });
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Không thể xóa món", {
+        id: "delete-food",
+      });
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const handleToggleAvailability = async (id, newStatus) => {
+    try {
+      toast.loading("Đang cập nhật trạng thái...", { id: "toggle-food" });
+
+      await toggleFoodStatus(id);
+
+      setFoods((prev) =>
+        prev.map((f) =>
+          f._id === id ? { ...f, is_available: newStatus } : f
+        )
+      );
+
+      toast.success(
+        newStatus ? "Món đã được bật bán" : "Món đã được tạm ngưng bán",
+        { id: "toggle-food" }
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi khi thay đổi trạng thái món", { id: "toggle-food" });
+    }
+  };
 
   return (
     <div className="container mx-auto py-8">
@@ -307,7 +396,7 @@ export function FoodListPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleEdit(food)}
+                            onClick={() => handleOpenDetail(food)}
                           >
                             <Edit2 className="h-4 w-4" />
                           </Button>
@@ -352,6 +441,148 @@ export function FoodListPage() {
           </div>
         </CardContent>
       </Card>
+      <Dialog open={openDetailDialog} onOpenChange={setOpenDetailDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Chi tiết món ăn</DialogTitle>
+            <DialogDescription>
+              Xem và chỉnh sửa thông tin món ăn
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedFood && (
+            <div className="space-y-4 mt-4">
+              <div>
+                <label className="text-sm font-medium">Tên món</label>
+                <input
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded-md"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Mô tả</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded-md"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="text-sm font-medium">Giá gốc (đ)</label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleChange}
+                    className="w-full border p-2 rounded-md"
+                  />
+                </div>
+
+                <div className="flex-1">
+                  <label className="text-sm font-medium">Giảm giá (%)</label>
+                  <input
+                    type="number"
+                    name="discount"
+                    value={formData.discount}
+                    onChange={handleChange}
+                    className="w-full border p-2 rounded-md"
+                  />
+                </div>
+              </div>
+              <div>
+
+                <div>
+                  <div>
+                    <label className="text-sm font-medium">Tùy chọn món ăn</label>
+                    <div className="mt-2 space-y-3">
+                      {formData.options.map((opt, index) => (
+                        <div key={index} className="border p-3 rounded-md space-y-2 relative">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOption(index)}
+                            className="absolute top-2 right-2 text-destructive hover:underline text-xs"
+                          >
+                            Xóa
+                          </button>
+
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <label className="text-xs font-medium">Tên tùy chọn</label>
+                              <input
+                                type="text"
+                                value={opt.name}
+                                onChange={(e) =>
+                                  handleOptionChange(index, "name", e.target.value)
+                                }
+                                className="w-full border p-2 rounded-md"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <label className="text-xs font-medium">Loại</label>
+                              <select
+                                value={opt.type}
+                                onChange={(e) => handleOptionChange(index, "type", e.target.value)}
+                                className="w-full border p-2 rounded-md bg-white"
+                              >
+                                <option value="">-- Chọn loại --</option>
+                                <option value="SIZE">SIZE</option>
+                                <option value="TOPPING">TOPPING</option>
+                                <option value="EXTRA">EXTRA</option>
+                                <option value="SPICY">SPICY</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-medium">Giá thêm (đ)</label>
+                            <input
+                              type="number"
+                              value={opt.price}
+                              onChange={(e) =>
+                                handleOptionChange(index, "price", Number(e.target.value))
+                              }
+                              className="w-full border p-2 rounded-md"
+                              step={5000}  // 👈 Thêm dòng này
+                            />
+                          </div>
+                        </div>
+                      ))}
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddOption}
+                        className="mt-2"
+                      >
+                        + Thêm tùy chọn
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setOpenDetailDialog(false)}
+                >
+                  Hủy
+                </Button>
+                <Button onClick={handleSaveUpdate} >Lưu thay đổi</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
