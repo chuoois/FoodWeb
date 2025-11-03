@@ -92,7 +92,7 @@ const getFoodsByShop = async (req, res) => {
       return res.status(404).json({ message: "Staff not found for this account" });
     }
 
-    const shop = await Shop.findOne({ managers: staff._id });
+    const shop = await Shop.findOne({ managers: staff.account_id });
     if (!shop) {
       return res.status(404).json({ message: "Shop not found for this staff" });
     }

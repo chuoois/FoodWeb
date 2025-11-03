@@ -113,6 +113,7 @@ export function FoodListPage() {
         };
 
         const res = await getFoodsByShop(params);
+        console.log(res);
 
         // API trả về { foods, pagination }
         setFoods(res.data.foods || []);
