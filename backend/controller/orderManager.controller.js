@@ -38,21 +38,29 @@ const fetchShopOrders = async (staffId) => {
   // Lấy chi tiết các món ăn cho các order này
   const orderIds = orders.map((o) => o._id);
   const orderDetails = await OrderDetail.find({ order_id: { $in: orderIds } })
-    .select("order_id food_name")
+    .select("order_id food_name quantity")
     .lean();
 
   // Gom các món ăn theo từng order
   const orderNameMap = {};
+  const orderQuantity = {};
   orderDetails.forEach((detail) => {
     if (!orderNameMap[detail.order_id]) orderNameMap[detail.order_id] = [];
-    orderNameMap[detail.order_id].push(detail.food_name);
+    orderNameMap[detail.order_id].push(detail.food_name,);
+    if (!orderQuantity[detail.order_id]) orderQuantity[detail.order_id] = [];
+     orderQuantity[detail.order_id].push( detail.quantity);
+   
   });
-
+  console.log(orderDetails);
+  
   // Gắn tên món (order_name) vào từng order
   const ordersWithNames = orders.map((order) => ({
     ...order,
     order_name: orderNameMap[order._id]?.join(", ") || "",
+    quantity : orderQuantity[order._id]?.join(", ") || ""
   }));
+  console.log(ordersWithNames);
+  
 
   return ordersWithNames;
 };
