@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Order = require("../models/order.model");
 const Shop = require("../models/shop.model");
 const Staff = require("../models/staff.model");
+const OrderDetail = require("../models/orderDetail.model")
 
 // SSE clients: Map<staffId(string), Array<res>>
 const sseClients = new Map();
@@ -21,17 +22,42 @@ const getStaffId = async (accountId) => {
  */
 const fetchShopOrders = async (staffId) => {
   const shop = await Shop.findOne({ managers: staffId }).lean();
- 
   if (!shop) return [];
+  console.log(shop._id);
 
-  return await Order.find({
+  // Lấy danh sách đơn của shop
+  const orders = await Order.find({
     shop_id: shop._id,
     status: { $in: ["PENDING", "CONFIRMED"] },
   })
     .populate("customer_id", "full_name phone")
-    .populate("delivery_address_id", "address")
+    .populate("shop_id", "name image_url")
+    .populate("delivery_address_id", "address recipient_name phone")
     .lean();
+
+  // Lấy chi tiết các món ăn cho các order này
+  const orderIds = orders.map((o) => o._id);
+  const orderDetails = await OrderDetail.find({ order_id: { $in: orderIds } })
+    .select("order_id food_name")
+    .lean();
+
+  // Gom các món ăn theo từng order
+  const orderNameMap = {};
+  orderDetails.forEach((detail) => {
+    if (!orderNameMap[detail.order_id]) orderNameMap[detail.order_id] = [];
+    orderNameMap[detail.order_id].push(detail.food_name);
+  });
+
+  // Gắn tên món (order_name) vào từng order
+  const ordersWithNames = orders.map((order) => ({
+    ...order,
+    order_name: orderNameMap[order._id]?.join(", ") || "",
+  }));
+
+  return ordersWithNames;
 };
+
+
 
 /**
  * Gửi SSE event cho một staff
@@ -66,10 +92,10 @@ class OrderManagerController {
   static async getOrders(req, res) {
     try {
       const staffId = await getStaffId(req.user.accountId);
-      console.log(staffId);
       const orders = await fetchShopOrders(staffId);
-      console.log(orders);
       res.status(200).json(orders);
+      // console.log(orders._id);
+      
     } catch (error) {
       res.status(403).json({ message: error.message });
     }
