@@ -21,7 +21,7 @@ const getStaffId = async (accountId) => {
  */
 const fetchShopOrders = async (staffId) => {
   const shop = await Shop.findOne({ managers: staffId }).lean();
-  console.log("shop", shop._id);
+ 
   if (!shop) return [];
 
   return await Order.find({
