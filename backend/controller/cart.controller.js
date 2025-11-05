@@ -200,8 +200,7 @@ const removeCartItem = async (req, res) => {
     if (item.status !== "ACTIVE")
       return res.status(400).json({ message: "Item is not active" });
 
-    item.status = "REMOVED";
-    await item.save();
+    await item.deleteOne();
 
     return res.json({ message: "Item removed from cart" });
   } catch (error) {

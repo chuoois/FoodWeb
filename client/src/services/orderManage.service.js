@@ -1,4 +1,4 @@
-import api from "../lib/axios";
+import api from "@/lib/axios";
 import { EventSourcePolyfill } from "event-source-polyfill";
 
 let eventSource = null;
