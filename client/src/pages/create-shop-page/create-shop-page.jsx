@@ -240,7 +240,7 @@ export const CreateShopPage = () => {
       setUploading((prev) => ({ ...prev, [cropKey]: true }));
       const uploadToast = toast.loading(`Đang tải ảnh ${cropKey === "logoUrl" ? "logo" : "bìa"}...`);
       const file = await getCroppedImg(cropSrc, croppedAreaPixels, pendingFileName);
-      const urls = await uploadImages([file], () => {});
+      const urls = await uploadImages([file], () => { });
       if (urls.length > 0) {
         formik.setFieldValue(cropKey, urls[0]);
         toast.success(`Tải ảnh thành công!`, { id: uploadToast });
@@ -456,11 +456,10 @@ export const CreateShopPage = () => {
                             >
                               <div className="mr-2 flex items-center">
                                 <Check
-                                  className={`h-4 w-4 ${
-                                    formik.values.managers.includes(manager._id)
+                                  className={`h-4 w-4 ${formik.values.managers.includes(manager._id)
                                       ? "opacity-100"
                                       : "opacity-0"
-                                  }`}
+                                    }`}
                                 />
                               </div>
                               <span>{manager.full_name}</span>
@@ -530,167 +529,154 @@ export const CreateShopPage = () => {
               <CardTitle>Vị trí</CardTitle>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            {/* Nút lấy vị trí – luôn hiển thị */}
             <div className="space-y-2">
-              <Label htmlFor="address.street">Địa chỉ cụ thể <span className="text-red-500">*</span></Label>
-              <Input
-                id="address.street"
-                name="address.street"
-                placeholder="Số nhà, tên đường"
-                value={formik.values.address.street}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                disabled={formik.isSubmitting || hasSubmitted}
-                required
-              />
-              {formik.touched.address?.street && formik.errors.address?.street && (
-                <p className="text-sm text-red-500">{formik.errors.address.street}</p>
-              )}
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="address.ward">Phường/Xã <span className="text-red-500">*</span></Label>
-                <Input
-                  id="address.ward"
-                  name="address.ward"
-                  placeholder="Phường/Xã"
-                  value={formik.values.address.ward}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  disabled={formik.isSubmitting || hasSubmitted}
-                  required
-                />
-                {formik.touched.address?.ward && formik.errors.address?.ward && (
-                  <p className="text-sm text-red-500">{formik.errors.address.ward}</p>
+              <Label>Lấy vị trí cửa hàng</Label>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-start"
+                onClick={handleGetLocation}
+                disabled={isGettingLocation || formik.isSubmitting || hasSubmitted}
+              >
+                {isGettingLocation ? (
+                  <>Đang lấy vị trí...</>
+                ) : (
+                  <>
+                    <Crosshair className="mr-2 h-4 w-4" />
+                    Lấy vị trí hiện tại
+                  </>
                 )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address.district">Quận/Huyện <span className="text-red-500">*</span></Label>
-                <Input
-                  id="address.district"
-                  name="address.district"
-                  placeholder="Quận/Huyện"
-                  value={formik.values.address.district}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  disabled={formik.isSubmitting || hasSubmitted}
-                  required
-                />
-                {formik.touched.address?.district && formik.errors.address?.district && (
-                  <p className="text-sm text-red-500">{formik.errors.address.district}</p>
-                )}
-              </div>
+              </Button>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="address.city">Tỉnh/Thành phố <span className="text-red-500">*</span></Label>
-                <Input
-                  id="address.city"
-                  name="address.city"
-                  placeholder="Tỉnh/Thành phố"
-                  value={formik.values.address.city}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  disabled={formik.isSubmitting || hasSubmitted}
-                  required
-                />
-                {formik.touched.address?.city && formik.errors.address?.city && (
-                  <p className="text-sm text-red-500">{formik.errors.address.city}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address.province">Quốc gia </Label>
-                <Input
-                  id="address.province"
-                  name="address.province"
-                  placeholder="Quốc gia"
-                  value={formik.values.address.province}
-                  readOnly
-                  className="opacity-60 cursor-not-allowed bg-muted"
-                  disabled={formik.isSubmitting || hasSubmitted}
-                  required
-                />
-              </div>
-            </div>
-
+            {/* Bản đồ – luôn hiển thị */}
             <div className="space-y-2">
-              <Label>Lấy vị trí</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={handleGetLocation}
-                  disabled={isGettingLocation || formik.isSubmitting || hasSubmitted}
-                >
-                  {isGettingLocation ? (
-                    <>Đang lấy vị trí...</>
-                  ) : (
-                    <>
-                      <Crosshair className="mr-2 h-4 w-4" />
-                      Lấy vị trí hiện tại
-                    </>
-                  )}
-                </Button>
-              </div>
+              <Label>Bản đồ (nhấp để chọn chính xác)</Label>
+              <div ref={mapContainerRef} className="w-full h-[300px] rounded-md border" />
             </div>
 
-            <div className="space-y-2">
-              <Label>Bản đồ</Label>
-              <div
-                ref={mapContainerRef}
-                className="w-full h-[300px] rounded-md border"
-              />
-            </div>
+            {/* ------------------- HIỂN THỊ SAU KHI LẤY VỊ TRÍ ------------------- */}
+            {(formik.values.gps.latitude && formik.values.gps.longitude) && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                {/* Địa chỉ chi tiết */}
+                <div className="space-y-4">
+                  <h3 className="font-medium text-foreground">Thông tin địa chỉ</h3>
 
-            <div className="space-y-2">
-              <Label>Tọa độ GPS <span className="text-red-500">*</span></Label>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="gps.latitude">Vĩ độ</Label>
-                  <Input
-                    id="gps.latitude"
-                    name="gps.latitude"
-                    placeholder="Vĩ độ (latitude)"
-                    type="number"
-                    step="any"
-                    value={formik.values.gps.latitude}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    disabled={formik.isSubmitting || hasSubmitted}
-                    required
-                  />
-                  {formik.touched.gps?.latitude && formik.errors.gps?.latitude && (
-                    <p className="text-sm text-red-500">{formik.errors.gps.latitude}</p>
-                  )}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="address.street">Địa chỉ cụ thể <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="address.street"
+                        name="address.street"
+                        placeholder="Số nhà, tên đường"
+                        value={formik.values.address.street}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        disabled={formik.isSubmitting || hasSubmitted}
+                      />
+                      {formik.touched.address?.street && formik.errors.address?.street && (
+                        <p className="text-sm text-red-500">{formik.errors.address.street}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="address.ward">Phường/Xã <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="address.ward"
+                        name="address.ward"
+                        placeholder="Phường/Xã"
+                        value={formik.values.address.ward}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        disabled={formik.isSubmitting || hasSubmitted}
+                      />
+                      {formik.touched.address?.ward && formik.errors.address?.ward && (
+                        <p className="text-sm text-red-500">{formik.errors.address.ward}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="address.district">Quận/Huyện <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="address.district"
+                        name="address.district"
+                        placeholder="Quận/Huyện"
+                        value={formik.values.address.district}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        disabled={formik.isSubmitting || hasSubmitted}
+                      />
+                      {formik.touched.address?.district && formik.errors.address?.district && (
+                        <p className="text-sm text-red-500">{formik.errors.address.district}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="address.city">Tỉnh/Thành phố <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="address.city"
+                        name="address.city"
+                        placeholder="Tỉnh/Thành phố"
+                        value={formik.values.address.city}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        disabled={formik.isSubmitting || hasSubmitted}
+                      />
+                      {formik.touched.address?.city && formik.errors.address?.city && (
+                        <p className="text-sm text-red-500">{formik.errors.address.city}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Quốc gia</Label>
+                    <Input
+                      value="Việt Nam"
+                      readOnly
+                      className="bg-muted/50 cursor-not-allowed"
+                    />
+                  </div>
                 </div>
+
+                {/* Tọa độ GPS – chỉ đọc */}
                 <div className="space-y-2">
-                  <Label htmlFor="gps.longitude">Kinh độ</Label>
-                  <Input
-                    id="gps.longitude"
-                    name="gps.longitude"
-                    placeholder="Kinh độ (longitude)"
-                    type="number"
-                    step="any"
-                    value={formik.values.gps.longitude}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    disabled={formik.isSubmitting || hasSubmitted}
-                    required
-                  />
-                  {formik.touched.gps?.longitude && formik.errors.gps?.longitude && (
-                    <p className="text-sm text-red-500">{formik.errors.gps.longitude}</p>
-                  )}
+                  <Label>Tọa độ GPS <span className="text-red-500">*</span></Label>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label className="text-muted-foreground">Vĩ độ</Label>
+                      <Input
+                        value={formik.values.gps.latitude}
+                        readOnly
+                        className="bg-muted/50"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-muted-foreground">Kinh độ</Label>
+                      <Input
+                        value={formik.values.gps.longitude}
+                        readOnly
+                        className="bg-muted/50"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Nhấp vào bản đồ để điều chỉnh vị trí chính xác.
+                  </p>
                 </div>
               </div>
-              {formik.values.gps.latitude && formik.values.gps.longitude && (
-                <p className="text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
-                  Tọa độ: {formik.values.gps.latitude}, {formik.values.gps.longitude}
-                </p>
-              )}
-            </div>
+            )}
+
+            {/* Thông báo khi chưa lấy vị trí */}
+            {!(formik.values.gps.latitude && formik.values.gps.longitude) && (
+              <div className="text-center py-8 text-muted-foreground">
+                <MapPin className="mx-auto h-12 w-12 mb-3 opacity-30" />
+                <p>Vui lòng nhấn nút "Lấy vị trí hiện tại" hoặc nhấp vào bản đồ để chọn vị trí cửa hàng. Lưu ý quan trọng hãy yêu cầu quản lý cập nhật vị trí hiện tại của cửa hàng</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

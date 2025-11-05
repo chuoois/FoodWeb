@@ -19,6 +19,6 @@ export * from './list-food-page'
 export * from './manager-staff-home'
 export * from './manager-staff-order'
 export * from './my-order-page'
-
+export * from './store-director-manage-dashboard'
 
 

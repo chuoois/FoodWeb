@@ -22,7 +22,8 @@ const createShop = async (req, res) => {
       managers = [] // danh sách manager
     } = req.body;
 
-    const owner = req.user.accountId;
+    const accountId = req.user.accountId;
+    const owner = await User.findOne({ account_id: accountId }).select("_id");
 
     // ===== VALIDATION =====
     if (!name || !phone) {
@@ -56,7 +57,7 @@ const createShop = async (req, res) => {
 
     // ===== TẠO SHOP MỚI =====
     const newShop = new Shop({
-      owner,
+      owner: owner._id,
       managers,
       name,
       description,
@@ -102,8 +103,9 @@ const createShop = async (req, res) => {
 const getShopByOwnerID = async (req, res) => {
   try {
     const { accountId } = req.user;
+    const owner = await User.findOne({ account_id: accountId }).select("_id");
     const { status, search } = req.query;
-    const filter = { owner: accountId };
+    const filter = { owner: owner._id };
 
     if (status) filter.status = status;
     if (search) filter.name = { $regex: search, $options: "i" };
@@ -164,10 +166,7 @@ const updateManager = async (req, res) => {
     const { shopId } = req.params;
     const { managers } = req.body;
     const { accountId } = req.user;
-
-    if (!Array.isArray(managers)) {
-      return res.status(400).json({ message: "Managers phải là một mảng ID người dùng" });
-    }
+    const owner = await User.findOne({ account_id: accountId });
 
     // ===== TÌM SHOP =====
     const shop = await Shop.findById(shopId);
@@ -175,65 +174,32 @@ const updateManager = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy cửa hàng" });
     }
 
-    // ===== KIỂM TRA QUYỀN CỦA OWNER =====
-    if (shop.owner.toString() !== accountId.toString()) {
-      return res.status(403).json({ message: "Bạn không có quyền chỉnh sửa cửa hàng này" });
+    if (shop.owner.toString() !== owner._id.toString()) {
+      return res.status(403).json({ message: "Không có quyền" });
     }
-
-    // ===== XÁC ĐỊNH CÁC MANAGER CŨ & MỚI =====
-    const oldManagers = shop.managers.map((m) => m.toString());
-    const newManagers = managers.map((m) => m.toString());
-
-    // Những manager bị gỡ bỏ
-    const removedManagers = oldManagers.filter((m) => !newManagers.includes(m));
-    // Những manager được thêm mới
-    const addedManagers = newManagers.filter((m) => !oldManagers.includes(m));
-
-    // ===== CẬP NHẬT TRẠNG THÁI isAssigned =====
-    if (removedManagers.length > 0) {
+    
+    // ===== CẬP NHẬT TRẠNG THÁI MANAGER =====
+    if (managers.length > 0) {
       await Staff.updateMany(
-        { account_id: { $in: removedManagers } },
-        { $set: { isAssigned: false } }
-      );
-    }
-
-    if (addedManagers.length > 0) {
-      // Kiểm tra xem manager mới có đang được gán ở shop khác không
-      const conflictShops = await Shop.find({
-        _id: { $ne: shopId },
-        managers: { $in: addedManagers },
-      }).lean();
-
-      if (conflictShops.length > 0) {
-        const conflictManagers = new Set();
-        conflictShops.forEach((s) => {
-          s.managers.forEach((m) => {
-            if (addedManagers.includes(m.toString())) conflictManagers.add(m.toString());
-          });
-        });
-
-        return res.status(400).json({
-          message: "Một hoặc nhiều quản lý đã thuộc về cửa hàng khác",
-          conflictManagers: Array.from(conflictManagers),
-        });
-      }
-
-      await Staff.updateMany(
-        { _id: { $in: addedManagers } },
+        { _id: { $in: managers } },
         { $set: { isAssigned: true } }
       );
     }
 
-    // ===== CẬP NHẬT DANH SÁCH MANAGERS TRONG SHOP =====
-    shop.managers = newManagers;
+    // ===== CẬP NHẬT TRẠNG THÁI MANAGER =====
+    if (shop.managers.length > 0) {
+      await Staff.updateMany(
+        { _id: { $in: shop.managers } },
+        { $set: { isAssigned: false } }
+      );
+    }
+
+    // ===== CẬP NHẬT TRẠNG THÁI MANAGER =====
+    shop.managers = managers;
     const updatedShop = await shop.save();
-
-    const populatedShop = await updatedShop.populate("managers", "full_name");
-
-    return res.status(200).json({
-      message: "Cập nhật danh sách quản lý thành công",
-      shop: populatedShop,
-    });
+    if (updatedShop) {
+      return res.status(200).json({ message: "Cập nhật danh sách managers" });
+    }
   } catch (error) {
     console.error("Lỗi khi cập nhật managers:", error);
     return res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
@@ -247,6 +213,7 @@ const deleteShop = async (req, res) => {
   try {
     const { shopId } = req.params;
     const { accountId } = req.user;
+    const owner = await User.findOne({ account_id: accountId });
 
     // ===== TÌM SHOP =====
     const shop = await Shop.findById(shopId);
@@ -255,8 +222,8 @@ const deleteShop = async (req, res) => {
     }
 
     // ===== KIỂM TRA QUYỀN XOÁ =====
-    if (shop.owner.toString() !== accountId.toString()) {
-      return res.status(403).json({ message: "Bạn không có quyền xóa cửa hàng này" });
+    if (shop.owner.toString() !== owner._id.toString()) {
+      return res.status(403).json({ message: "Không có quyền" });
     }
 
     // ===== CẬP NHẬT TRẠNG THÁI MANAGER TRƯỚC KHI XOÁ SHOP =====
@@ -284,6 +251,10 @@ const getAllManagerStaffNames = async (req, res) => {
   try {
     // lây accountId cua nguoi dung
     const { accountId } = req.user;
+    const owner = await User.findOne({ account_id: accountId }).select("_id");
+    if (!owner) {
+      return res.status(404).json({ message: "Không tìm thấy user hiện tại" });
+    }
 
     // Tìm role MANAGER_STAFF
     const role = await Role.findOne({ name: "MANAGER_STAFF" });
@@ -300,7 +271,7 @@ const getAllManagerStaffNames = async (req, res) => {
     const managerStaff = await Staff.find({
       account_id: { $in: accounts.map(acc => acc._id) },
       isAssigned: false,
-      created_by: { $in: accountId } // Lấy những staff do người dùng hiện tại tạo
+      created_by: owner
     })
       .select("_id full_name account_id")
       .lean();
@@ -323,7 +294,8 @@ const getAllManagerStaffNames = async (req, res) => {
 const createShopStaff = async (req, res) => {
   try {
     const { email, password, confirmPassword, roleName, full_name, phone } = req.body;
-    const reqUserId = req.user.accountId;
+    const accountId = req.user.accountId;
+    const reqUserId = await User.findOne({ account_id: accountId }).select("_id");
 
     if (password !== confirmPassword) {
       return res.status(400).json({ message: "Mật khẩu xác nhận không khớp" });
@@ -369,11 +341,15 @@ const createShopStaff = async (req, res) => {
  */
 const listStaffByCreator = async (req, res) => {
   try {
-    const { accountId } = req.user; // từ middleware xác thực
+    const accountId = req.user.accountId;
+    const owner = await User.findOne({ account_id: accountId }).select("_id");
+    if (!owner) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng hiện tại" });
+    }
     const { search, status, page = 1, limit = 10 } = req.query;
 
     // Bộ lọc
-    const filter = { created_by: accountId };
+    const filter = { created_by: owner };
     if (status) filter.status = status;
 
     if (search) {
@@ -416,6 +392,7 @@ const listStaffByCreator = async (req, res) => {
 const updateStaff = async (req, res) => {
   try {
     const { accountId } = req.user;
+    const owner = await User.findOne({ account_id: accountId });
     const { id } = req.params;
     const updateData = req.body;
 
@@ -426,8 +403,8 @@ const updateStaff = async (req, res) => {
     }
 
     // Chỉ cho phép người tạo sửa nhân viên
-    if (staff.created_by.toString() !== accountId.toString()) {
-      return res.status(403).json({ message: "Bạn không có quyền cập nhật nhân viên này" });
+    if (staff.created_by.toString() !== owner._id.toString()) {
+      return res.status(403).json({ message: "Không có quyền" });
     }
 
     // Cập nhật hợp lệ
@@ -465,32 +442,39 @@ const updateStaff = async (req, res) => {
  */
 const deleteStaff = async (req, res) => {
   try {
-    const { accountId } = req.user; // ID người đang đăng nhập
-    const { id } = req.params; // ID của staff cần xóa
+    const accountId = req.user.accountId;
 
-    // Tìm nhân viên
+    // Phải có await để lấy dữ liệu thật
+    const owner = await User.findOne({ account_id: accountId }).select("_id");
+    if (!owner) {
+      return res.status(404).json({ message: "Không tìm thấy chủ cửa hàng" });
+    }
+
+    const { id } = req.params; 
+
+    // Tìm nhân viên cần xóa
     const staff = await Staff.findById(id);
     if (!staff) {
       return res.status(404).json({ message: "Không tìm thấy nhân viên" });
     }
 
-    // Chỉ người tạo mới được xóa
-    if (staff.created_by.toString() !== accountId.toString()) {
-      return res.status(403).json({ message: "Bạn không có quyền xóa nhân viên này" });
+    // Chỉ người tạo (chủ shop) mới được xóa
+    if (staff.created_by.toString() !== owner._id.toString()) {
+      return res.status(403).json({ message: "Không có quyền xóa nhân viên này" });
     }
 
-    // Xóa account liên kết nếu có
+    // Nếu nhân viên có account liên kết thì xóa luôn
     if (staff.account_id) {
       await Account.findByIdAndDelete(staff.account_id);
     }
 
-    // Xóa staff
+    // Xóa nhân viên
     await Staff.findByIdAndDelete(id);
 
     return res.status(200).json({ message: "Xóa nhân viên và tài khoản thành công" });
   } catch (error) {
-    console.error(" Lỗi khi xóa nhân viên:", error);
-    res.status(500).json({
+    console.error("❌ Lỗi khi xóa nhân viên:", error);
+    return res.status(500).json({
       message: "Đã xảy ra lỗi khi xóa nhân viên",
       error: error.message,
     });
@@ -505,64 +489,15 @@ const getShopDetailByID = async (req, res) => {
   try {
     const { shopId } = req.params;
     // lấy shop dạng plain object để tiện xử lý
-    const shop = await Shop.findById(shopId).lean();
+    const shop = await Shop.findById(shopId)
+    .populate("owner", "full_name")
+    .populate("managers", "full_name");
     if (!shop) {
       return res.status(404).json({ message: "Không tìm thấy cửa hàng" });
     }
 
-    // ===== resolve owner (có thể là staff._id hoặc account_id) =====
-    let ownerDetail = null;
-    if (shop.owner) {
-      const ownerKey = shop.owner.toString();
-      // tìm trong Staff theo _id hoặc account_id
-      ownerDetail = await User.findOne({
-        $or: [{ _id: ownerKey }, { account_id: ownerKey }],
-      })
-        .select("full_name phone")
-        .lean();
+    return res.status(200).json({ message: "Lấy chi tiết cửa hàng thành công", data: shop });
 
-      // nếu không phải Staff thì thử lấy từ Account (ví dụ owner là account)
-      if (!ownerDetail) {
-        const acc = await Account.findById(ownerKey).select("_id email").lean();
-        if (acc) ownerDetail = { id: acc._id.toString(), email: acc.email };
-      }
-    }
-
-    // ===== resolve managers (mảng có thể chứa staff._id hoặc account_id) =====
-    const managersDetail = [];
-    if (Array.isArray(shop.managers) && shop.managers.length > 0) {
-      const ids = shop.managers.map((m) => m && m.toString()).filter(Boolean);
-      // tìm tất cả Staff khớp _id hoặc account_id
-      const staffList = await Staff.find({
-        $or: [{ _id: { $in: ids } }, { account_id: { $in: ids } }],
-      })
-        .select("_id account_id full_name phone")
-        .lean();
-
-      const staffMap = {};
-      staffList.forEach((st) => {
-        if (st._id) staffMap[st._id.toString()] = st;
-        if (st.account_id) staffMap[st.account_id.toString()] = st;
-      });
-
-      shop.managers.forEach((m) => {
-        const key = m ? m.toString() : null;
-        const st = key ? staffMap[key] : null;
-        if (st) {
-          managersDetail.push({ id: key, full_name: st.full_name, phone: st.phone });
-        } else {
-          // không tìm thấy staff tương ứng -> trả về id (frontend có thể hiển thị "Không có tên")
-          managersDetail.push({ id: key, full_name: null, phone: null });
-        }
-      });
-    }
-
-    // trả về shop với owner/managers đã resolve
-    return res.status(200).json({
-      ...shop,
-      owner: ownerDetail || null,
-      managers: managersDetail,
-    });
   } catch (err) {
     console.error(" Lỗi khi lấy chi tiết cửa hàng:", err);
     return res.status(500).json({ message: "Lỗi máy chủ nội bộ" });

@@ -48,8 +48,8 @@ import {
   ManagerStaffHomePage,
   OrdersList,
   MyOrderPage,
-  MyOrderDetailPage
-
+  MyOrderDetailPage,
+  OwnerDashboardPage
 } from "@/pages";
 
 export const router = createBrowserRouter([
@@ -122,7 +122,7 @@ export const router = createBrowserRouter([
         element: < StoreDirectorLayout />,
         children: [
           { path: "home", element: <ManagerHomePage /> },
-          { path: "dashboard", element: <div>Dashboard</div> },
+          { path: "dashboard", element: <OwnerDashboardPage /> },
           { path: "create-shop", element: < CreateShopPage /> },
           { path: "create-staff", element: <CreateEmployeePage /> },
           { path: "account-staff", element: < ManageAccount /> },
@@ -141,7 +141,6 @@ export const router = createBrowserRouter([
           { path: "create-food", element: <  CreateFoodPage /> },
           { path: "list-food", element: <     FoodListPage /> },
           { path: "list-order", element: <     OrdersList /> },
-
 
         ],
       },
