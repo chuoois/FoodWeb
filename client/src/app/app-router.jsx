@@ -12,9 +12,8 @@ import {
   StoreDirectorLayout,
   StaffAuthLayout,
   ForbiddenLayout,
-  ManagerStaffLayout, 
-  MyOrderLayout,
- 
+  ManagerStaffLayout,
+
 } from "@/components/layouts";
 
 import {
@@ -50,7 +49,7 @@ import {
   OrdersList,
   MyOrderPage,
   MyOrderDetailPage
-  
+
 } from "@/pages";
 
 export const router = createBrowserRouter([
@@ -70,7 +69,11 @@ export const router = createBrowserRouter([
       {
         path: "",
         element: <HomeMainLayout />,
-        children: [{ path: "", element: <HomePage /> }],
+        children: [
+          { path: "", element: <HomePage /> },
+          { path: "myorder", element: <MyOrderPage /> },
+          { path: "myorder:id", element: <MyOrderDetailPage /> },
+        ],
       },
       {
         path: "menu",
@@ -136,23 +139,9 @@ export const router = createBrowserRouter([
           { path: "home", element: <ManagerStaffHomePage /> },
           { path: "dashboard", element: <div>Dashboard</div> },
           { path: "create-food", element: <  CreateFoodPage /> },
-          { path: "list-food", element: <     FoodListPage /> }, 
-          { path: "list-order", element: <     OrdersList /> }, 
-       
+          { path: "list-food", element: <     FoodListPage /> },
+          { path: "list-order", element: <     OrdersList /> },
 
-        ],
-      },
-      {
-        path: "myorder",
-        element: <  MyOrderLayout />,
-        children: [
-          { path: "", element: <MyOrderPage /> },
-          { path: ":id", element: <MyOrderDetailPage /> },
-          // { path: "dashboard", element: <div>Dashboard</div> },
-          // { path: "create-food", element: <  CreateFoodPage /> },
-          // { path: "list-food", element: <     FoodListPage /> }, 
-          // { path: "list-order", element: <     OrdersList /> }, 
-       
 
         ],
       },
@@ -170,7 +159,7 @@ export const router = createBrowserRouter([
           { path: "", element: < Forbidden /> },
         ],
       },
-       {
+      {
         path: "*",
         element: <NotFound />,
       },

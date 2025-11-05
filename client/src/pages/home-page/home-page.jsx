@@ -61,7 +61,7 @@ export const HomePage = () => {
   const [isLocating, setIsLocating] = useState(false);
   const navigate = useNavigate();
 
-  const debouncedAddress = useDebounce(address, 400);
+  const debouncedAddress = useDebounce(address, 600);
 
   // === TẢI QUÁN PHỔ BIẾN ===
   useEffect(() => {
@@ -267,11 +267,10 @@ export const HomePage = () => {
                   className="disabled:opacity-50"
                 >
                   <Crosshair
-                    className={`w-5 h-5 transition-all ${
-                      isLocating
+                    className={`w-5 h-5 transition-all ${isLocating
                         ? "text-orange-500 animate-pulse"
                         : "text-gray-500 hover:text-orange-500"
-                    }`}
+                      }`}
                   />
                 </button>
               </div>
@@ -374,13 +373,19 @@ export const HomePage = () => {
         </div>
       </section>
 
-      {/* Nội dung chính */}
+      {/* Quán ăn gần bạn */}
       {address && nearbyShops.length > 0 ? (
         <section className="max-w-7xl mx-auto px-6 py-10">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Quán ăn gần bạn</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {nearbyShops.map((shop) => (
-              <ShopCard key={shop._id} shop={shop} favorites={favorites} toggleFavorite={toggleFavorite} navigate={navigate} />
+              <ShopCard
+                key={shop._id}
+                shop={shop}
+                favorites={favorites}
+                toggleFavorite={toggleFavorite}
+                navigate={navigate}
+              />
             ))}
           </div>
         </section>
@@ -390,9 +395,15 @@ export const HomePage = () => {
           {popularShops.length === 0 ? (
             <p className="text-gray-500 italic">Đang tải quán nổi bật...</p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {popularShops.map((shop) => (
-                <ShopCard key={shop._id} shop={shop} favorites={favorites} toggleFavorite={toggleFavorite} navigate={navigate} />
+                <ShopCard
+                  key={shop._id}
+                  shop={shop}
+                  favorites={favorites}
+                  toggleFavorite={toggleFavorite}
+                  navigate={navigate}
+                />
               ))}
             </div>
           )}
@@ -406,7 +417,7 @@ export const HomePage = () => {
 const ShopCard = ({ shop, favorites, toggleFavorite, navigate }) => (
   <div
     onClick={() => navigate(`/detail/${shop._id}`)}
-    className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group overflow-hidden"
+    className="overflow-hidden bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group"
   >
     <div className="relative">
       <img
@@ -422,11 +433,10 @@ const ShopCard = ({ shop, favorites, toggleFavorite, navigate }) => (
         className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition"
       >
         <Heart
-          className={`w-4 h-4 transition ${
-            favorites.includes(shop._id)
+          className={`w-4 h-4 transition ${favorites.includes(shop._id)
               ? "fill-red-500 text-red-500"
               : "text-gray-600"
-          }`}
+            }`}
         />
       </button>
     </div>
@@ -435,17 +445,26 @@ const ShopCard = ({ shop, favorites, toggleFavorite, navigate }) => (
       <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">
         {shop.name}
       </h3>
+
       <div className="flex items-center gap-2 mb-2">
         <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-        <span className="text-sm font-medium">{shop.rating?.toFixed(1) || "N/A"}</span>
+        <span className="text-sm font-medium">
+          {shop.rating?.toFixed(1) || "N/A"}
+        </span>
       </div>
+
       <p className="text-xs text-gray-600 mb-2 line-clamp-1">
-        {shop.address?.street}, {shop.address?.ward}, {shop.address?.district}
+        {shop.address?.street}, {shop.address?.ward},{" "}
+        {shop.address?.district}
+        {shop.address?.city ? `, ${shop.address.city}` : ""}
       </p>
+
       {shop.distance !== undefined && (
-        <div className="flex items-center gap-1 text-xs text-gray-500">
-          <MapPin className="w-3 h-3" />
-          <span>{Math.round(shop.distance)}m</span>
+        <div className="flex items-center justify-between text-xs text-gray-500">
+          <div className="flex items-center gap-1">
+            <MapPin className="w-3 h-3" />
+            <span>{Math.round(shop.distance)}m</span>
+          </div>
         </div>
       )}
     </div>
