@@ -15,6 +15,11 @@ export const getShopsByType = (type, lat, lng) => {
 export const getShopById = (shopId) => {
     return api.get(`home/shop/${shopId}`);
 }
+
+export const searchShopsAndFoods = (query) => {
+    return api.get("home/search-all", { params: { query } });
+};
+
 export const searchHome = (q, lat, lng, options) => {
     const params = { q, ...options };
     if (lat && lng) params.lat = lat;

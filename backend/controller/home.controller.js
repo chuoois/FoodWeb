@@ -160,4 +160,61 @@ const getRandomShops = async (req, res) => {
   }
 };
 
-module.exports = { getNearbyShopsByCoords, searchHome,getShopsByRate,getShopsByType,getShopsById,getShopWithFoods, listCategoryByShopId, getRandomShops };
+const searchShopsAndFoods = async (req, res) => {
+  try {
+    const { query } = req.query;
+    if (!query)
+      return res.status(400).json({ success: false, message: "Thiếu từ khóa tìm kiếm" });
+
+    // === TÌM SHOP THEO TÊN ===
+    const shops = await Shop.find({
+      name: { $regex: query, $options: "i" },
+      status: "ACTIVE"
+    })
+      .select("name logoUrl coverUrl rating")
+      .limit(5)
+      .lean();
+
+    const formattedShops = shops.map((s) => ({
+      type: "shop",
+      id: s._id,
+      name: s.name,
+      image: s.logoUrl || s.coverUrl || "/placeholder.svg",
+      rating: s.rating ?? 0
+    }));
+
+    // === TÌM FOOD THEO TÊN HOẶC MÔ TẢ ===
+    const foods = await Food.find({
+      $or: [
+        { name: { $regex: query, $options: "i" } },
+        { description: { $regex: query, $options: "i" } }
+      ],
+      is_available: true
+    })
+      .select("name image_url price discount shop_id")
+      .populate("shop_id", "name")
+      .limit(5)
+      .lean();
+
+    const formattedFoods = foods.map((f) => ({
+      type: "food",
+      id: f._id,
+      name: f.name,
+      image: f.image_url || "/placeholder.svg",
+      price: f.price,
+      discount: f.discount,
+      shopName: f.shop_id?.name || "Không rõ",
+      shopId: f.shop_id?._id,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: [...formattedShops, ...formattedFoods]
+    });
+  } catch (error) {
+    console.error("Lỗi khi tìm kiếm:", error);
+    res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+};
+
+module.exports = { searchShopsAndFoods, getNearbyShopsByCoords, searchHome,getShopsByRate,getShopsByType,getShopsById,getShopWithFoods, listCategoryByShopId, getRandomShops };
