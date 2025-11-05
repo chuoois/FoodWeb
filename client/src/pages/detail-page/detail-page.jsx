@@ -46,6 +46,7 @@ import {
 } from "@/services/cart.service";
 import { getPublicVouchers } from "@/services/voucher.service"; // Thêm import
 import { addFavoriteShop, removeFavoriteShop } from "@/services/home.service";
+import { getFeedBackByShop } from "@/services/feedback.service"; // Giả sử đường dẫn service chứa hàm getFeedBackByShop (thêm import này)
 
 const openingHours = [
   { day: "Chủ nhật", time: "06:30 - 21:00", isToday: false },
@@ -74,6 +75,11 @@ export const DetailPage = () => {
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [vouchers, setVouchers] = useState([]);
   const [loadingVouchers, setLoadingVouchers] = useState(false);
+  const [showReviews, setShowReviews] = useState(false);
+  // Thêm state cho feedbacks
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [totalReviews, setTotalReviews] = useState(0);
 
   // Kiểm tra đăng nhập
   useEffect(() => {
@@ -81,6 +87,12 @@ export const DetailPage = () => {
     setIsLoggedIn(!!token);
   }, []);
 
+  // Thay đổi useEffect này
+  useEffect(() => {
+    if (shop) {
+      setLiked(shop.isFavorite || false);
+    }
+  }, [shop]);
   // Load shop + món ăn
   useEffect(() => {
     if (id) {
@@ -96,30 +108,59 @@ export const DetailPage = () => {
     }
   }, [id]);
 
-  const toggleFavorite = async (shopId, current) => {
-  if (!isLoggedIn) {
-    toast.error("Vui lòng đăng nhập để thêm yêu thích");
-    return;
-  }
+  // Load feedbacks khi mở popup reviews
+  useEffect(() => {
+    if (showReviews && id) {
+      setLoadingReviews(true);
+      getFeedBackByShop(id)
+        .then((response) => {
+          setFeedbacks(response.data.feedbacks || []);
+          setTotalReviews(response.data.total || 0);
+        })
+        .catch((error) => {
+          console.error("Error fetching feedbacks:", error);
+          toast.error("Không thể tải đánh giá");
+          setFeedbacks([]);
+          setTotalReviews(0);
+        })
+        .finally(() => setLoadingReviews(false));
+    } else if (!showReviews) {
+      // Reset khi đóng popup
+      setFeedbacks([]);
+      setTotalReviews(0);
+      setLoadingReviews(false);
+    }
+  }, [showReviews, id]);
 
-  try {
-    if (current) {
-      await removeFavoriteShop(shopId);
-      toast.success("Đã bỏ khỏi yêu thích");
-    } else {
-      await addFavoriteShop(shopId);
-      toast.success("Đã thêm vào yêu thích");
+  const toggleFavorite = async (shopId, current) => {
+    if (!isLoggedIn) {
+      toast.error("Vui lòng đăng nhập để thêm yêu thích");
+      return;
     }
 
-    setSimilarShops(prev =>
-      prev.map(s =>
-        s._id === shopId ? { ...s, isFavorite: !current } : s
-      )
-    );
-  } catch (err) {
-    toast.error("Thao tác thất bại");
-  }
-};
+    try {
+      if (current) {
+        await removeFavoriteShop(shopId);
+        toast.success("Đã bỏ khỏi yêu thích");
+      } else {
+        await addFavoriteShop(shopId);
+        toast.success("Đã thêm vào yêu thích");
+      }
+
+      // Cập nhật shop hiện tại
+      setShop((prev) => ({ ...prev, isFavorite: !current }));
+
+      // Cập nhật danh sách nhà hàng tương tự (nếu có)
+      setSimilarShops((prev) =>
+        prev.map((s) => (s._id === shopId ? { ...s, isFavorite: !current } : s))
+      );
+
+      // Cập nhật trạng thái liked (cho nút header)
+      setLiked(!current);
+    } catch (err) {
+      toast.error("Thao tác thất bại");
+    }
+  };
 
   // Load giỏ hàng
   useEffect(() => {
@@ -369,7 +410,7 @@ export const DetailPage = () => {
                         ? "bg-red-50 border-red-400 text-red-600 hover:bg-red-100"
                         : "border-gray-300 text-gray-600 hover:bg-orange-50 hover:border-orange-300"
                     }`}
-                    onClick={() => setLiked(!liked)}
+                    onClick={() => toggleFavorite(shop._id, liked)} // Truyền shop._id và trạng thái hiện tại
                   >
                     <Heart
                       className={`w-4 h-4 transition-all ${
@@ -399,8 +440,9 @@ export const DetailPage = () => {
                     <Button
                       variant="link"
                       className="text-sm text-orange-600 hover:text-orange-700 hover:underline p-0 h-auto font-medium"
+                      onClick={() => setShowReviews(true)}
                     >
-                      ({shop.reviews?.length || 0} Đánh giá)
+                      ({totalReviews} Đánh giá)
                     </Button>
                     <Button
                       variant="link"
@@ -480,7 +522,79 @@ export const DetailPage = () => {
           </ScrollArea>
         </CardContent>
       </Card>
-
+      {showReviews && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={(e) => e.target === e.currentTarget && setShowReviews(false)}
+        >
+          <div className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b bg-gradient-to-r from-orange-50 to-amber-50">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowReviews(false)}
+                  className="w-9 h-9 rounded-full"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </Button>
+                <span className="text-sm font-medium truncate">
+                  Đánh giá - {shop.name}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowReviews(false)}
+                className="w-9 h-9 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            <div className={`p-6 ${feedbacks.length > 4 ? 'max-h-[calc(90vh-80px)] overflow-y-auto' : ''}`}>
+              {loadingReviews ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
+                    <p className="text-sm text-gray-500">Đang tải đánh giá...</p>
+                  </div>
+                </div>
+              ) : feedbacks.length > 0 ? (
+                <div className="space-y-4">
+                  {feedbacks.map((feedback) => (
+                    <div key={feedback._id} className="p-4 bg-gray-50 rounded-2xl">
+                      <div className="flex items-center gap-3 mb-2">
+                        <User className="w-5 h-5 text-gray-400" />
+                        <span className="font-semibold">Khách hàng</span>
+                        <div className="flex items-center gap-1 ml-auto">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-4 h-4 ${
+                                i < feedback.rating
+                                  ? "fill-yellow-400 text-yellow-400"
+                                  : "text-gray-300"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600">{feedback.comment}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {new Date(feedback.createdAt).toLocaleDateString("vi-VN")}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-8">
+                  Chưa có đánh giá nào
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Modal thông tin quán */}
       {showInfo && (
         <div
