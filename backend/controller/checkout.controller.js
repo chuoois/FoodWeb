@@ -80,7 +80,10 @@ async function calculateOrderData(user_id, shop_id, voucher_id) {
         discount_amount = parseFloat(voucher.discount_value);
       } else if (voucher.discount_type === "PERCENT") {
         discount_amount = (subtotal * parseFloat(voucher.discount_value)) / 100;
-        if (voucher.max_discount && discount_amount > parseFloat(voucher.max_discount)) {
+        if (
+          voucher.max_discount &&
+          discount_amount > parseFloat(voucher.max_discount)
+        ) {
           discount_amount = parseFloat(voucher.max_discount);
         }
       }
@@ -107,7 +110,8 @@ exports.checkout = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { shop_id, delivery_address_id, voucher_id, payment_method, note } = req.body;
+    const { shop_id, delivery_address_id, voucher_id, payment_method, note } =
+      req.body;
     if (!req.user || !req.user.accountId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -116,14 +120,22 @@ exports.checkout = async (req, res) => {
     const user = await User.findOne({ account_id: accountId });
     if (!user) throw new Error("User not found");
 
-    const address = await UserAddress.findOne({ _id: delivery_address_id, user: user._id });
+    const address = await UserAddress.findOne({
+      _id: delivery_address_id,
+      user: user._id,
+    });
     if (!address) throw new Error("Delivery address not found");
 
     const shop = await Shop.findById(shop_id);
     if (!shop) throw new Error("Shop not found");
 
-    const { subtotal, discount_amount, shipping_fee, total_amount, orderDetails } =
-      await calculateOrderData(user._id, shop_id, voucher_id);
+    const {
+      subtotal,
+      discount_amount,
+      shipping_fee,
+      total_amount,
+      orderDetails,
+    } = await calculateOrderData(user._id, shop_id, voucher_id);
 
     // ✅ Tạo mã order cho PayOS (số nguyên)
     const orderCode = Math.floor(Date.now() / 1000);
@@ -151,14 +163,17 @@ exports.checkout = async (req, res) => {
       await order.save({ session });
       orderDetails.forEach((d) => (d.order_id = order._id));
       await OrderDetail.insertMany(orderDetails, { session });
-      await CartItem.updateMany(
+      await CartItem.deleteMany(
         { user_id: user._id, shop_id, status: "ACTIVE" },
-        { status: "CHECKOUT" },
         { session }
       );
 
       if (voucher_id) {
-        await Voucher.findByIdAndUpdate(voucher_id, { $inc: { used_count: 1 } }, { session });
+        await Voucher.findByIdAndUpdate(
+          voucher_id,
+          { $inc: { used_count: 1 } },
+          { session }
+        );
       }
 
       await session.commitTransaction();
@@ -204,14 +219,17 @@ exports.checkout = async (req, res) => {
     await order.save({ session });
     orderDetails.forEach((d) => (d.order_id = order._id));
     await OrderDetail.insertMany(orderDetails, { session });
-    await CartItem.updateMany(
+    await CartItem.deleteMany(
       { user_id: user._id, shop_id, status: "ACTIVE" },
-      { status: "CHECKOUT" },
       { session }
     );
 
     if (voucher_id) {
-      await Voucher.findByIdAndUpdate(voucher_id, { $inc: { used_count: 1 } }, { session });
+      await Voucher.findByIdAndUpdate(
+        voucher_id,
+        { $inc: { used_count: 1 } },
+        { session }
+      );
     }
 
     await session.commitTransaction();
@@ -231,7 +249,6 @@ exports.checkout = async (req, res) => {
     session.endSession();
   }
 };
-
 
 // =====================================================
 // ✅ PAYOS RETURN CALLBACKS
@@ -276,7 +293,11 @@ exports.checkoutCancel = async (req, res) => {
     if (!order) return res.status(404).send("Order not found");
 
     await CartItem.updateMany(
-      { user_id: order.customer_id, shop_id: order.shop_id, status: "CHECKOUT" },
+      {
+        user_id: order.customer_id,
+        shop_id: order.shop_id,
+        status: "CHECKOUT",
+      },
       { status: "ACTIVE" }
     );
 
