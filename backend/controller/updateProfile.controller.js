@@ -26,9 +26,6 @@ const getProfile = async (req, res) => {
 
 // UPDATE PROFILE + MANAGE ADDRESSES
 const updateProfile = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     const accountId = req.params.account_id;
     if (!accountId) return res.status(400).json({ message: "Thiếu account_id" });
@@ -36,7 +33,7 @@ const updateProfile = async (req, res) => {
     const { full_name, phone, date_of_birth, gender, avatar_url, addresses } = req.body;
     const updates = {};
 
-    // === VALIDATE USER FIELDS (giữ nguyên như cũ) ===
+    // === VALIDATE USER FIELDS ===
     if (full_name !== undefined) {
       if (full_name.trim().length < 2)
         return res.status(400).json({ message: "Tên phải có ít nhất 2 ký tự" });
@@ -68,7 +65,8 @@ const updateProfile = async (req, res) => {
       if (dob > today) return res.status(400).json({ message: "Ngày sinh không được ở tương lai" });
 
       const age = today.getFullYear() - dob.getFullYear();
-      const isUnder10 = age < 10 || (age === 10 && (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())));
+      const isUnder10 = age < 10 || (age === 10 && (today.getMonth() < dob.getMonth() || 
+        (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())));
       if (isUnder10) return res.status(400).json({ message: "Tuổi phải từ 10 trở lên" });
 
       updates.date_of_birth = date_of_birth;
@@ -85,17 +83,15 @@ const updateProfile = async (req, res) => {
     if (!user) return res.status(404).json({ message: "Không tìm thấy user" });
 
     if (Array.isArray(addresses)) {
-      // Kiểm tra tối đa 3 địa chỉ
       if (addresses.length > 3)
         return res.status(400).json({ message: "Chỉ được lưu tối đa 3 địa chỉ" });
 
-      // Đếm số địa chỉ mặc định
       const defaultCount = addresses.filter(a => a.isDefault).length;
       if (defaultCount > 1)
         return res.status(400).json({ message: "Chỉ được chọn 1 địa chỉ mặc định" });
 
-      // Xóa tất cả địa chỉ cũ
-      await UserAddress.deleteMany({ user: user._id }, { session });
+      // Xóa toàn bộ địa chỉ cũ
+      await UserAddress.deleteMany({ user: user._id });
 
       // Thêm địa chỉ mới
       const addressDocs = addresses.map(addr => ({
@@ -115,7 +111,7 @@ const updateProfile = async (req, res) => {
       })).filter(a => a.address.street && a.gps.coordinates.every(c => !isNaN(c)));
 
       if (addressDocs.length > 0) {
-        await UserAddress.insertMany(addressDocs, { session });
+        await UserAddress.insertMany(addressDocs);
       }
     }
 
@@ -123,18 +119,14 @@ const updateProfile = async (req, res) => {
     const updatedUser = await User.findOneAndUpdate(
       { account_id: accountId },
       { $set: updates },
-      { new: true, session }
+      { new: true }
     );
 
-    await session.commitTransaction();
     return res.json({ message: "Cập nhật thành công", user: updatedUser });
 
   } catch (error) {
-    await session.abortTransaction();
     console.error("updateProfile error:", error);
     return res.status(500).json({ message: error.message });
-  } finally {
-    session.endSession();
   }
 };
 
