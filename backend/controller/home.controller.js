@@ -14,19 +14,46 @@ const DEFAULT_LOCATION = {
 };
 
 const getNearbyShopsByCoords = async (req, res) => {
-    try {
-        const limit = 20;
-        const { lat, lng } = req.query;
-        if (!lat || !lng) {
-            return res.status(400).json({ success: false, message: "Missing lat/lng" });
-        }
+  try {
+    const limit = 20;
+    const { lat, lng } = req.query;
 
-        const shops = await findNearbyShops(parseFloat(lat), parseFloat(lng));
-
-        res.json({ success: true, shops });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+    if (!lat || !lng) {
+      return res.status(400).json({ success: false, message: "Missing lat/lng" });
     }
+
+    // 1️⃣ Lấy danh sách shop gần vị trí
+    const shops = await findNearbyShops(parseFloat(lat), parseFloat(lng), 5000, limit);
+
+    // 2️⃣ Xác định user theo accountId
+    let favoriteShopIds = [];
+    if (req.user && req.user.accountId) {
+      const accountId = req.user.accountId;
+      const user = await User.findOne({ account_id: accountId });
+
+      if (user) {
+        // 3️⃣ Lấy danh sách shop yêu thích
+        const favorites = await Favorite.find({ user: user._id }).select("shop").lean();
+        favoriteShopIds = favorites.map(f => f.shop.toString());
+      }
+    }
+
+    // 4️⃣ Gắn thêm cờ isFavorite vào từng shop
+    const shopsWithFavorite = shops.map(shop => ({
+      ...shop,
+      isFavorite: favoriteShopIds.includes(shop._id.toString()),
+    }));
+
+    // 5️⃣ Trả về kết quả
+    res.json({
+      success: true,
+      count: shopsWithFavorite.length,
+      shops: shopsWithFavorite,
+    });
+  } catch (err) {
+    console.error("getNearbyShopsByCoords error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 const searchHome = async (req, res) => {
@@ -80,13 +107,46 @@ const getShopsByType = async (req, res) => {
 };
 
 const getShopsByRate = async (req, res) => {
-    try {
-        const shops = await Shop.find({ status: 'ACTIVE' }).sort({ rating: -1 }).limit(20).lean();
-        res.json({ success: true, shops });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+  try {
+    // 1️⃣ Lấy danh sách shop active, sort theo rating giảm dần
+    const shops = await Shop.find({ status: "ACTIVE" })
+      .sort({ rating: -1 })
+      .limit(20)
+      .lean();
+
+    // 2️⃣ Xác định user từ accountId
+    let favoriteShopIds = [];
+    if (req.user && req.user.accountId) {
+      const accountId = req.user.accountId;
+      const user = await User.findOne({ account_id: accountId });
+
+      if (user) {
+        // 3️⃣ Lấy danh sách shop yêu thích
+        const favorites = await Favorite.find({ user: user._id })
+          .select("shop")
+          .lean();
+        favoriteShopIds = favorites.map(f => f.shop.toString());
+      }
     }
+
+    // 4️⃣ Gắn thêm cờ isFavorite
+    const shopsWithFavorite = shops.map(shop => ({
+      ...shop,
+      isFavorite: favoriteShopIds.includes(shop._id.toString()),
+    }));
+
+    // 5️⃣ Trả về kết quả
+    res.json({
+      success: true,
+      count: shopsWithFavorite.length,
+      shops: shopsWithFavorite,
+    });
+  } catch (err) {
+    console.error("getShopsByRate error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
+
 
 const getShopsById = async (req, res) => {
     try {
@@ -158,12 +218,43 @@ const listCategoryByShopId = async (req, res) => {
 
 const getRandomShops = async (req, res) => {
   try {
-    const shops = await Shop.aggregate([{ $sample: { size: 4 } }]);
-    res.status(200).json({ success: true, data: shops });
+    // 1️⃣ Lấy ngẫu nhiên 4 shop đang hoạt động
+    const shops = await Shop.aggregate([
+      { $match: { status: "ACTIVE" } },
+      { $sample: { size: 4 } },
+    ]);
+
+    // 2️⃣ Xác định user theo accountId
+    let favoriteShopIds = [];
+    if (req.user && req.user.accountId) {
+      const accountId = req.user.accountId;
+      const user = await User.findOne({ account_id: accountId });
+
+      if (user) {
+        // 3️⃣ Lấy danh sách shop yêu thích của user
+        const favorites = await Favorite.find({ user: user._id }).select("shop").lean();
+        favoriteShopIds = favorites.map(f => f.shop.toString());
+      }
+    }
+
+    // 4️⃣ Gắn thêm cờ isFavorite vào từng shop
+    const shopsWithFavorite = shops.map(shop => ({
+      ...shop,
+      isFavorite: favoriteShopIds.includes(shop._id.toString()),
+    }));
+
+    // 5️⃣ Trả về kết quả
+    res.status(200).json({
+      success: true,
+      count: shopsWithFavorite.length,
+      data: shopsWithFavorite,
+    });
   } catch (err) {
+    console.error("getRandomShops error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 const searchShopsAndFoods = async (req, res) => {
   try {

@@ -45,6 +45,7 @@ import {
   removeFromCart,
 } from "@/services/cart.service";
 import { getPublicVouchers } from "@/services/voucher.service"; // Thêm import
+import { addFavoriteShop, removeFavoriteShop } from "@/services/home.service";
 
 const openingHours = [
   { day: "Chủ nhật", time: "06:30 - 21:00", isToday: false },
@@ -94,6 +95,31 @@ export const DetailPage = () => {
         });
     }
   }, [id]);
+
+  const toggleFavorite = async (shopId, current) => {
+  if (!isLoggedIn) {
+    toast.error("Vui lòng đăng nhập để thêm yêu thích");
+    return;
+  }
+
+  try {
+    if (current) {
+      await removeFavoriteShop(shopId);
+      toast.success("Đã bỏ khỏi yêu thích");
+    } else {
+      await addFavoriteShop(shopId);
+      toast.success("Đã thêm vào yêu thích");
+    }
+
+    setSimilarShops(prev =>
+      prev.map(s =>
+        s._id === shopId ? { ...s, isFavorite: !current } : s
+      )
+    );
+  } catch (err) {
+    toast.error("Thao tác thất bại");
+  }
+};
 
   // Load giỏ hàng
   useEffect(() => {
@@ -338,14 +364,17 @@ export const DetailPage = () => {
                   <Button
                     variant={liked ? "destructive" : "outline"}
                     size="sm"
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all duration-300 ${liked
-                      ? "bg-red-50 border-red-400 text-red-600 hover:bg-red-100"
-                      : "border-gray-300 text-gray-600 hover:bg-orange-50 hover:border-orange-300"
-                      }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 transition-all duration-300 ${
+                      liked
+                        ? "bg-red-50 border-red-400 text-red-600 hover:bg-red-100"
+                        : "border-gray-300 text-gray-600 hover:bg-orange-50 hover:border-orange-300"
+                    }`}
                     onClick={() => setLiked(!liked)}
                   >
                     <Heart
-                      className={`w-4 h-4 transition-all ${liked ? "fill-red-500 scale-110" : ""}`}
+                      className={`w-4 h-4 transition-all ${
+                        liked ? "fill-red-500 scale-110" : ""
+                      }`}
                     />
                     <span className="text-sm font-medium">Yêu thích</span>
                   </Button>
@@ -421,21 +450,27 @@ export const DetailPage = () => {
               {categories.map((cat) => (
                 <Button
                   key={cat.name}
-                  variant={selectedCategory === cat.name ? "default" : "outline"}
+                  variant={
+                    selectedCategory === cat.name ? "default" : "outline"
+                  }
                   size="sm"
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold whitespace-nowrap transition-all duration-300 ${selectedCategory === cat.name
-                    ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg shadow-orange-200 scale-105"
-                    : "border-2 border-gray-300 text-gray-700 hover:bg-orange-50 hover:border-orange-300"
-                    }`}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold whitespace-nowrap transition-all duration-300 ${
+                    selectedCategory === cat.name
+                      ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg shadow-orange-200 scale-105"
+                      : "border-2 border-gray-300 text-gray-700 hover:bg-orange-50 hover:border-orange-300"
+                  }`}
                   onClick={() => setSelectedCategory(cat.name)}
                 >
                   {cat.name}
                   <Badge
-                    variant={selectedCategory === cat.name ? "default" : "secondary"}
-                    className={`text-xs font-bold ${selectedCategory === cat.name
-                      ? "bg-white/30 text-white"
-                      : "bg-orange-100 text-orange-600"
-                      }`}
+                    variant={
+                      selectedCategory === cat.name ? "default" : "secondary"
+                    }
+                    className={`text-xs font-bold ${
+                      selectedCategory === cat.name
+                        ? "bg-white/30 text-white"
+                        : "bg-orange-100 text-orange-600"
+                    }`}
                   >
                     {cat.count}
                   </Badge>
@@ -463,7 +498,9 @@ export const DetailPage = () => {
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </Button>
-                <span className="text-sm font-medium truncate">{shop.name}</span>
+                <span className="text-sm font-medium truncate">
+                  {shop.name}
+                </span>
               </div>
               <Button
                 variant="ghost"
@@ -488,20 +525,23 @@ export const DetailPage = () => {
                 {openingHours.map((hour) => (
                   <div
                     key={hour.day}
-                    className={`flex justify-between p-4 rounded-xl border ${hour.isToday
-                      ? "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200"
-                      : "bg-gray-50 border-gray-100"
-                      }`}
+                    className={`flex justify-between p-4 rounded-xl border ${
+                      hour.isToday
+                        ? "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200"
+                        : "bg-gray-50 border-gray-100"
+                    }`}
                   >
                     <span
-                      className={`text-sm font-medium ${hour.isToday ? "text-gray-900" : "text-gray-700"
-                        }`}
+                      className={`text-sm font-medium ${
+                        hour.isToday ? "text-gray-900" : "text-gray-700"
+                      }`}
                     >
                       {hour.day}
                     </span>
                     <span
-                      className={`text-sm font-semibold ${hour.isToday ? "text-orange-600" : "text-gray-600"
-                        }`}
+                      className={`text-sm font-semibold ${
+                        hour.isToday ? "text-orange-600" : "text-gray-600"
+                      }`}
                     >
                       {hour.time}
                     </span>
@@ -551,9 +591,22 @@ export const DetailPage = () => {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            toggleFavorite(
+                              restaurant._id,
+                              restaurant.isFavorite
+                            );
+                          }}
                           className="absolute top-3 right-3 bg-white/90 hover:bg-white rounded-full w-9 h-9 shadow-md"
                         >
-                          <Heart className="w-4 h-4 text-gray-600 hover:text-red-500" />
+                          <Heart
+                            className={`w-4 h-4 transition-all ${
+                              restaurant.isFavorite
+                                ? "fill-red-500 text-red-500 scale-110"
+                                : "text-gray-600 hover:text-red-500"
+                            }`}
+                          />
                         </Button>
                       </div>
                       <CardContent className="p-4">
@@ -561,7 +614,8 @@ export const DetailPage = () => {
                           {restaurant.name}
                         </h4>
                         <p className="text-xs text-gray-500 mb-3 line-clamp-1">
-                          {restaurant.address.street}, {restaurant.address.district}
+                          {restaurant.address.street},{" "}
+                          {restaurant.address.district}
                         </p>
                         <div className="flex items-center justify-between text-xs">
                           <div className="flex items-center gap-1">
@@ -660,7 +714,10 @@ export const DetailPage = () => {
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            HSD: {new Date(voucher.end_date).toLocaleDateString("vi-VN")}
+                            HSD:{" "}
+                            {new Date(voucher.end_date).toLocaleDateString(
+                              "vi-VN"
+                            )}
                           </span>
                         </div>
                       </div>
@@ -791,7 +848,8 @@ export const DetailPage = () => {
                           }
                           if (
                             (page === 4 && currentPage > 4) ||
-                            (page === totalPages - 3 && currentPage < totalPages - 3)
+                            (page === totalPages - 3 &&
+                              currentPage < totalPages - 3)
                           ) {
                             return (
                               <PaginationItem key={`ellipsis-${page}`}>

@@ -2,10 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MapPin, Crosshair, Star, Heart } from "lucide-react";
 import useDebounce from "@/hooks/useDebounce";
-import {
-  getNearbyShops,
-  getPopularShops,
-} from "@/services/home.service";
+import { getNearbyShops, getPopularShops } from "@/services/home.service";
 import { addFavoriteShop, removeFavoriteShop } from "@/services/home.service";
 import {
   searchAddress,
@@ -45,10 +42,26 @@ const foodCategories = [
 ];
 
 const heroSlides = [
-  { id: 1, image: "/img-home/img-hero-section.png", alt: "Delivery illustration" },
-  { id: 2, image: "/img-home/delicious-food-delivery-with-fresh-ingredients.jpg", alt: "Fresh food" },
-  { id: 3, image: "/img-home/happy-customer-receiving-food-delivery.png", alt: "Happy customer" },
-  { id: 4, image: "/img-home/variety-of-restaurant-dishes-and-meals.jpg", alt: "Restaurant dishes" },
+  {
+    id: 1,
+    image: "/img-home/img-hero-section.png",
+    alt: "Delivery illustration",
+  },
+  {
+    id: 2,
+    image: "/img-home/delicious-food-delivery-with-fresh-ingredients.jpg",
+    alt: "Fresh food",
+  },
+  {
+    id: 3,
+    image: "/img-home/happy-customer-receiving-food-delivery.png",
+    alt: "Happy customer",
+  },
+  {
+    id: 4,
+    image: "/img-home/variety-of-restaurant-dishes-and-meals.jpg",
+    alt: "Restaurant dishes",
+  },
 ];
 
 export const HomePage = () => {
@@ -66,7 +79,16 @@ export const HomePage = () => {
   // === TẢI QUÁN PHỔ BIẾN ===
   useEffect(() => {
     getPopularShops()
-      .then((res) => res.data?.shops && setPopularShops(res.data.shops))
+      .then((res) => {
+        if (res.data?.shops) {
+          setPopularShops(res.data.shops);
+          // ✅ Đồng bộ favorites từ API (shop nào isFavorite = true)
+          const favs = res.data.shops
+            .filter((s) => s.isFavorite)
+            .map((s) => s._id);
+          setFavorites(favs);
+        }
+      })
       .catch((err) => console.error("Lỗi tải quán phổ biến:", err));
   }, []);
 
@@ -87,8 +109,10 @@ export const HomePage = () => {
         if (!mounted) return;
 
         const results = predictions.map((p) => {
-          const main = p.structured_formatting?.main_text || p.description.split(",")[0];
-          const secondary = p.structured_formatting?.secondary_text ||
+          const main =
+            p.structured_formatting?.main_text || p.description.split(",")[0];
+          const secondary =
+            p.structured_formatting?.secondary_text ||
             p.description.replace(main, "").replace(/^,\s*/, "").trim();
 
           return {
@@ -109,7 +133,9 @@ export const HomePage = () => {
         if (mounted) setLoading(false);
       });
 
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [debouncedAddress, isLocating]);
 
   // === CHỌN GỢI Ý ===
@@ -121,11 +147,16 @@ export const HomePage = () => {
     try {
       // Lấy chi tiết địa điểm
       const detailResponse = await fetch(
-        `https://rsapi.goong.io/Place/Detail?place_id=${suggestion.place_id}&api_key=${import.meta.env.VITE_GOONG_API_KEY}`
+        `https://rsapi.goong.io/Place/Detail?place_id=${
+          suggestion.place_id
+        }&api_key=${import.meta.env.VITE_GOONG_API_KEY}`
       );
       const detailData = await detailResponse.json();
 
-      if (detailData.status !== "OK" || !detailData.result?.geometry?.location) {
+      if (
+        detailData.status !== "OK" ||
+        !detailData.result?.geometry?.location
+      ) {
         throw new Error("Không lấy được tọa độ");
       }
 
@@ -140,14 +171,23 @@ export const HomePage = () => {
         addressData.ward,
         addressData.district,
         addressData.city,
-      ].filter(Boolean).join(", ");
+      ]
+        .filter(Boolean)
+        .join(", ");
 
       setAddress(fullAddress);
       sessionStorage.setItem("userAddress", fullAddress);
 
       // Lấy quán gần
       const res = await getNearbyShops(lat, lng);
-      if (res.data?.shops) setNearbyShops(res.data.shops);
+      if (res.data?.shops) {
+        setNearbyShops(res.data.shops);
+        // ✅ Đồng bộ favorites từ shop gần
+        const favs = res.data.shops
+          .filter((s) => s.isFavorite)
+          .map((s) => s._id);
+        setFavorites(favs);
+      }
     } catch (err) {
       console.error("Lỗi chọn địa chỉ:", err);
       alert("Không thể xác định vị trí. Vui lòng thử lại.");
@@ -181,13 +221,22 @@ export const HomePage = () => {
             addressData.ward,
             addressData.district,
             addressData.city,
-          ].filter(Boolean).join(", ");
+          ]
+            .filter(Boolean)
+            .join(", ");
 
           setAddress(fullAddress);
           sessionStorage.setItem("userAddress", fullAddress);
 
           const res = await getNearbyShops(lat, lng);
-          if (res.data?.shops) setNearbyShops(res.data.shops);
+          if (res.data?.shops) {
+            setNearbyShops(res.data.shops);
+            // ✅ Đồng bộ favorites từ shop gần
+            const favs = res.data.shops
+              .filter((s) => s.isFavorite)
+              .map((s) => s._id);
+            setFavorites(favs);
+          }
         } catch (err) {
           console.error("Lỗi lấy địa chỉ:", err);
           const fallback = `Vị trí: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
@@ -221,18 +270,32 @@ export const HomePage = () => {
     if (isFav) {
       await removeFavoriteShop(shopId);
       setFavorites((prev) => prev.filter((f) => f !== shopId));
+
+      // ✅ Update ngay trên UI
+      setNearbyShops((prev) => prev.map((s) =>
+        s._id === shopId ? { ...s, isFavorite: false } : s
+      ));
+      setPopularShops((prev) => prev.map((s) =>
+        s._id === shopId ? { ...s, isFavorite: false } : s
+      ));
     } else {
       await addFavoriteShop(shopId);
       setFavorites((prev) => [...prev, shopId]);
+
+      // ✅ Update ngay trên UI
+      setNearbyShops((prev) => prev.map((s) =>
+        s._id === shopId ? { ...s, isFavorite: true } : s
+      ));
+      setPopularShops((prev) => prev.map((s) =>
+        s._id === shopId ? { ...s, isFavorite: true } : s
+      ));
     }
-
-    // Lưu vào localStorage để nhớ
-
   } catch (err) {
     console.error("Lỗi khi gọi API yêu thích:", err);
     alert("Không thể cập nhật yêu thích. Vui lòng thử lại.");
   }
 };
+
 
   return (
     <div className="bg-[#FBF4E6] min-h-screen">
@@ -242,7 +305,8 @@ export const HomePage = () => {
           <div className="space-y-8">
             <div className="space-y-4">
               <h1 className="text-5xl lg:text-6xl font-bold text-foreground leading-tight">
-                Giao hàng nhanh, <span className="text-orange-500">mọi lúc!</span>
+                Giao hàng nhanh,{" "}
+                <span className="text-orange-500">mọi lúc!</span>
               </h1>
               <p className="text-lg text-muted-foreground leading-relaxed max-w-lg">
                 {heroContent.description}
@@ -267,20 +331,24 @@ export const HomePage = () => {
                   className="disabled:opacity-50"
                 >
                   <Crosshair
-                    className={`w-5 h-5 transition-all ${isLocating
+                    className={`w-5 h-5 transition-all ${
+                      isLocating
                         ? "text-orange-500 animate-pulse"
                         : "text-gray-500 hover:text-orange-500"
-                      }`}
+                    }`}
                   />
                 </button>
               </div>
 
               {/* Thông báo input ngắn */}
-              {address.length > 0 && address.length < 2 && !loading && !isLocating && (
-                <div className="text-xs text-gray-500 px-2 mt-1">
-                  Nhập ít nhất 2 ký tự để tìm kiếm...
-                </div>
-              )}
+              {address.length > 0 &&
+                address.length < 2 &&
+                !loading &&
+                !isLocating && (
+                  <div className="text-xs text-gray-500 px-2 mt-1">
+                    Nhập ít nhất 2 ký tự để tìm kiếm...
+                  </div>
+                )}
 
               {/* Loading */}
               {(loading || isLocating) && (
@@ -299,9 +367,13 @@ export const HomePage = () => {
                       onClick={() => handleSelect(s)}
                       className="px-4 py-3 hover:bg-orange-50 cursor-pointer border-b last:border-b-0 transition"
                     >
-                      <div className="font-medium text-gray-800">{s.main_text}</div>
+                      <div className="font-medium text-gray-800">
+                        {s.main_text}
+                      </div>
                       {s.secondary_text && (
-                        <div className="text-xs text-gray-500">{s.secondary_text}</div>
+                        <div className="text-xs text-gray-500">
+                          {s.secondary_text}
+                        </div>
                       )}
                     </li>
                   ))}
@@ -309,14 +381,20 @@ export const HomePage = () => {
               )}
 
               {/* Không có gợi ý */}
-              {suggestions.length === 0 && debouncedAddress.length >= 2 && !loading && !isLocating && (
-                <div className="text-sm text-gray-500 px-2 italic">
-                  Không tìm thấy. Hãy thử nhập chi tiết hơn hoặc
-                  <button onClick={handleGetLocation} className="underline ml-1 text-orange-500">
-                    dùng vị trí hiện tại
-                  </button>
-                </div>
-              )}
+              {suggestions.length === 0 &&
+                debouncedAddress.length >= 2 &&
+                !loading &&
+                !isLocating && (
+                  <div className="text-sm text-gray-500 px-2 italic">
+                    Không tìm thấy. Hãy thử nhập chi tiết hơn hoặc
+                    <button
+                      onClick={handleGetLocation}
+                      className="underline ml-1 text-orange-500"
+                    >
+                      dùng vị trí hiện tại
+                    </button>
+                  </div>
+                )}
             </div>
           </div>
 
@@ -349,7 +427,9 @@ export const HomePage = () => {
 
       {/* Danh mục */}
       <section className="max-w-7xl mx-auto px-6 py-10">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Bộ sưu tập món ăn</h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">
+          Bộ sưu tập món ăn
+        </h2>
         <div className="grid grid-cols-2 gap-4">
           {foodCategories.map((cat) => (
             <Link
@@ -363,9 +443,13 @@ export const HomePage = () => {
                   alt={cat.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
-                <div className={`absolute inset-0 bg-gradient-to-r ${cat.color} opacity-60`} />
+                <div
+                  className={`absolute inset-0 bg-gradient-to-r ${cat.color} opacity-60`}
+                />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <h3 className="text-white text-xl font-bold px-4">{cat.name}</h3>
+                  <h3 className="text-white text-xl font-bold px-4">
+                    {cat.name}
+                  </h3>
                 </div>
               </div>
             </Link>
@@ -376,7 +460,9 @@ export const HomePage = () => {
       {/* Quán ăn gần bạn */}
       {address && nearbyShops.length > 0 ? (
         <section className="max-w-7xl mx-auto px-6 py-10">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Quán ăn gần bạn</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">
+            Quán ăn gần bạn
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {nearbyShops.map((shop) => (
               <ShopCard
@@ -391,7 +477,9 @@ export const HomePage = () => {
         </section>
       ) : (
         <section className="max-w-7xl mx-auto px-6 py-10">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Quán ngon hot</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">
+            Quán ngon hot
+          </h2>
           {popularShops.length === 0 ? (
             <p className="text-gray-500 italic">Đang tải quán nổi bật...</p>
           ) : (
@@ -433,10 +521,11 @@ const ShopCard = ({ shop, favorites, toggleFavorite, navigate }) => (
         className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition"
       >
         <Heart
-          className={`w-4 h-4 transition ${favorites.includes(shop._id)
+          className={`w-4 h-4 transition ${
+            shop.isFavorite || favorites.includes(shop._id)
               ? "fill-red-500 text-red-500"
               : "text-gray-600"
-            }`}
+          }`}
         />
       </button>
     </div>
@@ -454,8 +543,7 @@ const ShopCard = ({ shop, favorites, toggleFavorite, navigate }) => (
       </div>
 
       <p className="text-xs text-gray-600 mb-2 line-clamp-1">
-        {shop.address?.street}, {shop.address?.ward},{" "}
-        {shop.address?.district}
+        {shop.address?.street}, {shop.address?.ward}, {shop.address?.district}
         {shop.address?.city ? `, ${shop.address.city}` : ""}
       </p>
 

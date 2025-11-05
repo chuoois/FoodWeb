@@ -41,7 +41,7 @@ const shopSchema = new mongoose.Schema(
     logoUrl: { type: String, trim: true },
     coverUrl: { type: String, trim: true },
     type: { type: String, enum: ["Food", "Drink"], required: false },
-    favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    // favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     reviews: [reviewSchema],
     rating: { type: Number, default: 0 },
   },
