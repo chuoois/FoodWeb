@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
@@ -11,17 +11,51 @@ import {
   LogOut,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
+import { searchShopsAndFoods } from "@/services/home.service"; // <-- API gọi backend
 
 export const HeaderHome = () => {
   const [openSearch, setOpenSearch] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [results, setResults] = useState([]);
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  // 🟠 Gọi API tìm kiếm khi người dùng nhập
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      if (searchTerm.trim() !== "") {
+        searchShopsAndFoods(searchTerm)
+          .then((res) => {
+            console.log("Kết quả tìm kiếm:", res.data);
+            setResults(res.data?.data || []); // ✅ Fix 1
+          })
+          .catch(() => setResults([]));
+      } else {
+        setResults([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm]);
 
   const handleLogout = () => {
     logout();
     setShowUserMenu(false);
-    navigate("/"); // Chuyển về trang chủ
+    navigate("/");
+  };
+
+  // 🟠 Khi người dùng chọn 1 kết quả
+  const handleSelectResult = (item) => {
+    setOpenSearch(false);
+    setSearchTerm("");
+    setResults([]);
+
+    if (item.type === "shop") {
+      navigate(`/detail/${item.id}`);
+    } else if (item.type === "food") {
+      navigate(`/detail/${item.shopId}`);
+    }
   };
 
   return (
@@ -156,7 +190,6 @@ export const HeaderHome = () => {
       {openSearch && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-start pt-20 z-50">
           <div className="bg-white w-full max-w-2xl rounded-lg shadow-lg p-4 relative">
-            {/* Close button */}
             <button
               onClick={() => setOpenSearch(false)}
               className="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
@@ -171,42 +204,35 @@ export const HeaderHome = () => {
                 type="text"
                 placeholder="Tìm món ăn hoặc nhà hàng"
                 className="w-full outline-none"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
 
-            {/* Gợi ý */}
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-gray-600 mb-2">
-                Tìm kiếm gần đây
-              </h3>
-              <div className="flex flex-wrap gap-2 mb-4">
-                <span className="px-3 py-1 border rounded-full text-sm text-gray-700">
-                  gà ủ muối
-                </span>
-              </div>
-
-              <h3 className="text-sm font-semibold text-gray-600 mb-2">
-                Món gì đang hot
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  "mì cay",
-                  "nem nướng",
-                  "trà sữa",
-                  "bún bò huế",
-                  "pizza",
-                  "cháo",
-                  "bánh mì",
-                ].map((item) => (
-                  <span
-                    key={item}
-                    className="px-3 py-1 border rounded-full text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+            {/* Kết quả tìm kiếm */}
+            {results.length > 0 && (
+              <div className="mt-4 border-t pt-3 max-h-64 overflow-y-auto">
+                {results.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleSelectResult(item)}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-orange-50 cursor-pointer transition"
                   >
-                    {item}
-                  </span>
+                    <img
+                      src={item.image || "/placeholder.svg"}
+                      alt={item.name}
+                      className="w-10 h-10 rounded-md object-cover"
+                    />
+                    <div>
+                      <div className="font-medium text-gray-800">{item.name}</div>
+                      {item.shopName && (
+                        <div className="text-sm text-gray-500">{item.shopName}</div>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}

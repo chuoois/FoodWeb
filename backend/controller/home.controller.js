@@ -1,7 +1,12 @@
+const mongoose = require("mongoose");
 const { findNearbyShops, searchByKeyword, getShopDetailsWithMenu } = require("../services/shop.service");
 const Shop = require("../models/shop.model");
 const Food = require("../models/food.model");
 const FoodCategory = require("../models/foodCategory.model");
+const User = require("../models/user.model");
+const Favorite = require("../models/favorite.model");
+
+
 // Định nghĩa vị trí mặc định (ĐH FPT Hà Nội) bằng biến môi trường
 const DEFAULT_LOCATION = {
     lat: parseFloat(process.env.DEFAULT_LAT || '21.0135'),
@@ -160,4 +165,145 @@ const getRandomShops = async (req, res) => {
   }
 };
 
-module.exports = { getNearbyShopsByCoords, searchHome,getShopsByRate,getShopsByType,getShopsById,getShopWithFoods, listCategoryByShopId, getRandomShops };
+const searchShopsAndFoods = async (req, res) => {
+  try {
+    const { query } = req.query;
+    if (!query)
+      return res.status(400).json({ success: false, message: "Thiếu từ khóa tìm kiếm" });
+
+    // === TÌM SHOP THEO TÊN ===
+    const shops = await Shop.find({
+      name: { $regex: query, $options: "i" },
+      status: "ACTIVE"
+    })
+      .select("name logoUrl coverUrl rating")
+      .limit(5)
+      .lean();
+
+    const formattedShops = shops.map((s) => ({
+      type: "shop",
+      id: s._id,
+      name: s.name,
+      image: s.logoUrl || s.coverUrl || "/placeholder.svg",
+      rating: s.rating ?? 0
+    }));
+
+    // === TÌM FOOD THEO TÊN HOẶC MÔ TẢ ===
+    const foods = await Food.find({
+      $or: [
+        { name: { $regex: query, $options: "i" } },
+        { description: { $regex: query, $options: "i" } }
+      ],
+      is_available: true
+    })
+      .select("name image_url price discount shop_id")
+      .populate("shop_id", "name")
+      .limit(5)
+      .lean();
+
+    const formattedFoods = foods.map((f) => ({
+      type: "food",
+      id: f._id,
+      name: f.name,
+      image: f.image_url || "/placeholder.svg",
+      price: f.price,
+      discount: f.discount,
+      shopName: f.shop_id?.name || "Không rõ",
+      shopId: f.shop_id?._id,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: [...formattedShops, ...formattedFoods]
+    });
+  } catch (error) {
+    console.error("Lỗi khi tìm kiếm:", error);
+    res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+};
+
+
+const addFavoriteShop = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const accountId = req.user.accountId;
+
+    if (!shopId || !accountId)
+      return res.status(400).json({ success: false, message: "Missing shopId or accountId" });
+
+    const user = await User.findOne({ account_id: accountId });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    const shop = await Shop.findById(shopId);
+    if (!shop) return res.status(404).json({ success: false, message: "Shop not found" });
+
+    // ✅ Tạo bản ghi favorite (nếu chưa tồn tại)
+    const favorite = await Favorite.findOneAndUpdate(
+      { user: user._id, shop: shop._id },
+      {},
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.json({ success: true, message: "Added to favorites", favorite });
+  } catch (err) {
+    if (err.code === 11000)
+      return res.status(400).json({ success: false, message: "Already in favorites" });
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+const removeFavoriteShop = async (req, res) => {
+  try {
+    const { shopId } = req.params;
+    const accountId = req.user.accountId;
+
+    const user = await User.findOne({ account_id: accountId });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    const deleted = await Favorite.findOneAndDelete({ user: user._id, shop: shopId });
+
+    if (!deleted)
+      return res.status(404).json({ success: false, message: "Favorite not found" });
+
+    res.json({ success: true, message: "Removed from favorites" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+const getFavoriteShops = async (req, res) => {
+  try {
+    const accountId = req.user.accountId;
+    const user = await User.findOne({ account_id: accountId });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    // Lấy danh sách favorite
+    const favorites = await Favorite.find({ user: user._id })
+      .populate({
+        path: "shop",
+        populate: [
+          { path: "owner", select: "full_name avatar_url phone" },
+          { path: "managers", select: "full_name phone" },
+          { path: "reviews.user", select: "full_name avatar_url" }
+        ]
+      })
+      .lean();
+
+    // Lọc ra các shop
+    const favoriteShops = favorites
+      .map(f => f.shop)
+      .filter(Boolean); // loại bỏ shop bị xóa
+
+    res.json({
+      success: true,
+      count: favoriteShops.length,
+      favorites: favoriteShops
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+module.exports = { searchShopsAndFoods, getNearbyShopsByCoords, searchHome,getShopsByRate,getShopsByType,getShopsById,getShopWithFoods, listCategoryByShopId, getRandomShops, addFavoriteShop, removeFavoriteShop, getFavoriteShops };

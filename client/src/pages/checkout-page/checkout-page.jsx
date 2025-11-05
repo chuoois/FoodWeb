@@ -38,7 +38,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { getCart, removeFromCart } from "@/services/cart.service";
 import { getProfile } from "@/services/profile.service";
-import { createOrder, getVouchers } from "@/services/order.service";
+import { checkoutOrder, getVouchers } from "@/services/order.service";
 import { AuthContext } from "@/context/AuthContext";
 
 export const CheckOutPage = () => {
@@ -356,22 +356,41 @@ export const CheckOutPage = () => {
 
     try {
       setLoading(true);
-      const res = await createOrder(payload);
+      // ✅ Mới
+      const res = await checkoutOrder(payload);
 
-      // ✅ Backend trả về status 201 với { message, order }
-      if (res.status === 201 || res.data?.message || res.data?.order) {
-        toast.success("Đặt món thành công!");
-        setShowSuccessDialog(true);
-        setTimeout(() => {
-          setShowSuccessDialog(false);
-          navigate("/detail/history", { replace: true });
-        }, 1200);
-      } else {
-        throw new Error("Không nhận được xác nhận từ server");
+      // 🔸 XỬ LÝ THANH TOÁN COD
+      if (selectedPayment === "cash") {
+        if (res.status === 201 || res.data?.message || res.data?.order) {
+          toast.success("Đặt món thành công!");
+          setShowSuccessDialog(true);
+          setTimeout(() => {
+            setShowSuccessDialog(false);
+            navigate("/myorder", { replace: true });
+          }, 1200);
+        } else {
+          throw new Error("Không nhận được xác nhận từ server");
+        }
+      }
+      // 🔸 XỬ LÝ THANH TOÁN PAYOS
+      else if (selectedPayment === "PAYOS") {
+        const paymentUrl = res.data?.url || res.url;
+
+        if (paymentUrl) {
+          toast.success("Đang chuyển đến trang thanh toán...");
+          // Redirect sang trang thanh toán PayOS
+          // window.location.href = paymentUrl;
+
+          window.open(paymentUrl, "_blank");
+
+        } else {
+          throw new Error("Không nhận được link thanh toán");
+        }
       }
     } catch (err) {
       console.error("Lỗi đặt hàng:", err);
-      const msg = err.response?.data?.message || err.message || "Đặt món thất bại!";
+      const msg =
+        err.response?.data?.message || err.message || "Đặt món thất bại!";
       setErrorMessage(msg);
       setShowErrorDialog(true);
     } finally {

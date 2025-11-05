@@ -1,11 +1,22 @@
+// services/order.service.js
 import api from "../lib/axios";
 
-//create order
-export const createOrder = (data) => {
-  return api.post("/orders",data);
+// ✅ Checkout (COD hoặc PayOS)
+export const checkoutOrder = (data) => {
+  return api.post("/checkout", data);
 };
 
-//get vouchers
+// ✅ Lấy danh sách voucher của shop
 export const getVouchers = (params) => {
   return api.get("/vouchers", { params });
+};
+
+// ✅ Lấy danh sách đơn hàng của user
+export const getUserOrders = (params) => {
+  return api.get("/orders", { params }); // ⚠️ bỏ /user
+};
+
+// ✅ Lấy chi tiết đơn hàng theo orderId
+export const getOrderDetail = (orderId) => {
+  return api.get(`/orders/${orderId}`);
 };
