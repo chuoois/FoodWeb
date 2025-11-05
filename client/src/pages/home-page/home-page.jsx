@@ -6,6 +6,7 @@ import {
   getNearbyShops,
   getPopularShops,
 } from "@/services/home.service";
+import { addFavoriteShop, removeFavoriteShop } from "@/services/home.service";
 import {
   searchAddress,
   getAddressFromCoordinates,
@@ -213,11 +214,25 @@ export const HomePage = () => {
     if (savedAddr) setAddress(savedAddr);
   }, []);
 
-  const toggleFavorite = (id) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
-    );
-  };
+  const toggleFavorite = async (shopId) => {
+  const isFav = favorites.includes(shopId);
+
+  try {
+    if (isFav) {
+      await removeFavoriteShop(shopId);
+      setFavorites((prev) => prev.filter((f) => f !== shopId));
+    } else {
+      await addFavoriteShop(shopId);
+      setFavorites((prev) => [...prev, shopId]);
+    }
+
+    // Lưu vào localStorage để nhớ
+
+  } catch (err) {
+    console.error("Lỗi khi gọi API yêu thích:", err);
+    alert("Không thể cập nhật yêu thích. Vui lòng thử lại.");
+  }
+};
 
   return (
     <div className="bg-[#FBF4E6] min-h-screen">

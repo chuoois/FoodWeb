@@ -34,3 +34,14 @@ export const getRandomShops = () => {
     return api.get("home/detail/random");
 };
 
+export const getFavoriteShops = () => {
+    return api.get("home/favorite");
+};
+
+export const addFavoriteShop = (shopId) => {
+    return api.post(`home/favorite/${shopId}`);
+};
+
+export const removeFavoriteShop = (shopId) => {
+    return api.delete(`home/favorite/${shopId}`);
+};
