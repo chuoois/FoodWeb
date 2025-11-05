@@ -1,46 +1,54 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { MapPin, Star, Heart, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getFavoriteShops, removeFavoriteShop } from "@/services/home.service"; // Adjust the import path as needed
 
 export const FavoritePage = () => {
-  const [favorites, setFavorites] = useState([1, 2]);
+  const [favoriteShops, setFavoriteShops] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-  const toggleFavorite = (id) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((fav) => fav !== id) : [...prev, id]
-    );
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      try {
+        const response = await getFavoriteShops();
+        if (response.data.success) {
+          setFavoriteShops(response.data.favorites || []);
+        }
+      } catch (error) {
+        console.error("Error fetching favorites:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFavorites();
+  }, []);
+
+  const handleRemoveFavorite = async (e, shopId) => {
+    e.stopPropagation(); // Prevent card click from triggering
+    try {
+      await removeFavoriteShop(shopId);
+      setFavoriteShops((prev) => prev.filter((shop) => shop._id !== shopId));
+    } catch (error) {
+      console.error("Error removing favorite:", error);
+    }
   };
 
-  const restaurants = [
-    {
-      id: 1,
-      name: "Bún Bò Huế 72 - Đường 72",
-      address: "318 Đường 72, Xã An Khánh, Hà Nội",
-      distance: "13.9 km",
-      image:
-        "https://images.unsplash.com/photo-1603133872878-8b5c6e2b5e8d",
-      isPromo: true,
-      rating: 4.5,
-      reviews: 120,
-      deliveryTime: "25-35 phút",
-      category: "Bún bò Huế",
-    },
-    {
-      id: 2,
-      name: "Tùng Huế - Bún Bò Huế & Bánh Canh Hải Sản",
-      address: "745 Quốc Lộ 72 Chùa Tổng, Phường La...",
-      distance: "13.9 km",
-      image:
-        "https://images.unsplash.com/photo-1605478054185-6cc2e1f908db",
-      isPromo: true,
-      rating: 4.2,
-      reviews: 39,
-      deliveryTime: "20-30 phút",
-      category: "Bún bò, Bánh canh",
-    },
-  ];
+  const handleShopClick = (shopId) => {
+    navigate(`/detail/${shopId}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-[#FBF4E6] min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">Đang tải...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#FBF4E6] min-h-screen">
@@ -49,71 +57,67 @@ export const FavoritePage = () => {
           Nhà hàng yêu thích
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {restaurants.map((restaurant) => (
-            <Card
-              key={restaurant.id}
-              className="overflow-hidden group hover:shadow-lg transition-all duration-300"
-            >
-              <div className="relative">
-                <img
-                  src={restaurant.image || "/placeholder.svg"}
-                  alt={restaurant.name}
-                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-
-                {restaurant.isPromo && (
-                  <Badge className="absolute top-3 left-3 bg-green-500 hover:bg-green-500 text-white">
-                    PROMO
-                  </Badge>
-                )}
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => toggleFavorite(restaurant.id)}
-                  className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition"
+        {favoriteShops.length === 0 ? (
+          <p className="text-gray-600 text-center py-8">Bạn chưa có nhà hàng yêu thích nào.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {favoriteShops.map((shop) => {
+              const fullAddress = `${shop.address?.street || ''}, ${shop.address?.district || ''}, ${shop.address?.city || ''}`.trim();
+              return (
+                <Card
+                  key={shop._id}
+                  className="overflow-hidden group hover:shadow-lg transition-all duration-300 cursor-pointer"
+                  onClick={() => handleShopClick(shop._id)}
                 >
-                  <Heart
-                    className={`w-4 h-4 ${
-                      favorites.includes(restaurant.id)
-                        ? "fill-red-500 text-red-500"
-                        : "text-gray-600"
-                    }`}
-                  />
-                </Button>
-              </div>
+                  <div className="relative">
+                    <img
+                      src={shop.coverUrl || "https://ila.edu.vn/wp-content/uploads/2025/07/ila-food-co-dem-duoc-khong-1.jpg"} // Fallback to default food image
+                      alt={shop.name}
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
 
-              <CardContent className="p-4 space-y-2">
-                <h3 className="font-semibold text-gray-800 line-clamp-2 text-sm">
-                  {restaurant.name}
-                </h3>
-
-                <div className="flex items-center gap-1 text-sm">
-                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  <span>{restaurant.rating}</span>
-                  <span className="text-xs text-gray-500">
-                    ({restaurant.reviews})
-                  </span>
-                </div>
-
-                <p className="text-xs text-gray-600 line-clamp-1">
-                  {restaurant.address}
-                </p>
-
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{restaurant.deliveryTime}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => handleRemoveFavorite(e, shop._id)}
+                      className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition"
+                    >
+                      <Heart className="w-4 h-4 fill-red-500 text-red-500" />
+                    </Button>
                   </div>
-                  <span className="text-orange-600 font-medium">
-                    {restaurant.category}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+
+                  <CardContent className="p-4 space-y-2">
+                    <h3 className="font-semibold text-gray-800 line-clamp-2 text-sm">
+                      {shop.name}
+                    </h3>
+
+                    <div className="flex items-center gap-1 text-sm">
+                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                      <span>{shop.rating || 0}</span>
+                      <span className="text-xs text-gray-500">
+                        ({shop.reviews?.length || 0})
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-gray-600 line-clamp-1">
+                      {fullAddress}
+                    </p>
+
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>25-35 phút</span>
+                      </div>
+                      <span className="text-orange-600 font-medium">
+                        {shop.type || "Ẩm thực"}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );
