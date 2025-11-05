@@ -274,11 +274,15 @@ exports.getUserOrders = async (req, res) => {
     const user = await User.findOne({ account_id: accountId });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Xây filter
     const filter = { customer_id: user._id };
-    if (status) {
-      filter.status = status.toUpperCase();
-    }
+    if (status) {
+      // Tách chuỗi status thành một mảng,
+      // và chuyển từng phần tử sang chữ hoa
+      const statusArray = status.split(',').map(s => s.toUpperCase());
+
+      // Sử dụng toán tử $in của MongoDB
+      filter.status = { $in: statusArray };
+    }
 
     // Phân trang
     const skip = (page - 1) * limit;
@@ -324,15 +328,14 @@ exports.getOrderDetail = async (req, res) => {
     const accountId = req.user.accountId;
     const { id } = req.params;
 
-    // Tìm user đang đăng nhập
     const user = await User.findOne({ account_id: accountId });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Tìm order theo _id hoặc order_code
     const order = await Order.findOne({
       $or: [{ _id: id }, { order_code: id }],
       customer_id: user._id,
     })
+      .select("-__v")
       .populate("shop_id", "name image_url address")
       .populate("delivery_address_id", "recipient_name phone address")
       .populate("voucher_id", "code discount_type discount_value")
@@ -340,18 +343,17 @@ exports.getOrderDetail = async (req, res) => {
 
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    // Lấy danh sách món ăn trong đơn
     const items = await OrderDetail.find({ order_id: order._id })
       .select("food_name food_image_url food_size quantity unit_price discount_percent subtotal note")
       .lean();
 
-    res.json({
+    return res.json({
       success: true,
       data: { ...order, items },
     });
   } catch (error) {
     console.error("❌ getOrderDetail error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Error fetching order detail",
       error: error.message,

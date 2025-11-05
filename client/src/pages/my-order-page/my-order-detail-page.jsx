@@ -69,33 +69,41 @@ export function MyOrderDetailPage() {
     : "—";
 
   // 🎯 Gộp trạng thái
-  const normalizeStatus = (status) => {
-    switch (status) {
-      case "PENDING_PAYMENT":
-        return { label: "Chờ thanh toán", color: "bg-yellow-100 text-yellow-700" };
-      case "PAID":
-      case "CONFIRMED":
-        return { label: "Đã xác nhận", color: "bg-blue-100 text-blue-700" };
-      case "SHIPPING":
-        return { label: "Đang giao", color: "bg-orange-100 text-orange-700" };
-      case "COMPLETED":
-        return { label: "Hoàn thành", color: "bg-green-100 text-green-700" };
-      case "CANCELED":
-        return { label: "Đã huỷ", color: "bg-red-100 text-red-700" };
-      default:
-        return { label: "Không xác định", color: "bg-gray-100 text-gray-700" };
-    }
-  };
+  // 🎯 Gộp trạng thái
+const normalizeStatus = (status) => {
+  switch (status) {
+    case "PENDING_PAYMENT":
+      return { label: "Chờ thanh toán", color: "bg-yellow-100 text-yellow-700" };
+    case "PENDING":
+      return { label: "Chờ xác nhận", color: "bg-gray-100 text-gray-700" };
+    case "CONFIRMED":
+      return { label: "Đã xác nhận", color: "bg-blue-100 text-blue-700" };
+    case "PREPARING":
+      return { label: "Đang chuẩn bị", color: "bg-indigo-100 text-indigo-700" };
+    case "SHIPPING":
+      return { label: "Đang giao", color: "bg-orange-100 text-orange-700" };
+    case "DELIVERED":
+      return { label: "Đã giao", color: "bg-green-100 text-green-700" };
+    case "CANCELLED":
+      return { label: "Đã huỷ", color: "bg-red-100 text-red-700" };
+    case "REFUNDED":
+      return { label: "Đã hoàn tiền", color: "bg-pink-100 text-pink-700" };
+    default:
+      return { label: "Không xác định", color: "bg-gray-100 text-gray-700" };
+  }
+};
 
-  const statusInfo = normalizeStatus(order.status);
+const statusInfo = normalizeStatus(order.status);
 
-  // Tiến trình đơn hàng
-  const progressSteps = [
-    { label: "Đặt hàng", active: true },
-    { label: "Xác nhận", active: ["PAID", "CONFIRMED", "SHIPPING", "COMPLETED"].includes(order.status) },
-    { label: "Đang giao", active: ["SHIPPING", "COMPLETED"].includes(order.status) },
-    { label: "Hoàn thành", active: order.status === "COMPLETED" },
-  ];
+// ✅ Tiến trình đơn hàng (theo flow thực tế)
+const progressSteps = [
+  { label: "Chờ thanh toán", active: ["PENDING_PAYMENT", "PENDING", "CONFIRMED", "PREPARING", "SHIPPING", "DELIVERED"].includes(order.status) },
+  { label: "Xác nhận", active: ["PENDING", "CONFIRMED", "PREPARING", "SHIPPING", "DELIVERED"].includes(order.status) },
+  { label: "Chuẩn bị", active: ["CONFIRMED", "PREPARING", "SHIPPING", "DELIVERED"].includes(order.status) },
+  { label: "Đang giao", active: ["SHIPPING", "DELIVERED"].includes(order.status) },
+  { label: "Đã giao", active: order.status === "DELIVERED" },
+];
+
 
   return (
     <div className="min-h-screen bg-background">
