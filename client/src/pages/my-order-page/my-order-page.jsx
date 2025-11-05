@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle, Truck, XCircle, ArrowLeft } from "lucide-react";
+import { CheckCircle, Truck, XCircle, ArrowLeft, Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getUserOrders } from "@/services/order.service"; // Import đúng API
+import { getUserOrders } from "@/services/order.service";
 
 export function MyOrderPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [orders, setOrders] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10,
+    limit: 5,
     total: 0,
     totalPages: 1,
   });
@@ -18,182 +18,140 @@ export function MyOrderPage() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // Ánh xạ tab → status API
+  const tabs = [
+    { id: "all", label: "Tất cả" },
+    { id: "pending", label: "Chờ xác nhận" },
+    { id: "preparing", label: "Đang chuẩn bị" },
+    { id: "shipping", label: "Đang giao" },
+    { id: "delivered", label: "Hoàn thành" },
+    { id: "cancelled", label: "Đã hủy" },
+  ];
+
   const mapTabToStatus = (tab) => {
-    if (tab === "delivering") return "DELIVERING";
-    if (tab === "completed") return "COMPLETED";
-    if (tab === "cancelled") return "CANCELLED";
-    if (tab === "pending") return "PENDING";
-    return ""; // "all" → không gửi status
+    switch (tab) {
+      case "pending":
+        return ["PENDING_PAYMENT", "PENDING"];
+      case "preparing":
+        return ["CONFIRMED", "PREPARING"];
+      case "shipping":
+        return ["SHIPPING"];
+      case "delivered":
+        return ["DELIVERED"];
+      case "cancelled":
+        return ["CANCELLED", "REFUNDED"];
+      default:
+        return [];
+    }
   };
 
-  // Gọi API lấy danh sách đơn hàng
   const fetchOrders = async (tab = activeTab, page = 1) => {
     try {
       setLoading(true);
       setError(null);
-
-      const status = mapTabToStatus(tab);
-      const params = { page, limit: 10 };
-      if (status) params.status = status;
+      const statusList = mapTabToStatus(tab);
+      const params = { page, limit: pagination.limit };
+      if (statusList.length > 0) params.status = statusList.join(",");
 
       const response = await getUserOrders(params);
-
-      if (response.data.success) {
+      if (response?.data?.success) {
         setOrders(response.data.data || []);
-        setPagination(response.data.pagination || pagination);
-      } else {
-        setError("Không thể tải đơn hàng");
-      }
-    } catch (err) {
+        setPagination(response.data.pagination || { ...pagination, page });
+      } else setError("Không thể tải đơn hàng");
+    } catch {
       setError("Lỗi kết nối server");
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Load lần đầu
   useEffect(() => {
     fetchOrders(activeTab, 1);
-  }, []);
-
-  // Khi đổi tab
-  useEffect(() => {
-    fetchOrders(activeTab, 1);
+    // eslint-disable-next-line
   }, [activeTab]);
 
-  // Badge trạng thái
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "DELIVERING":
-      case "SHIPPED":
-        return (
-          <div className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-            <Truck size={16} /> Đang giao
-          </div>
-        );
-      case "COMPLETED":
-        return (
-          <div className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-            <CheckCircle size={16} /> Hoàn thành
-          </div>
-        );
-      case "CANCELLED":
-        return (
-          <div className="flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">
-            <XCircle size={16} /> Đã hủy
-          </div>
-        );
-      default:
-        return (
-          <div className="flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-medium">
-            Chờ xử lý
-          </div>
-        );
-    }
-  };
-
-  // Lấy ảnh đầu tiên
-  const getFirstImage = (items) => items?.[0]?.food_image_url || "/placeholder.svg";
-
-  // Tổng số món
-  const getTotalItems = (items) =>
-    items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-
-  // Xử lý thay đổi trang
   const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
-      fetchOrders(activeTab, newPage);
-      window.scrollTo(0, 0);
-    }
+    if (newPage < 1 || newPage > pagination.totalPages) return;
+    fetchOrders(activeTab, newPage);
   };
 
-  if (loading && orders.length === 0) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-lg">Đang tải đơn hàng...</p>
-      </div>
-    );
-  }
+  const getStatusBadge = (status = "") => {
+    const s = status.toUpperCase();
+    const base = "flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium";
+    if (s === "PENDING_PAYMENT" || s === "PENDING")
+      return <div className={`${base} bg-yellow-100 text-yellow-700`}><CheckCircle size={16} /> Chờ xác nhận</div>;
+    if (s === "CONFIRMED" || s === "PREPARING")
+      return <div className={`${base} bg-purple-100 text-purple-700`}><CheckCircle size={16} /> Đang chuẩn bị</div>;
+    if (s === "SHIPPING")
+      return <div className={`${base} bg-blue-100 text-blue-700`}><Truck size={16} /> Đang giao</div>;
+    if (s === "DELIVERED")
+      return <div className={`${base} bg-green-100 text-green-700`}><CheckCircle size={16} /> Đã giao</div>;
+    if (["CANCELLED", "REFUNDED"].includes(s))
+      return <div className={`${base} bg-red-100 text-red-700`}><XCircle size={16} /> Đã hủy</div>;
+    return <div className={`${base} bg-gray-100 text-gray-600`}>Không xác định</div>;
+  };
 
+  const getFirstImage = (items) => items?.[0]?.food_image_url || "/placeholder.svg";
+  const getTotalItems = (items) => items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+
+  if (loading && !orders.length) {
+    return <div className="min-h-screen flex items-center justify-center">Đang tải...</div>;
+  }
   if (error) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-lg text-red-500">{error}</p>
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <div className="bg-orange-500 text-white py-6 px-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="lg:hidden">
-              <ArrowLeft size={24} />
-            </button>
-            <h1 className="text-2xl lg:text-4xl font-bold">Đơn Hàng Của Tôi</h1>
-          </div>
+        <div className="max-w-4xl mx-auto flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="lg:hidden">
+            <ArrowLeft size={24} />
+          </button>
+          <h1 className="text-2xl font-bold">Đơn hàng của tôi</h1>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="flex overflow-x-auto">
-            {[
-              { id: "all", label: "Tất cả" },
-              { id: "pending", label: "Chờ xử lý" },
-              { id: "delivering", label: "Đang giao" },
-              { id: "completed", label: "Hoàn thành" },
-              { id: "cancelled", label: "Đã hủy" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-shrink-0 px-4 py-3 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? "border-orange-500 text-orange-500"
-                    : "border-transparent text-foreground/60 hover:text-foreground"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+        <div className="max-w-4xl mx-auto px-4 flex overflow-x-auto">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`px-4 py-3 font-medium text-sm border-b-2 ${
+                activeTab === t.id ? "border-orange-500 text-orange-500" : "border-transparent text-gray-500"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Orders List */}
       <div className="max-w-4xl mx-auto px-4 py-6">
         {orders.length === 0 ? (
-          <Card className="text-center py-12">
-            <p className="text-foreground/60 text-lg">Không có đơn hàng nào</p>
-          </Card>
+          <Card className="text-center py-12"><p className="text-gray-500 text-lg">Không có đơn hàng</p></Card>
         ) : (
-          <>
-            <div className="space-y-4">
-              {orders.map((order) => (
-                <Card key={order._id} className="hover:shadow-lg transition-shadow overflow-hidden">
+          <div className="space-y-4">
+            {orders.map((order) => {
+              const isDelivered = order.status?.toUpperCase() === "DELIVERED";
+
+              return (
+                <Card key={order._id} className="hover:shadow-lg transition">
                   <CardContent className="p-0">
                     <div className="flex gap-6 p-4">
-                      <div className="w-32 h-32 flex-shrink-0 bg-gray-200 overflow-hidden rounded-lg">
-                        <img
-                          src={getFirstImage(order.items)}
-                          alt={order.items?.[0]?.food_name || "Order"}
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="w-32 h-32 overflow-hidden rounded-lg">
+                        <img src={getFirstImage(order.items)} className="w-full h-full object-cover" alt="food" />
                       </div>
+
                       <div className="flex-1 flex flex-col justify-between">
-                        <div className="flex items-start justify-between gap-4 mb-2">
-                          <div className="flex-1">
+                        <div className="flex justify-between mb-2">
+                          <div>
                             <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-lg font-semibold">{order.shop_id.name}</h3>
+                              <h3 className="text-lg font-semibold">{order.shop_id?.name}</h3>
                               {getStatusBadge(order.status)}
                             </div>
-                            <p className="text-sm text-foreground/60">
+                            <p className="text-sm text-gray-500">
                               {getTotalItems(order.items)} món •{" "}
                               {new Date(order.createdAt).toLocaleDateString("vi-VN")}
                             </p>
@@ -202,54 +160,80 @@ export function MyOrderPage() {
                             <p className="text-2xl font-bold text-orange-500">
                               {order.total_amount.toLocaleString("vi-VN")}₫
                             </p>
-                            <p className="text-xs text-foreground/60 mt-1">
-                              Mã: {order.order_code}
-                            </p>
+                            <p className="text-xs text-gray-500 mt-1">Mã: {order.order_code}</p>
                           </div>
                         </div>
 
                         <div className="flex gap-2">
                           <Button
-                            className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                            className="flex-1 bg-orange-500 text-white hover:bg-orange-600"
                             onClick={() => navigate(`/myorder/${order._id}`)}
                           >
                             Xem Chi Tiết
                           </Button>
+                          {isDelivered && !order.isReviewed && (
+                            <Button
+                              variant="outline"
+                              className="flex items-center gap-1 border-orange-500 text-orange-500"
+                              onClick={() => navigate(`/review/${order._id}`)}
+                            >
+                              <Star size={16} /> Đánh giá
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+              );
+            })}
+          </div>
+        )}
 
-            {/* Pagination */}
-            {pagination.totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-8">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={pagination.page === 1}
+        {/* ✅ Pagination UI */}
+        {pagination.totalPages >= 1 && (
+          <div className="flex justify-center items-center gap-2 mt-6">
+            <button
+              onClick={() => handlePageChange(pagination.page - 1)}
+              disabled={pagination.page === 1}
+              className={`px-3 py-1 rounded border ${
+                pagination.page === 1
+                  ? "text-gray-400 border-gray-300 cursor-not-allowed"
+                  : "text-orange-500 border-orange-500 hover:bg-orange-50"
+              }`}
+            >
+              Trước
+            </button>
+
+            {[...Array(pagination.totalPages)].map((_, index) => {
+              const page = index + 1;
+              return (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`px-3 py-1 rounded border ${
+                    pagination.page === page
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "text-orange-500 border-orange-500 hover:bg-orange-50"
+                  }`}
                 >
-                  Trước
-                </Button>
+                  {page}
+                </button>
+              );
+            })}
 
-                <span className="text-sm text-foreground/60">
-                  Trang {pagination.page} / {pagination.totalPages}
-                </span>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={pagination.page === pagination.totalPages}
-                >
-                  Sau
-                </Button>
-              </div>
-            )}
-          </>
+            <button
+              onClick={() => handlePageChange(pagination.page + 1)}
+              disabled={pagination.page === pagination.totalPages}
+              className={`px-3 py-1 rounded border ${
+                pagination.page === pagination.totalPages
+                  ? "text-gray-400 border-gray-300 cursor-not-allowed"
+                  : "text-orange-500 border-orange-500 hover:bg-orange-50"
+              }`}
+            >
+              Sau
+            </button>
+          </div>
         )}
       </div>
     </div>
