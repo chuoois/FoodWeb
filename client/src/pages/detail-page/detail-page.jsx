@@ -540,7 +540,7 @@ export const DetailPage = () => {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {similarShops.map((restaurant) => (
-                  <Link key={restaurant._id} to={`/shop/${restaurant._id}`}>
+                  <Link key={restaurant._id} to={`/detail/${restaurant._id}`}>
                     <Card className="overflow-hidden border-gray-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group">
                       <div className="relative">
                         <img
