@@ -12,6 +12,7 @@ const feedbackRoutes = require('./feedback.routes');
 const orderManageRoutes = require('./orderManager.routes');
 const checkoutRoutes = require('../routes/checkout.routes')
 const voucherRoutes = require('./voucher.routes');
+const dashboardRoutes = require('./dashboard.routes');
 
 router.use(homeRoutes);
 router.use(authRoutes);
@@ -25,6 +26,7 @@ router.use(feedbackRoutes);
 router.use(orderManageRoutes);
 router.use(checkoutRoutes);
 router.use(voucherRoutes);
+router.use(dashboardRoutes);
 
 
 module.exports = router;

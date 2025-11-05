@@ -13,7 +13,7 @@ export const ShopDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const mapRef = useRef(null);
 
-  const GOONG_API_KEY = import.meta.env.VITE_GOONG_API_KEY;
+  const GOONG_API_KEY = import.meta.env.VITE_GOONG_API_KEY_ALT;
 
   useEffect(() => {
     const fetchShopDetails = async () => {
@@ -21,7 +21,7 @@ export const ShopDetailPage = () => {
         setLoading(true);
         const response = await getShopDetailByID(shopId);
         console.log("Fetched shop details:", response.data);
-        setShop(response.data);
+        setShop(response.data.data);
       } catch (err) {
         console.error("Error fetching shop details:", err);
         toast.error("Không thể tải thông tin cửa hàng");
