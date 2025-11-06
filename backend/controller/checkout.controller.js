@@ -26,7 +26,7 @@ const generateOrderCode = () => {
 // =====================================================
 // Hàm tính toán chi tiết đơn hàng
 // =====================================================
-async function calculateOrderData(user_id, shop_id, voucher_id) {
+async function calculateOrderData(user_id, shop_id, voucher_id, clientDiscount = 0) {
   const cartItems = await CartItem.find({
     user_id,
     shop_id,
@@ -62,9 +62,11 @@ async function calculateOrderData(user_id, shop_id, voucher_id) {
     });
   }
 
-  // --- Kiểm tra và áp dụng voucher ---
-  let discount_amount = 0;
-  if (voucher_id && mongoose.Types.ObjectId.isValid(voucher_id)) {
+  // --- ƯU TIÊN DÙNG discount_amount TỪ CLIENT ---
+  let discount_amount = clientDiscount;
+
+  // --- Nếu không có clientDiscount → tự tính từ voucher_id ---
+  if (!discount_amount && voucher_id && mongoose.Types.ObjectId.isValid(voucher_id)) {
     const voucher = await Voucher.findById(voucher_id);
     const now = new Date();
 

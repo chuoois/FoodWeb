@@ -40,6 +40,7 @@ import { getCart, removeFromCart } from "@/services/cart.service";
 import { getProfile } from "@/services/profile.service";
 import { checkoutOrder, getVouchers } from "@/services/order.service";
 import { AuthContext } from "@/context/AuthContext";
+import { getPublicVouchers } from "@/services/voucher.service"; // THAY getVouchers
 
 export const CheckOutPage = () => {
   const { user } = useContext(AuthContext);
@@ -62,7 +63,8 @@ export const CheckOutPage = () => {
 
   const [vouchers, setVouchers] = useState([]);
   const [selectedVoucher, setSelectedVoucher] = useState(null);
-  const [showVoucherDialog, setShowVoucherDialog] = useState(false);
+  const [voucherCode, setVoucherCode] = useState(""); // mã người dùng gõ
+  const [voucherError, setVoucherError] = useState(""); // lỗi nhập mã
 
   // Profile & Addresses
   const [profile, setProfile] = useState(null);
@@ -158,38 +160,24 @@ export const CheckOutPage = () => {
     fetchProfile();
   }, [user]);
 
-  // LẤY VOUCHER CỦA CỬA HÀNG (SỬA THEO API THỰC TẾ)
+  // === LẤY VOUCHER TỪ API PUBLIC MỚI ===
   useEffect(() => {
     if (!shopId) return;
 
     const fetchVouchers = async () => {
       try {
-        const res = await getVouchers({ shop_id: shopId, is_active: true });
+        const res = await getPublicVouchers(shopId, { is_active: true });
+        const vouchersData =
+          res.data?.vouchers || res.data?.data?.vouchers || [];
 
-        // 👇 Nếu getVouchers trả về kết quả từ axios, ta phải lấy res.data
-        const apiData = res.data || res;
-
-        // ✅ Đảm bảo đúng kiểu mảng
-        const vouchersData = Array.isArray(apiData.data) ? apiData.data : [];
-
-        if (!vouchersData.length) {
-          console.warn("⚠️ Voucher API không trả về mảng hoặc rỗng:", apiData);
-        }
-
-        const formattedVouchers = vouchersData.map((v) => ({
+        const formatted = vouchersData.map((v) => ({
           _id: v._id,
           code: v.code,
           description: v.description,
           discountType: v.discount_type,
-          discountValue: parseFloat(
-            v.discount_value?.$numberDecimal || v.discount_value || 0
-          ),
-          minOrderAmount: parseFloat(
-            v.min_order_amount?.$numberDecimal || v.min_order_amount || 0
-          ),
-          maxDiscount: v.max_discount
-            ? parseFloat(v.max_discount?.$numberDecimal || v.max_discount)
-            : null,
+          discountValue: parseFloat(v.discount_value),
+          minOrderAmount: parseFloat(v.min_order_amount),
+          maxDiscount: v.max_discount ? parseFloat(v.max_discount) : null,
           startDate: v.start_date,
           endDate: v.end_date,
           usageLimit: v.usage_limit,
@@ -197,10 +185,10 @@ export const CheckOutPage = () => {
           isActive: v.is_active,
         }));
 
-        setVouchers(formattedVouchers);
-        console.log("✅ Loaded vouchers:", formattedVouchers);
+        setVouchers(formatted);
       } catch (err) {
-        console.error("❌ Lỗi lấy voucher:", err);
+        console.error("Lỗi lấy voucher:", err);
+        toast.error("Không thể tải mã giảm giá");
       }
     };
 
@@ -382,7 +370,6 @@ export const CheckOutPage = () => {
           // window.location.href = paymentUrl;
 
           window.open(paymentUrl, "_blank");
-
         } else {
           throw new Error("Không nhận được link thanh toán");
         }
@@ -674,25 +661,79 @@ export const CheckOutPage = () => {
                   </div>
                 </div>
 
-                {/* Voucher */}
+                {/* Voucher - Nhập mã */}
                 <div>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between"
-                    onClick={() => setShowVoucherDialog(true)}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Tag className="w-4 h-4" />
-                      {selectedVoucher
-                        ? selectedVoucher.code
-                        : "Chọn mã giảm giá"}
-                    </span>
-                    <ChevronDown className="w-4 h-4" />
-                  </Button>
-                  {voucherDiscount > 0 && (
-                    <p className="text-sm text-green-600 mt-1 text-right">
-                      Đã áp dụng: -{voucherDiscount.toLocaleString()}đ
-                    </p>
+                  <Label className="flex items-center gap-2 mb-3">
+                    <Tag className="w-4 h-4" />
+                    Mã giảm giá
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Nhập mã giảm giá..."
+                      value={voucherCode}
+                      onChange={(e) => {
+                        setVoucherCode(e.target.value.trim().toUpperCase());
+                        setVoucherError("");
+                      }}
+                      className="flex-1"
+                      disabled={!!selectedVoucher}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={
+                        selectedVoucher
+                          ? () => {
+                              setSelectedVoucher(null);
+                              setVoucherCode("");
+                              toast.success("Đã hủy mã giảm giá");
+                            }
+                          : async () => {
+                              if (!voucherCode.trim()) {
+                                setVoucherError("Vui lòng nhập mã");
+                                return;
+                              }
+
+                              const found = vouchers.find(
+                                (v) =>
+                                  v.code === voucherCode &&
+                                  calculateDiscount(v, subtotal) > 0
+                              );
+
+                              if (found) {
+                                setSelectedVoucher(found);
+                                setVoucherError("");
+                                toast.success(`Áp dụng mã: ${found.code}`);
+                              } else {
+                                setVoucherError(
+                                  "Mã không hợp lệ hoặc không áp dụng được"
+                                );
+                              }
+                            }
+                      }
+                      className={`whitespace-nowrap font-medium transition-all ${
+                        selectedVoucher
+                          ? "bg-orange-100 hover:bg-orange-200 text-orange-700 border border-orange-300"
+                          : "bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white"
+                      }`}
+                    >
+                      {selectedVoucher ? "Hủy" : "Áp dụng"}
+                    </Button>
+                  </div>
+                  {voucherError && (
+                    <p className="text-xs text-red-500 mt-1">{voucherError}</p>
+                  )}
+                  {selectedVoucher && (
+                    <div className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-emerald-600" />
+                      <p className="text-sm text-emerald-700">
+                        Đã áp dụng: <strong>{selectedVoucher.code}</strong>
+                        {selectedVoucher.description &&
+                          ` – ${selectedVoucher.description}`}
+                      </p>
+                      <span className="ml-auto font-bold text-emerald-700">
+                        -{voucherDiscount.toLocaleString()}đ
+                      </span>
+                    </div>
                   )}
                 </div>
 
@@ -742,73 +783,6 @@ export const CheckOutPage = () => {
           </div>
         </div>
       </div>
-
-      {/* Dialog Voucher */}
-      <Dialog open={showVoucherDialog} onOpenChange={setShowVoucherDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Tag className="w-5 h-5 text-orange-600" />
-              Mã giảm giá khả dụng
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {validVouchers.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">
-                Không có mã giảm giá nào khả dụng
-              </p>
-            ) : (
-              validVouchers.map((v) => {
-                const discount = calculateDiscount(v, subtotal);
-                return (
-                  <div
-                    key={v._id}
-                    className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                      selectedVoucher?._id === v._id
-                        ? "border-orange-500 bg-orange-50"
-                        : "border-gray-200 hover:border-orange-300"
-                    }`}
-                    onClick={() => {
-                      setSelectedVoucher(v);
-                      setShowVoucherDialog(false);
-                      toast.success(`Áp dụng mã: ${v.code}`);
-                    }}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-bold text-orange-600">{v.code}</p>
-                        <p className="text-sm">
-                          {v.discountType === "PERCENT"
-                            ? `Giảm ${v.discountValue}%`
-                            : `Giảm ${v.discountValue.toLocaleString()}đ`}
-                          {v.maxDiscount &&
-                            ` (tối đa ${v.maxDiscount.toLocaleString()}đ)`}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Đơn tối thiểu: {v.minOrderAmount.toLocaleString()}đ
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className="text-xs">
-                        Giảm {discount.toLocaleString()}đ
-                      </Badge>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowVoucherDialog(false)}
-            >
-              Đóng
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Các dialog khác */}
 
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
         <DialogContent>
