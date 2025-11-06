@@ -20,5 +20,7 @@ export * from './manager-staff-home'
 export * from './manager-staff-order'
 export * from './my-order-page'
 export * from './store-director-manage-dashboard'
+export * from './manager-staff-create-voucher'
+export * from './manager-staff-list-voucher'
 
 

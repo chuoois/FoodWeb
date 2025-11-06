@@ -14,7 +14,9 @@ import {
   ChefHat,
   List,
   Plus,
-  Package
+  Package,
+  Ticket,
+  TicketPercent
 } from "lucide-react"
 
 export function ManagerSidebar({ children }) {
@@ -29,6 +31,9 @@ export function ManagerSidebar({ children }) {
     { name: "Danh sách đồ ăn", href: "/manager-staff/manage/list-food", icon: List },
     { name: "Tạo món ăn", href: "/manager-staff/manage/create-food", icon: Plus },
     { name: "Danh sách đơn hàng", href: "/manager-staff/manage/list-order", icon: Package },
+    { name: "Tạo món mã giảm giá", href: "/manager-staff/manage/create-voucher", icon: Ticket },
+    { name: "Danh sách mã giảm giá", href: "/manager-staff/manage/list-voucher", icon: TicketPercent },
+
 
 
   ]

@@ -97,7 +97,7 @@ export function OrdersList() {
       try {
         const params = {
           page,
-          limit: 5,
+          limit: 10,
           search: debouncedSearch || undefined,
           status: selectedStatus !== "ALL" ? selectedStatus : undefined,
           sort_by: "created_at",

@@ -1,15 +1,18 @@
 const Voucher = require("../../models/voucher.model");
 const Shop = require("../../models/shop.model");
+const Staff = require("../../models/staff.model");
+const User = require("../../models/user.model");
+
 const mongoose = require("mongoose");
 
 // Helper function: Lấy shop_id từ staff/owner
 const getShopIdByStaff = async (accountId) => {
-  const shop = await Shop.findOne({
-    $or: [
-      { owner: accountId },
-      { managers: accountId }
-    ]
-  });
+  const staff = await Staff.findOne({account_id:accountId}).select("_id");
+  
+  const shop = await Shop.findOne(
+      { managers: staff._id }
+
+  );
   return shop ? shop._id : null;
 };
 
@@ -20,10 +23,22 @@ const checkShopAccess = async (accountId, shopId) => {
     throw new Error("Shop not found");
   }
 
-  const isOwner = shop.owner.toString() === accountId.toString();
+  // ✅ phải có await ở đây
+  const manage = await Staff.findOne({ account_id: accountId }).select("_id");
+  if (!manage) {
+    throw new Error("Staff not found for this account");
+  }
+
+  const mnId = manage._id;
+  console.log("Staff ID:", mnId);
+
+  // ✅ xác định chủ shop (nếu có trường owner)
+  const isOwner = shop.owner_id?.toString() === accountId.toString();
+
   const isManager = shop.managers.some(
-    (managerId) => managerId.toString() === accountId.toString()
+    (managerId) => managerId.toString() === mnId.toString()
   );
+  console.log("isManager:", isManager);
 
   if (!isOwner && !isManager) {
     throw new Error("Access denied. You are not authorized to manage this shop");
@@ -31,6 +46,7 @@ const checkShopAccess = async (accountId, shopId) => {
 
   return shop;
 };
+
 
 // Tạo voucher mới
 const createVoucher = async (req, res) => {
@@ -182,11 +198,11 @@ const getVoucherById = async (req, res) => {
 // Cập nhật voucher
 const updateVoucher = async (req, res) => {
   try {
-    const { voucher_id } = req.params;
+    const { voucherId } = req.params;
     const { accountId } = req.user;
     const updateData = req.body;
 
-    const voucher = await Voucher.findById(voucher_id);
+    const voucher = await Voucher.findById(voucherId);
     if (!voucher) {
       return res.status(404).json({
         message: "Voucher không tồn tại",
@@ -204,7 +220,7 @@ const updateVoucher = async (req, res) => {
       const existingVoucher = await Voucher.findOne({ 
         code: updateData.code.toUpperCase(),
         shop_id: voucher.shop_id,
-        _id: { $ne: voucher_id }
+        _id: { $ne: voucherId }
       });
       if (existingVoucher) {
         return res.status(400).json({
@@ -238,7 +254,7 @@ const updateVoucher = async (req, res) => {
     }
 
     const updatedVoucher = await Voucher.findByIdAndUpdate(
-      voucher_id,
+      voucherId,
       { $set: updateData },
       { new: true, runValidators: true }
     );
@@ -259,10 +275,10 @@ const updateVoucher = async (req, res) => {
 // Xóa voucher
 const deleteVoucher = async (req, res) => {
   try {
-    const { voucher_id } = req.params;
+    const { voucherId } = req.params;
     const { accountId } = req.user;
 
-    const voucher = await Voucher.findById(voucher_id);
+    const voucher = await Voucher.findById(voucherId);
     if (!voucher) {
       return res.status(404).json({
         message: "Voucher không tồn tại",
@@ -272,7 +288,7 @@ const deleteVoucher = async (req, res) => {
     // Kiểm tra quyền truy cập
     await checkShopAccess(accountId, voucher.shop_id);
 
-    await Voucher.findByIdAndDelete(voucher_id);
+    await Voucher.findByIdAndDelete(voucherId);
 
     return res.status(200).json({
       message: "Xóa voucher thành công",
@@ -289,11 +305,11 @@ const deleteVoucher = async (req, res) => {
 // Kích hoạt/vô hiệu hóa voucher
 const toggleVoucherStatus = async (req, res) => {
   try {
-    const { voucher_id } = req.params;
+    const { voucherId } = req.params;
     const { accountId } = req.user;
-    const { is_active } = req.body;
+ 
 
-    const voucher = await Voucher.findById(voucher_id);
+    const voucher = await Voucher.findById(voucherId);
     if (!voucher) {
       return res.status(404).json({
         message: "Voucher không tồn tại",
@@ -302,14 +318,14 @@ const toggleVoucherStatus = async (req, res) => {
 
     // Kiểm tra quyền truy cập
     await checkShopAccess(accountId, voucher.shop_id);
-
-    voucher.is_active = is_active;
+console.log(voucher.is_active)
+    voucher.is_active = !voucher.is_active;
     await voucher.save();
 
-    return res.status(200).json({
-      message: `${is_active ? "Kích hoạt" : "Vô hiệu hóa"} voucher thành công`,
-      data: voucher,
-    });
+  return res.status(200).json({
+  message: `${voucher.is_active ? "Kích hoạt" : "Vô hiệu hóa"} voucher thành công`,
+  data: voucher,
+});
   } catch (error) {
     console.error("Lỗi khi thay đổi trạng thái voucher:", error);
     if (error.message.includes("Access denied")) {
