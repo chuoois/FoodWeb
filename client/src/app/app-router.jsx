@@ -49,7 +49,11 @@ import {
   OrdersList,
   MyOrderPage,
   MyOrderDetailPage,
-  OwnerDashboardPage
+  OwnerDashboardPage,
+  CreateVoucherPage,
+  VoucherListPage
+
+
 } from "@/pages";
 
 export const router = createBrowserRouter([
@@ -138,9 +142,11 @@ export const router = createBrowserRouter([
         children: [
           { path: "home", element: <ManagerStaffHomePage /> },
           { path: "dashboard", element: <div>Dashboard</div> },
-          { path: "create-food", element: <  CreateFoodPage /> },
-          { path: "list-food", element: <     FoodListPage /> },
-          { path: "list-order", element: <     OrdersList /> },
+          { path: "create-food", element: < CreateFoodPage /> },
+          { path: "list-food", element: < FoodListPage /> },
+          { path: "list-order", element: < OrdersList /> },
+          { path: "create-voucher", element: < CreateVoucherPage/> },
+          { path: "list-voucher", element: <   VoucherListPage/> },
 
         ],
       },

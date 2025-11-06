@@ -134,7 +134,7 @@ export function CreateFoodPage() {
     setFieldValue("options", updated);
   };
 
- 
+
   return (
     <Formik
       initialValues={{
@@ -405,11 +405,21 @@ export function CreateFoodPage() {
             </Card>
 
             {/* 🟢 Buttons */}
-            <div className="flex gap-3">
-              <Button type="button" variant="outline" className="flex-1 bg-transparent">
-                Huỷ
-              </Button>
-              <Button type="submit" disabled={isLoading} className="flex-1">
+            <div className="flex items-center justify-between border rounded-lg p-6 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+               Bạn đã sẵn sàng nêm gia vị cuối cùng cho món ăn của mình chưa?
+                </p>
+                <p className="text-sm text-muted-foreground">
+                 Chỉ còn một bước nữa thôi là cửa hàng của bạn sẽ "ra lò"!
+                </p>
+              </div>
+              <Button 
+              type="submit" 
+              className="min-w-[140px]"
+               size="lg"
+              disabled={isLoading} 
+              >
                 {isLoading ? "Đang tạo..." : "Tạo món ăn"}
               </Button>
             </div>
