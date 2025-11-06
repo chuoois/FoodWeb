@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { MapPin, Crosshair, Star, Heart } from "lucide-react";
 import useDebounce from "@/hooks/useDebounce";
@@ -264,9 +265,9 @@ export const HomePage = () => {
   }, []);
 
  const toggleFavorite = async (shopId) => {
-  const token = localStorage.getItem("accessToken"); // hoặc tên bạn đang lưu token
+  const token = localStorage.getItem("accessToken");
   if (!token) {
-    navigate("/auth/login");
+    toast.error("Vui lòng đăng nhập để thêm yêu thích");
     return;
   }
 

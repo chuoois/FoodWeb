@@ -170,7 +170,8 @@ const getShopWithFoods = async (req, res) => {
       .populate("reviews.user", "name avatar")
       .lean();
 
-    if (!shop) return res.status(404).json({ message: "Không tìm thấy quán" });
+    if (!shop)
+      return res.status(404).json({ message: "Không tìm thấy quán" });
 
     // 2️⃣ Lấy danh sách món và danh mục
     const [foods, categories] = await Promise.all([
@@ -181,25 +182,36 @@ const getShopWithFoods = async (req, res) => {
       FoodCategory.find({ shop_id: id }).lean(),
     ]);
 
-    // 3️⃣ Kiểm tra user và favorite
-    let isFavorite = false;
-    if (req.user && req.user.accountId) {
-      const accountId = req.user.accountId;
-      const user = await User.findOne({ account_id: accountId });
+    // 3️⃣ Xử lý yêu thích
+    let isFavorite = null;
+
+    if (req.user?.accountId) {
+      const user = await User.findOne({ account_id: req.user.accountId }).lean();
       if (user) {
-        const favorite = await Favorite.findOne({ user: user._id, shop: shop._id });
+        const favorite = await Favorite.findOne({
+          user: user._id,
+          shop: shop._id,
+        }).lean();
         isFavorite = !!favorite;
+      } else {
+        isFavorite = null;
       }
     }
 
     // 4️⃣ Trả về kết quả
-    res.status(200).json({ shop: { ...shop, isFavorite }, foods, categories });
+    res.status(200).json({
+      success: true,
+      shop: { ...shop, isFavorite },
+      foods,
+      categories,
+    });
   } catch (error) {
     console.error("Lỗi khi lấy thông tin quán:", error);
-    res.status(500).json({ message: "Lỗi server", error: error.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Lỗi server", error: error.message });
   }
 };
-
 
 
 const listCategoryByShopId = async (req, res) => {

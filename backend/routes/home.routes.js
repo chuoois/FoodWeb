@@ -11,9 +11,9 @@ router.get("/home/search", searchHome);
 router.get("/home/popular", getShopsByRate);
 router.get("/home/search-all", searchShopsAndFoods);
 router.get("/home/shop/:shopId", getShopsById);
-router.get("/home/shop/:id/foods", authenticate, authorize("CUSTOMER"),getShopWithFoods);
+router.get("/home/shop/:id/foods",getShopWithFoods);
 router.get("/home/shop/:shopId/categories", listCategoryByShopId);
-router.get("/home/detail/random", authenticate, authorize("CUSTOMER"), getRandomShops);
+router.get("/home/detail/random", getRandomShops);
 
 router.get("/home/favorite", authenticate, authorize("CUSTOMER"), getFavoriteShops);
 router.post("/home/favorite/:shopId", authenticate, authorize("CUSTOMER"), addFavoriteShop);
