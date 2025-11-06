@@ -20,49 +20,74 @@ const getStaffId = async (accountId) => {
  * Lấy danh sách đơn hàng của shop mà staff quản lý
  * (Không dùng res → có thể dùng cho cả REST và SSE)
  */
-const fetchShopOrders = async (staffId) => {
+const fetchShopOrders = async (staffId, query = {}) => {
   const shop = await Shop.findOne({ managers: staffId }).lean();
-  if (!shop) return [];
-  console.log(shop._id);
+  if (!shop) return { orders: [], pagination: { total: 0, totalPages: 1, page: 1 } };
 
-  // Lấy danh sách đơn của shop
-  const orders = await Order.find({
-    shop_id: shop._id,
-    status: { $in: ["PENDING", "CONFIRMED"] },
-  })
+  const {
+    page = 1,
+    limit = 10,
+    search = "",
+    status,
+    sort_by = "createdAt",
+    sort_order = "desc",
+  } = query;
+
+  const filter = { shop_id: shop._id };
+
+  // 🔍 Tìm kiếm theo mã đơn hoặc tên khách hàng
+  if (search) {
+    filter.$or = [
+      { order_code: { $regex: search, $options: "i" } },
+      { "customer_id.full_name": { $regex: search, $options: "i" } },
+    ];
+  }
+
+  // 🟢 Lọc theo trạng thái nếu có
+  if (status) {
+    filter.status = status;
+  }
+
+  // Tổng số đơn (để tính trang)
+  const total = await Order.countDocuments(filter);
+
+  // Lấy danh sách đơn có populate + sort + phân trang
+  const orders = await Order.find(filter)
     .populate("customer_id", "full_name phone")
     .populate("shop_id", "name image_url")
     .populate("delivery_address_id", "address recipient_name phone")
+    .sort({ [sort_by]: sort_order === "desc" ? -1 : 1 })
+    .skip((page - 1) * limit)
+    .limit(Number(limit))
     .lean();
 
-  // Lấy chi tiết các món ăn cho các order này
+  // Lấy chi tiết món ăn
   const orderIds = orders.map((o) => o._id);
   const orderDetails = await OrderDetail.find({ order_id: { $in: orderIds } })
     .select("order_id food_name quantity")
     .lean();
 
-  // Gom các món ăn theo từng order
   const orderNameMap = {};
   const orderQuantity = {};
   orderDetails.forEach((detail) => {
     if (!orderNameMap[detail.order_id]) orderNameMap[detail.order_id] = [];
-    orderNameMap[detail.order_id].push(detail.food_name,);
+    orderNameMap[detail.order_id].push(detail.food_name);
     if (!orderQuantity[detail.order_id]) orderQuantity[detail.order_id] = [];
-     orderQuantity[detail.order_id].push( detail.quantity);
-   
+    orderQuantity[detail.order_id].push(detail.quantity);
   });
-  console.log(orderDetails);
-  
-  // Gắn tên món (order_name) vào từng order
+
   const ordersWithNames = orders.map((order) => ({
     ...order,
     order_name: orderNameMap[order._id]?.join(", ") || "",
-    quantity : orderQuantity[order._id]?.join(", ") || ""
+    quantity: orderQuantity[order._id]?.join(", ") || "",
   }));
-  console.log(ordersWithNames);
-  
 
-  return ordersWithNames;
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    orders: ordersWithNames,
+    pagination: { total, totalPages, page: Number(page), limit: Number(limit) },
+  };
 };
 
 
@@ -95,15 +120,14 @@ const broadcastToShopManagers = async (shopId, event) => {
    REST API CONTROLLERS
    ============================== */
 
+/* REST API Controller */
 class OrderManagerController {
-  // GET /shop/orders → Lấy danh sách đơn (REST)
+  // GET /ordersManage
   static async getOrders(req, res) {
     try {
       const staffId = await getStaffId(req.user.accountId);
-      const orders = await fetchShopOrders(staffId);
-      res.status(200).json(orders);
-      // console.log(orders._id);
-      
+      const { orders, pagination } = await fetchShopOrders(staffId, req.query);
+      res.status(200).json({ orders, pagination });
     } catch (error) {
       res.status(403).json({ message: error.message });
     }
@@ -126,10 +150,17 @@ class OrderManagerController {
       order.status = "CONFIRMED";
       await order.save();
 
+      // 🔥 Populate lại cho đầy đủ
+      const populatedOrder = await Order.findById(order._id)
+        .populate("customer_id", "full_name phone")
+        .populate("shop_id", "name image_url")
+        .populate("delivery_address_id", "address recipient_name phone")
+        .lean();
+
       // Gửi cập nhật realtime
       broadcastToShopManagers(order.shop_id, {
         type: "order_updated",
-        data: order.toObject(),
+        data: populatedOrder,
       });
 
       res.json({ message: "Order accepted", order });
@@ -143,7 +174,7 @@ class OrderManagerController {
     try {
       const { order_id } = req.params;
       const { status } = req.body;
-      const validStatuses = ["SHIPPED", "DELIVERED", "CANCELLED"];
+      const validStatuses = ["SHIPPING", "DELIVERED", "CANCELLED"];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ message: "Invalid status" });
       }
@@ -158,11 +189,20 @@ class OrderManagerController {
       }
 
       order.status = status;
+
+   
       await order.save();
+
+      // Populate lại đầy đủ thông tin trước khi gửi
+      const populatedOrder = await Order.findById(order._id)
+        .populate("customer_id", "full_name phone")
+        .populate("shop_id", "name image_url")
+        .populate("delivery_address_id", "address recipient_name phone")
+        .lean();
 
       broadcastToShopManagers(order.shop_id, {
         type: "order_updated",
-        data: order.toObject(),
+        data: populatedOrder,
       });
 
       res.json({ message: "Status updated", order });
@@ -201,7 +241,11 @@ OrderManagerController.registerSSE = async (req, res) => {
 
   // Gửi danh sách đơn ban đầu
   const orders = await fetchShopOrders(staffId);
-  res.write(`data: ${JSON.stringify({ type: "orders", data: orders })}\n\n`);
+res.write(`data: ${JSON.stringify({
+  type: "orders",
+  data: orders.orders,        // danh sách đơn
+  pagination: orders.pagination // phân trang
+})}\n\n`);
 
   // Xử lý ngắt kết nối
   req.on("close", () => {
