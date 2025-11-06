@@ -1,16 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Package, X, Loader2, MoreHorizontal } from "lucide-react"
+import { Package, X, Loader2, Clock, CheckCircle2, Truck, PackageCheck, XCircle,Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { OrderDetailDialog } from "./order-detail"
 import { getShopOrders, connectOrderSSE, disconnectOrderSSE, acceptOrder, updateOrderStatus } from "@/services/orderManage.service"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import toast from "react-hot-toast"
 import useDebounce from "@/hooks/useDebounce"
 
@@ -21,12 +15,36 @@ import useDebounce from "@/hooks/useDebounce"
  */
 
 const STATUS_CONFIG = {
-  PENDING: { label: "Chờ xác nhận", color: "text-yellow-600", bgColor: "bg-yellow-100" },
-  CONFIRMED: { label: "Đã xác nhận", color: "text-blue-600", bgColor: "bg-blue-100" },
-  SHIPPING: { label: "Đang giao", color: "text-indigo-600", bgColor: "bg-indigo-100" },
-  DELIVERED: { label: "Đã giao", color: "text-green-600", bgColor: "bg-green-100" },
-  CANCELLED: { label: "Đã hủy", color: "text-red-600", bgColor: "bg-red-100" },
-
+  PENDING: {
+    label: "Chờ xác nhận",
+    color: "text-yellow-600",
+    bgColor: "bg-yellow-100",
+    icon: Clock,
+  },
+  CONFIRMED: {
+    label: "Đã xác nhận",
+    color: "text-blue-600",
+    bgColor: "bg-blue-100",
+    icon: CheckCircle2,
+  },
+  SHIPPING: {
+    label: "Đang giao",
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-100",
+    icon: Truck,
+  },
+  DELIVERED: {
+    label: "Đã giao",
+    color: "text-green-600",
+    bgColor: "bg-green-100",
+    icon: PackageCheck,
+  },
+  CANCELLED: {
+    label: "Đã hủy",
+    color: "text-red-600",
+    bgColor: "bg-red-100",
+    icon: XCircle,
+  },
 }
 
 const safeNumber = (v) => {
@@ -207,12 +225,17 @@ export function OrdersList() {
 
   const getStatusBadge = (status) => {
     const config = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING
+    const Icon = config.icon
     return (
-      <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${config.color} ${config.bgColor}`}>
+      <span
+        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${config.color} ${config.bgColor}`}
+      >
+        <Icon className="w-4 h-4" />
         {config.label}
       </span>
     )
   }
+
 
   const formatDate = (date) => {
     if (!date) return "—"
@@ -328,6 +351,7 @@ export function OrdersList() {
                         {safeNumber(order.total_amount).toLocaleString("vi-VN")}đ
                       </TableCell>
                       <TableCell className="flex gap-2">
+                        {/* Xem chi tiết */}
                         <Button
                           size="sm"
                           variant="outline"
@@ -336,78 +360,137 @@ export function OrdersList() {
                             setIsDetailOpen(true)
                           }}
                         >
-                          Xem chi tiết
+                          <Eye className="w-4 h-4 mr-1" />
+                          Xem
                         </Button>
-                        {/* Menu đổi trạng thái */}
-                        {/* Nếu đơn hàng đang chờ xác nhận -> hiển thị nút "Chấp nhận" */}
+
+                        {/* PENDING: Có thể chấp nhận hoặc hủy */}
                         {order.status === "PENDING" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="hover:bg-primary hover:text-white"
+                              onClick={async () => {
+                                try {
+                                  await acceptOrder(order._id)
+                                  setOrders((prev) =>
+                                    prev.map((o) =>
+                                      o._id === order._id ? { ...o, status: "CONFIRMED" } : o
+                                    )
+                                  )
+                                  toast.success("Đã chấp nhận đơn hàng!")
+                                } catch (err) {
+                                  toast.error("Lỗi khi chấp nhận đơn hàng: " + err.message)
+                                }
+                              }}
+                            >
+                              <CheckCircle2 className="w-4 h-4 mr-1" />
+                              Chấp nhận
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="hover:bg-red-600 hover:text-white hover:border-red-600"
+                              onClick={async () => {
+                                try {
+                                  await updateOrderStatus(order._id, "CANCELLED")
+                                  setOrders((prev) =>
+                                    prev.map((o) =>
+                                      o._id === order._id ? { ...o, status: "CANCELLED" } : o
+                                    )
+                                  )
+                                  toast.success("Đã hủy đơn hàng!")
+                                } catch (err) {
+                                  toast.error("Lỗi khi hủy đơn hàng: " + err.message)
+                                }
+                              }}
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Hủy đơn
+                            </Button>
+                          </>
+                        )}
+
+                        {/* CONFIRMED: Có thể giao hoặc hủy */}
+                        {order.status === "CONFIRMED" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="hover:bg-primary hover:text-white"
+                              onClick={async () => {
+                                try {
+                                  await updateOrderStatus(order._id, "SHIPPING")
+                                  setOrders((prev) =>
+                                    prev.map((o) =>
+                                      o._id === order._id ? { ...o, status: "SHIPPING" } : o
+                                    )
+                                  )
+                                  toast.success("Đã chuyển sang trạng thái: Đang giao")
+                                } catch (err) {
+                                  toast.error("Lỗi khi cập nhật trạng thái: " + err.message)
+                                }
+                              }}
+                            >
+                              <Truck className="w-4 h-4 mr-1" />
+                              Bắt đầu giao
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={async () => {
+                                try {
+                                  await updateOrderStatus(order._id, "CANCELLED")
+                                  setOrders((prev) =>
+                                    prev.map((o) =>
+                                      o._id === order._id ? { ...o, status: "CANCELLED" } : o
+                                    )
+                                  )
+                                  toast.success("Đã hủy đơn hàng!")
+                                } catch (err) {
+                                  toast.error("Lỗi khi hủy đơn hàng: " + err.message)
+                                }
+                              }}
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Hủy đơn
+                            </Button>
+                          </>
+                        )}
+
+                        {/* SHIPPING: chỉ hoàn tất giao */}
+                        {order.status === "SHIPPING" && (
                           <Button
                             size="sm"
                             variant="secondary"
+                            className="hover:bg-primary hover:text-white"
                             onClick={async () => {
                               try {
-                                await acceptOrder(order._id)
+                                await updateOrderStatus(order._id, "DELIVERED")
                                 setOrders((prev) =>
                                   prev.map((o) =>
-                                    o._id === order._id ? { ...o, status: "CONFIRMED" } : o
+                                    o._id === order._id
+                                      ? { ...o, status: "DELIVERED", payment_status: "PAID" }
+                                      : o
                                   )
                                 )
-                              toast.success("Đã chấp nhận đơn hàng!")
+                                toast.success("Đã giao hàng thành công!")
                               } catch (err) {
-                           toast.error("Lỗi khi chấp nhận đơn hàng: " + err.message)
+                                toast.error("Lỗi khi cập nhật trạng thái: " + err.message)
                               }
                             }}
                           >
-                            Chấp nhận
+                            <PackageCheck className="w-4 h-4 mr-1" />
+                            Hoàn tất giao
                           </Button>
                         )}
-
-                        {/* Dropdown đổi trạng thái (chỉ hiện nếu KHÔNG phải đang chờ xác nhận hoặc thanh toán) */}
-                        {/* Dropdown đổi trạng thái — chỉ hiện khi đơn đã xác nhận hoặc đang giao */}
-                        {["CONFIRMED", "PREPARING", "SHIPPING"].includes(order.status) && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button size="sm" variant="ghost" className="text-muted-foreground">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-
-                            <DropdownMenuContent>
-                              {["SHIPPING", "DELIVERED", "CANCELLED"]
-                                .filter((key) => key !== order.status)
-                                .map((key) => (
-                                  <DropdownMenuItem
-                                    key={key}
-                                    onClick={async () => {
-                                      try {
-                                        const updatedOrder = await updateOrderStatus(order._id, key)
-
-                                        setOrders((prev) =>
-                                          prev.map((o) => {
-                                            if (o._id === order._id) {
-                                              // Nếu trạng thái cập nhật là DELIVERED, đánh dấu đã thanh toán
-                                              if (key === "DELIVERED") {
-                                                return { ...o, status: key, payment_status: "PAID" }
-                                              }
-                                              return { ...o, status: key }
-                                            }
-                                            return o
-                                          })
-                                        )
-                                         toast.success(`Đã cập nhật trạng thái thành: ${STATUS_CONFIG[key].label}`)
-                                      } catch (err) {
-                                          toast.error("Lỗi khi cập nhật trạng thái: " + err.message)
-                                      }
-                                    }}
-                                  >
-                                    {STATUS_CONFIG[key].label}
-                                  </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-
                       </TableCell>
+
+
+
                     </TableRow>
                   ))
                 )}
