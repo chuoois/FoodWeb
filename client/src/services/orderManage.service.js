@@ -5,9 +5,11 @@ let eventSource = null;
 
 /**
  * Lấy danh sách đơn hàng mà nhân viên quản lý
+
+* @param {Object} params { page, limit, search, status, sort_by, sort_order }
  */
-export const getShopOrders = () => {
-  return api.get("/ordersManage");
+export const getShopOrders = (params = {}, config = {}) => {
+  return api.get("/ordersManage", { params, ...config });
 };
 
 /**

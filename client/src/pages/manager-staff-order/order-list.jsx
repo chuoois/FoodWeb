@@ -1,10 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Package, X, Loader2 } from "lucide-react"
+import { Package, X, Loader2, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { OrderDetailDialog } from "./order-detail"
-import { getShopOrders, connectOrderSSE, disconnectOrderSSE } from "@/services/orderManage.service"
+import { getShopOrders, connectOrderSSE, disconnectOrderSSE, acceptOrder, updateOrderStatus } from "@/services/orderManage.service"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import toast from "react-hot-toast"
 import useDebounce from "@/hooks/useDebounce"
 
 /**
@@ -14,14 +21,12 @@ import useDebounce from "@/hooks/useDebounce"
  */
 
 const STATUS_CONFIG = {
-  PENDING_PAYMENT: { label: "Chờ thanh toán", color: "text-orange-600", bgColor: "bg-orange-100" },
   PENDING: { label: "Chờ xác nhận", color: "text-yellow-600", bgColor: "bg-yellow-100" },
   CONFIRMED: { label: "Đã xác nhận", color: "text-blue-600", bgColor: "bg-blue-100" },
-  PREPARING: { label: "Đang chuẩn bị", color: "text-purple-600", bgColor: "bg-purple-100" },
   SHIPPING: { label: "Đang giao", color: "text-indigo-600", bgColor: "bg-indigo-100" },
   DELIVERED: { label: "Đã giao", color: "text-green-600", bgColor: "bg-green-100" },
   CANCELLED: { label: "Đã hủy", color: "text-red-600", bgColor: "bg-red-100" },
-  REFUNDED: { label: "Đã hoàn tiền", color: "text-gray-600", bgColor: "bg-gray-100" },
+
 }
 
 const safeNumber = (v) => {
@@ -92,7 +97,7 @@ export function OrdersList() {
       try {
         const params = {
           page,
-          limit: 10,
+          limit: 5,
           search: debouncedSearch || undefined,
           status: selectedStatus !== "ALL" ? selectedStatus : undefined,
           sort_by: "created_at",
@@ -322,7 +327,7 @@ export function OrdersList() {
                       <TableCell className="font-semibold text-green-600">
                         {safeNumber(order.total_amount).toLocaleString("vi-VN")}đ
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="flex gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -333,6 +338,75 @@ export function OrdersList() {
                         >
                           Xem chi tiết
                         </Button>
+                        {/* Menu đổi trạng thái */}
+                        {/* Nếu đơn hàng đang chờ xác nhận -> hiển thị nút "Chấp nhận" */}
+                        {order.status === "PENDING" && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={async () => {
+                              try {
+                                await acceptOrder(order._id)
+                                setOrders((prev) =>
+                                  prev.map((o) =>
+                                    o._id === order._id ? { ...o, status: "CONFIRMED" } : o
+                                  )
+                                )
+                              toast.success("Đã chấp nhận đơn hàng!")
+                              } catch (err) {
+                           toast.error("Lỗi khi chấp nhận đơn hàng: " + err.message)
+                              }
+                            }}
+                          >
+                            Chấp nhận
+                          </Button>
+                        )}
+
+                        {/* Dropdown đổi trạng thái (chỉ hiện nếu KHÔNG phải đang chờ xác nhận hoặc thanh toán) */}
+                        {/* Dropdown đổi trạng thái — chỉ hiện khi đơn đã xác nhận hoặc đang giao */}
+                        {["CONFIRMED", "PREPARING", "SHIPPING"].includes(order.status) && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="ghost" className="text-muted-foreground">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+
+                            <DropdownMenuContent>
+                              {["SHIPPING", "DELIVERED", "CANCELLED"]
+                                .filter((key) => key !== order.status)
+                                .map((key) => (
+                                  <DropdownMenuItem
+                                    key={key}
+                                    onClick={async () => {
+                                      try {
+                                        const updatedOrder = await updateOrderStatus(order._id, key)
+
+                                        setOrders((prev) =>
+                                          prev.map((o) => {
+                                            if (o._id === order._id) {
+                                              // Nếu trạng thái cập nhật là DELIVERED, đánh dấu đã thanh toán
+                                              if (key === "DELIVERED") {
+                                                return { ...o, status: key, payment_status: "PAID" }
+                                              }
+                                              return { ...o, status: key }
+                                            }
+                                            return o
+                                          })
+                                        )
+                                         toast.success(`Đã cập nhật trạng thái thành: ${STATUS_CONFIG[key].label}`)
+                                      } catch (err) {
+                                          toast.error("Lỗi khi cập nhật trạng thái: " + err.message)
+                                      }
+                                    }}
+                                  >
+                                    {STATUS_CONFIG[key].label}
+                                  </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+
                       </TableCell>
                     </TableRow>
                   ))
@@ -344,7 +418,7 @@ export function OrdersList() {
           {error && <div className="text-red-600 mt-3">{error}</div>}
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {totalPages >= 1 && (
             <div className="flex items-center justify-center gap-2 pt-4">
               <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                 Trang trước
