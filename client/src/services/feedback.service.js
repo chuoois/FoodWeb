@@ -9,3 +9,7 @@ export const getFeedBackByShop = (shopId) => {
 export const createFeedback = (orderId, data) => {
   return api.post(`/orders/${orderId}/feedback`, data);
 };
+
+export const getUserOrders = () => {
+  return api.get('/users/me/orders');
+};

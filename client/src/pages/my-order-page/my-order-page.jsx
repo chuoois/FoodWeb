@@ -4,6 +4,7 @@ import { CheckCircle, Truck, XCircle, ArrowLeft, Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getUserOrders } from "@/services/order.service";
+import { ReviewPopup } from "./ReviewPopup";
 
 export function MyOrderPage() {
   const [activeTab, setActiveTab] = useState("all");
@@ -16,6 +17,10 @@ export function MyOrderPage() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reviewPopup, setReviewPopup] = useState({
+    isOpen: false,
+    order: null,
+  });
   const navigate = useNavigate();
 
   const tabs = [
@@ -74,6 +79,28 @@ export function MyOrderPage() {
     fetchOrders(activeTab, newPage);
   };
 
+  const handleOpenReview = (order) => {
+    setReviewPopup({ isOpen: true, order });
+  };
+
+  const handleCloseReview = () => {
+    setReviewPopup({ isOpen: false, order: null });
+  };
+
+  const handleReviewSuccess = (orderId) => {
+    // Update local state immediately - mark order as reviewed
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order._id === orderId 
+          ? { ...order, isReviewed: true } 
+          : order
+      )
+    );
+    
+    // Optionally refresh from server to ensure data consistency
+    // fetchOrders(activeTab, pagination.page);
+  };
+
   const getStatusBadge = (status = "") => {
     const s = status.toUpperCase();
     const base = "flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium";
@@ -118,7 +145,7 @@ export function MyOrderPage() {
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              className={`px-4 py-3 font-medium text-sm border-b-2 ${
+              className={`px-4 py-3 font-medium text-sm border-b-2 whitespace-nowrap ${
                 activeTab === t.id ? "border-orange-500 text-orange-500" : "border-transparent text-gray-500"
               }`}
             >
@@ -140,15 +167,15 @@ export function MyOrderPage() {
                 <Card key={order._id} className="hover:shadow-lg transition">
                   <CardContent className="p-0">
                     <div className="flex gap-6 p-4">
-                      <div className="w-32 h-32 overflow-hidden rounded-lg">
+                      <div className="w-32 h-32 overflow-hidden rounded-lg flex-shrink-0">
                         <img src={getFirstImage(order.items)} className="w-full h-full object-cover" alt="food" />
                       </div>
 
-                      <div className="flex-1 flex flex-col justify-between">
-                        <div className="flex justify-between mb-2">
-                          <div>
-                            <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-lg font-semibold">{order.shop_id?.name}</h3>
+                      <div className="flex-1 flex flex-col justify-between min-w-0">
+                        <div className="flex justify-between mb-2 gap-4">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-3 mb-2 flex-wrap">
+                              <h3 className="text-lg font-semibold truncate">{order.shop_id?.name}</h3>
                               {getStatusBadge(order.status)}
                             </div>
                             <p className="text-sm text-gray-500">
@@ -156,7 +183,7 @@ export function MyOrderPage() {
                               {new Date(order.createdAt).toLocaleDateString("vi-VN")}
                             </p>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right flex-shrink-0">
                             <p className="text-2xl font-bold text-orange-500">
                               {order.total_amount.toLocaleString("vi-VN")}₫
                             </p>
@@ -171,13 +198,26 @@ export function MyOrderPage() {
                           >
                             Xem Chi Tiết
                           </Button>
+                          
+                          {/* Show Review button only if delivered and not reviewed */}
                           {isDelivered && !order.isReviewed && (
                             <Button
                               variant="outline"
-                              className="flex items-center gap-1 border-orange-500 text-orange-500"
-                              onClick={() => navigate(`/review/${order._id}`)}
+                              className="flex items-center gap-1 border-orange-500 text-orange-500 hover:bg-orange-50"
+                              onClick={() => handleOpenReview(order)}
                             >
                               <Star size={16} /> Đánh giá
+                            </Button>
+                          )}
+                          
+                          {/* Show "Reviewed" button if already reviewed */}
+                          {isDelivered && order.isReviewed && (
+                            <Button
+                              variant="outline"
+                              disabled
+                              className="flex items-center gap-1 border-green-500 text-green-600 bg-green-50 cursor-not-allowed opacity-75"
+                            >
+                              <CheckCircle size={16} /> Đã đánh giá
                             </Button>
                           )}
                         </div>
@@ -190,8 +230,8 @@ export function MyOrderPage() {
           </div>
         )}
 
-        {/* ✅ Pagination UI */}
-        {pagination.totalPages >= 1 && (
+        {/* Pagination UI */}
+        {pagination.totalPages > 1 && (
           <div className="flex justify-center items-center gap-2 mt-6">
             <button
               onClick={() => handlePageChange(pagination.page - 1)}
@@ -236,6 +276,14 @@ export function MyOrderPage() {
           </div>
         )}
       </div>
+
+      {/* Review Popup */}
+      <ReviewPopup
+        isOpen={reviewPopup.isOpen}
+        onClose={handleCloseReview}
+        order={reviewPopup.order}
+        onSuccess={handleReviewSuccess}
+      />
     </div>
   );
 }
