@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Feedback = require('../models/feedback.model');
 const Order = require('../models/order.model');
 const User = require('../models/user.model');
@@ -71,19 +72,47 @@ const createFeedback = async (req, res) => {
 
 const getFeedbacksByShop = async (req, res) => {
   try {
-    const { shopId } = req.params;
+    const { shopId } = req.params;               // <-- string từ URL
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
 
-    const feedbacks = await Feedback.find({ shop: shopId })
-      .populate('user', 'full_name avatar_url')
-      .sort({ createdAt: -1 })
-      .skip(Number(skip))
-      .limit(Number(limit))
-      .lean();
+    // 1. Chuyển string → ObjectId (nếu không hợp lệ sẽ ném lỗi)
+    const shopObjectId = new mongoose.Types.ObjectId(shopId);
 
-    const total = await Feedback.countDocuments({ shop: shopId });
-    return res.json({ feedbacks, total, page: Number(page), totalPages: Math.ceil(total / limit) });
+    // 2. Parallel: danh sách, total, average
+    const [feedbacks, total, avgResult] = await Promise.all([
+      Feedback.find({ shop: shopObjectId })
+        .populate('user', 'full_name avatar_url')
+        .sort({ createdAt: -1 })
+        .skip(Number(skip))
+        .limit(Number(limit))
+        .lean(),
+
+      Feedback.countDocuments({ shop: shopObjectId }),
+
+      Feedback.aggregate([
+        { $match: { shop: shopObjectId } },
+        {
+          $group: {
+            _id: null,
+            avgRating: { $avg: '$rating' }
+          }
+        }
+      ])
+    ]);
+
+    // 3. Làm tròn xuống
+    const averageRating = avgResult[0]?.avgRating;
+    const flooredRating = averageRating ? Math.floor(averageRating) : 0;
+
+    // 4. Response
+    return res.json({
+      feedbacks,
+      total,
+      averageRating: flooredRating,
+      page: Number(page),
+      totalPages: Math.ceil(total / limit)
+    });
   } catch (error) {
     console.error('getFeedbacksByShop error:', error);
     return res.status(500).json({ message: error.message });

@@ -79,6 +79,7 @@ export const DetailPage = () => {
   // Thêm state cho feedbacks
   const [feedbacks, setFeedbacks] = useState([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
+  const [shopRating, setShopRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
 
   // Kiểm tra đăng nhập
@@ -93,16 +94,24 @@ export const DetailPage = () => {
       setLiked(shop.isFavorite || false);
     }
   }, [shop]);
-  // Load shop + món ăn
+  // Load shop + món ăn + rating & total reviews
   useEffect(() => {
     if (id) {
-      getShopWithFoods(id)
-        .then((response) => {
-          setShop(response.data.shop);
-          setFoods(response.data.foods.filter((food) => food.is_available));
+      Promise.all([
+        getShopWithFoods(id),
+        getFeedBackByShop(id, { page: 1, limit: 1 }), // chỉ cần 1 để lấy total + average
+      ])
+        .then(([shopRes, feedbackRes]) => {
+          const shopData = shopRes.data.shop;
+          setShop(shopData);
+          setFoods(shopRes.data.foods.filter((food) => food.is_available));
+
+          // Cập nhật rating & total từ feedback API
+          setShopRating(feedbackRes.data.averageRating || 0);
+          setTotalReviews(feedbackRes.data.total || 0);
         })
         .catch((error) => {
-          console.error("Error fetching shop data:", error);
+          console.error("Error fetching data:", error);
           toast.error("Không thể tải thông tin quán");
         });
     }
@@ -110,27 +119,26 @@ export const DetailPage = () => {
 
   // Load feedbacks khi mở popup reviews
   useEffect(() => {
-    if (showReviews && id) {
-      setLoadingReviews(true);
-      getFeedBackByShop(id)
-        .then((response) => {
-          setFeedbacks(response.data.feedbacks || []);
-          setTotalReviews(response.data.total || 0);
-        })
-        .catch((error) => {
-          console.error("Error fetching feedbacks:", error);
-          toast.error("Không thể tải đánh giá");
-          setFeedbacks([]);
-          setTotalReviews(0);
-        })
-        .finally(() => setLoadingReviews(false));
-    } else if (!showReviews) {
-      // Reset khi đóng popup
-      setFeedbacks([]);
-      setTotalReviews(0);
-      setLoadingReviews(false);
-    }
-  }, [showReviews, id]);
+  if (showReviews && id) {
+    setLoadingReviews(true);
+    getFeedBackByShop(id)
+      .then((response) => {
+        setFeedbacks(response.data.feedbacks || []);
+        // Không set totalReviews ở đây → đã có từ trước
+      })
+      .catch((error) => {
+        console.error("Error fetching feedbacks:", error);
+        toast.error("Không thể tải đánh giá");
+        setFeedbacks([]);
+      })
+      .finally(() => setLoadingReviews(false));
+  } else if (!showReviews) {
+    // Chỉ reset danh sách, KHÔNG reset totalReviews
+    setFeedbacks([]);
+    setLoadingReviews(false);
+    // XÓA DÒNG: setTotalReviews(0);
+  }
+}, [showReviews, id]);
 
   const toggleFavorite = async (shopId, current) => {
     if (!isLoggedIn) {
@@ -174,7 +182,7 @@ export const DetailPage = () => {
             qty: item.quantity,
             title: item.name,
             price: item.unit_price,
-            img: null,
+            img: item.image_url || null,
             note: item.note || "",
             is_available: item.is_available,
           }));
@@ -434,7 +442,7 @@ export const DetailPage = () => {
                     >
                       <Star className="w-4 h-4 fill-orange-500 text-orange-500" />
                       <span className="font-bold text-gray-900">
-                        {shop.rating || "0.0"}
+                        {shopRating > 0 ? shopRating : "0.0"}
                       </span>
                     </Badge>
                     <Button
@@ -551,18 +559,29 @@ export const DetailPage = () => {
                 <X className="w-5 h-5" />
               </Button>
             </div>
-            <div className={`p-6 ${feedbacks.length > 4 ? 'max-h-[calc(90vh-80px)] overflow-y-auto' : ''}`}>
+            <div
+              className={`p-6 ${
+                feedbacks.length > 4
+                  ? "max-h-[calc(90vh-80px)] overflow-y-auto"
+                  : ""
+              }`}
+            >
               {loadingReviews ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
-                    <p className="text-sm text-gray-500">Đang tải đánh giá...</p>
+                    <p className="text-sm text-gray-500">
+                      Đang tải đánh giá...
+                    </p>
                   </div>
                 </div>
               ) : feedbacks.length > 0 ? (
                 <div className="space-y-4">
                   {feedbacks.map((feedback) => (
-                    <div key={feedback._id} className="p-4 bg-gray-50 rounded-2xl">
+                    <div
+                      key={feedback._id}
+                      className="p-4 bg-gray-50 rounded-2xl"
+                    >
                       <div className="flex items-center gap-3 mb-2">
                         <User className="w-5 h-5 text-gray-400" />
                         <span className="font-semibold">Khách hàng</span>
@@ -579,9 +598,13 @@ export const DetailPage = () => {
                           ))}
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600">{feedback.comment}</p>
+                      <p className="text-sm text-gray-600">
+                        {feedback.comment}
+                      </p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {new Date(feedback.createdAt).toLocaleDateString("vi-VN")}
+                        {new Date(feedback.createdAt).toLocaleDateString(
+                          "vi-VN"
+                        )}
                       </p>
                     </div>
                   ))}
