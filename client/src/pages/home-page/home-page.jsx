@@ -263,38 +263,49 @@ export const HomePage = () => {
     if (savedAddr) setAddress(savedAddr);
   }, []);
 
-  const toggleFavorite = async (shopId) => {
+ const toggleFavorite = async (shopId) => {
+  const token = localStorage.getItem("accessToken"); // hoặc tên bạn đang lưu token
+  if (!token) {
+    navigate("/auth/login");
+    return;
+  }
+
   const isFav = favorites.includes(shopId);
 
   try {
     if (isFav) {
       await removeFavoriteShop(shopId);
       setFavorites((prev) => prev.filter((f) => f !== shopId));
-
-      // ✅ Update ngay trên UI
-      setNearbyShops((prev) => prev.map((s) =>
-        s._id === shopId ? { ...s, isFavorite: false } : s
-      ));
-      setPopularShops((prev) => prev.map((s) =>
-        s._id === shopId ? { ...s, isFavorite: false } : s
-      ));
+      setNearbyShops((prev) =>
+        prev.map((s) =>
+          s._id === shopId ? { ...s, isFavorite: false } : s
+        )
+      );
+      setPopularShops((prev) =>
+        prev.map((s) =>
+          s._id === shopId ? { ...s, isFavorite: false } : s
+        )
+      );
     } else {
       await addFavoriteShop(shopId);
       setFavorites((prev) => [...prev, shopId]);
-
-      // ✅ Update ngay trên UI
-      setNearbyShops((prev) => prev.map((s) =>
-        s._id === shopId ? { ...s, isFavorite: true } : s
-      ));
-      setPopularShops((prev) => prev.map((s) =>
-        s._id === shopId ? { ...s, isFavorite: true } : s
-      ));
+      setNearbyShops((prev) =>
+        prev.map((s) =>
+          s._id === shopId ? { ...s, isFavorite: true } : s
+        )
+      );
+      setPopularShops((prev) =>
+        prev.map((s) =>
+          s._id === shopId ? { ...s, isFavorite: true } : s
+        )
+      );
     }
   } catch (err) {
     console.error("Lỗi khi gọi API yêu thích:", err);
     alert("Không thể cập nhật yêu thích. Vui lòng thử lại.");
   }
 };
+
 
 
   return (

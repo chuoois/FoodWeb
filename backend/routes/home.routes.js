@@ -5,10 +5,10 @@ const authorize = require("../middleware/authorize.middleware");
 const { getFavoriteShops,getNearbyShopsByCoords,searchShopsAndFoods,searchHome,getShopsByRate ,getShopsByType,getShopsById, getShopWithFoods,listCategoryByShopId,getRandomShops, addFavoriteShop, removeFavoriteShop} = require('../controller/home.controller');
 
 // Người dùng gửi lat/lng (login hoặc chưa login đều dùng được)
-router.get("/home/nearby", authenticate, authorize("CUSTOMER"), getNearbyShopsByCoords);
+router.get("/home/nearby", getNearbyShopsByCoords);
 router.get("/home/filter", getShopsByType);
 router.get("/home/search", searchHome);
-router.get("/home/popular", authenticate, authorize("CUSTOMER"), getShopsByRate);
+router.get("/home/popular", getShopsByRate);
 router.get("/home/search-all", searchShopsAndFoods);
 router.get("/home/shop/:shopId", getShopsById);
 router.get("/home/shop/:id/foods", authenticate, authorize("CUSTOMER"),getShopWithFoods);
