@@ -58,7 +58,6 @@ const listShops = async (req, res) => {
 };
 
 
-
 const updateShopStatus = async (req, res) => {
   try {
     const { shopId } = req.params;
@@ -71,13 +70,22 @@ const updateShopStatus = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy cửa hàng" });
     }
 
+    let newStatus;
+    
+    // Nếu đang PENDING_APPROVAL, cho phép chuyển sang ACTIVE
     if (shop.status === "PENDING_APPROVAL") {
-      return res
-        .status(400)
-        .json({ message: "Không thể cập nhật trạng thái từ PENDING_APPROVAL" });
+      newStatus = "ACTIVE";
+    } 
+    // Nếu đang ACTIVE hoặc INACTIVE, toggle giữa 2 trạng thái này
+    else if (shop.status === "ACTIVE") {
+      newStatus = "INACTIVE";
+    } else if (shop.status === "INACTIVE") {
+      newStatus = "ACTIVE";
+    } else {
+      return res.status(400).json({ 
+        message: "Trạng thái cửa hàng không hợp lệ" 
+      });
     }
-
-    const newStatus = shop.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
 
     const updatedShop = await Shop.findByIdAndUpdate(
       shopId,
@@ -92,22 +100,28 @@ const updateShopStatus = async (req, res) => {
           select: "email",
         },
       })
-      .select("name status createdAt");
+      .select("name status createdAt description logoUrl coverUrl");
 
     return res.json({
-      message: "Cập nhật trạng thái thành công",
+      message: shop.status === "PENDING_APPROVAL" 
+        ? "Phê duyệt cửa hàng thành công" 
+        : "Cập nhật trạng thái thành công",
       shop: {
         _id: updatedShop._id,
         name: updatedShop.name,
         ownerEmail: updatedShop.owner?.account_id?.email || "N/A",
         status: updatedShop.status,
+        description: updatedShop.description || "Không có mô tả",
         createdAt: updatedShop.createdAt,
+        logoUrl: updatedShop.logoUrl,
+        coverUrl: updatedShop.coverUrl,
       },
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 module.exports = {
   listShops,

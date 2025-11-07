@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
-import { Search, Loader2, ImageIcon, Store, Users, TrendingUp } from "lucide-react"
+import { Search, Loader2, Image, Store, Users, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import toast from "react-hot-toast"
-import { listShops,updateShopStatus  } from "@/services/admin.service"
+import { listShops, updateShopStatus } from "@/services/admin.service"
 
 export const ShopManagement = () => {
   const [searchQuery, setSearchQuery] = useState("")
@@ -75,18 +75,18 @@ export const ShopManagement = () => {
   }, [searchQuery, statusFilter, fetchShops])
 
   const handleStatusChange = async () => {
-  setIsUpdating(true)
-  try {
-    const res = await updateShopStatus(selectedShop._id) // 🟢 gọi API thật
-    toast.success(res.data.message || "Cập nhật trạng thái thành công")
-    setConfirmDialogOpen(false)
-    fetchShops() // load lại danh sách
-  } catch (error) {
-    toast.error(error.response?.data?.message || "Không thể cập nhật trạng thái. Vui lòng thử lại.")
-  } finally {
-    setIsUpdating(false)
+    setIsUpdating(true)
+    try {
+      const res = await updateShopStatus(selectedShop._id)
+      toast.success(res.data.message || "Cập nhật trạng thái thành công")
+      setConfirmDialogOpen(false)
+      fetchShops()
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Không thể cập nhật trạng thái. Vui lòng thử lại.")
+    } finally {
+      setIsUpdating(false)
+    }
   }
-}
 
   const handleViewDetail = (shop) => {
     setSelectedShop(shop)
@@ -103,6 +103,7 @@ export const ShopManagement = () => {
     const styles = {
       ACTIVE: "bg-green-100 text-green-700 border border-green-200 shadow-sm",
       INACTIVE: "bg-gray-100 text-gray-600 border border-gray-200 shadow-sm",
+      PENDING_APPROVAL: "bg-yellow-100 text-yellow-700 border border-yellow-200 shadow-sm",
     }
     return styles[status] || styles.INACTIVE
   }
@@ -152,6 +153,9 @@ export const ShopManagement = () => {
                   </SelectItem>
                   <SelectItem value="INACTIVE" className="text-gray-900">
                     Inactive
+                  </SelectItem>
+                  <SelectItem value="PENDING_APPROVAL" className="text-gray-900">
+                    Pending Approval
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -210,7 +214,21 @@ export const ShopManagement = () => {
                       {truncateDescription(shop.description)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {(shop.status === "ACTIVE" || shop.status === "INACTIVE") && (
+                      {shop.status === "PENDING_APPROVAL" ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedShop(shop)
+                            setConfirmDialogOpen(true)
+                          }}
+                          className="h-8 text-xs text-white bg-green-600 hover:bg-green-700 transition-all"
+                          disabled={isUpdating}
+                        >
+                          Phê duyệt
+                        </Button>
+                      ) : (shop.status === "ACTIVE" || shop.status === "INACTIVE") && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -233,7 +251,6 @@ export const ShopManagement = () => {
           </Table>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="mt-6 flex justify-center">
             <Pagination>
@@ -289,15 +306,27 @@ export const ShopManagement = () => {
         <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
           <DialogContent className="bg-white border-gray-200 shadow-xl">
             <DialogHeader>
-              <DialogTitle className="text-gray-900 text-xl">Xác nhận đổi trạng thái</DialogTitle>
+              <DialogTitle className="text-gray-900 text-xl">
+                {selectedShop?.status === "PENDING_APPROVAL" ? "Xác nhận phê duyệt" : "Xác nhận đổi trạng thái"}
+              </DialogTitle>
               <DialogDescription className="text-gray-600 mt-2">
-                Bạn có chắc muốn đổi trạng thái cửa hàng{" "}
-                <span className="font-semibold text-gray-900">{selectedShop?.name}</span> từ{" "}
-                <span className="font-semibold text-gray-900">{selectedShop?.status}</span> sang{" "}
-                <span className="font-semibold text-orange-600">
-                  {selectedShop?.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"}
-                </span>
-                ?
+                {selectedShop?.status === "PENDING_APPROVAL" ? (
+                  <>
+                    Bạn có chắc muốn phê duyệt cửa hàng{" "}
+                    <span className="font-semibold text-gray-900">{selectedShop?.name}</span>? Cửa hàng sẽ được{" "}
+                    <span className="font-semibold text-green-600">kích hoạt</span> sau khi phê duyệt.
+                  </>
+                ) : (
+                  <>
+                    Bạn có chắc muốn đổi trạng thái cửa hàng{" "}
+                    <span className="font-semibold text-gray-900">{selectedShop?.name}</span> từ{" "}
+                    <span className="font-semibold text-gray-900">{selectedShop?.status}</span> sang{" "}
+                    <span className="font-semibold text-orange-600">
+                      {selectedShop?.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"}
+                    </span>
+                    ?
+                  </>
+                )}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-3">
@@ -337,7 +366,7 @@ export const ShopManagement = () => {
                       e.target.nextSibling.style.display = "flex"
                     }}
                   />
-                  <ImageIcon className="w-32 h-32 text-gray-400 hidden" />
+                  <Image className="w-32 h-32 text-gray-400 hidden" />
                 </div>
               )}
               {selectedShop?.coverUrl && (
@@ -363,7 +392,13 @@ export const ShopManagement = () => {
                   <p className="text-sm text-gray-700">
                     <span className="font-semibold text-gray-900">Trạng thái:</span>
                     <span
-                      className={`ml-2 font-semibold ${selectedShop?.status === "ACTIVE" ? "text-green-600" : "text-gray-600"}`}
+                      className={`ml-2 font-semibold ${
+                        selectedShop?.status === "ACTIVE" 
+                          ? "text-green-600" 
+                          : selectedShop?.status === "PENDING_APPROVAL"
+                          ? "text-yellow-600"
+                          : "text-gray-600"
+                      }`}
                     >
                       {selectedShop?.status}
                     </span>
