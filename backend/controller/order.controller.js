@@ -9,6 +9,7 @@ const Shop = require("../models/shop.model");
 const UserAddress = require("../models/userAddress.model");
 const Food = require("../models/food.model");
 const orderManager = require("../controller/orderManager.controller")
+const Feedback = require("../models/feedback.model");
 
 const generateOrderCode = () => {
   const date = new Date();
@@ -275,14 +276,11 @@ exports.getUserOrders = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const filter = { customer_id: user._id };
-    if (status) {
-      // Tách chuỗi status thành một mảng,
-      // và chuyển từng phần tử sang chữ hoa
-      const statusArray = status.split(',').map(s => s.toUpperCase());
-
-      // Sử dụng toán tử $in của MongoDB
-      filter.status = { $in: statusArray };
-    }
+    if (status) {
+      // Tách chuỗi status thành một mảng và chuyển sang chữ hoa
+      const statusArray = status.split(',').map(s => s.toUpperCase());
+      filter.status = { $in: statusArray };
+    }
 
     // Phân trang
     const skip = (page - 1) * limit;
@@ -305,11 +303,33 @@ exports.getUserOrders = async (req, res) => {
       })
     );
 
+    // ✅ THÊM LOGIC KIỂM TRA isReviewed
+    let ordersWithReviewStatus = ordersWithDetails;
+    
+    if (ordersWithDetails.length > 0) {
+      // Lấy tất cả order IDs
+      const orderIds = ordersWithDetails.map(order => order._id);
+      
+      // Tìm những order nào đã có feedback
+      const reviewedOrderIds = await Feedback.find({ 
+        order_id: { $in: orderIds } 
+      }).distinct('order_id');
+      
+      // Convert sang Set để lookup nhanh O(1)
+      const reviewedSet = new Set(reviewedOrderIds.map(id => id.toString()));
+      
+      // Thêm field isReviewed vào mỗi order
+      ordersWithReviewStatus = ordersWithDetails.map(order => ({
+        ...order,
+        isReviewed: reviewedSet.has(order._id.toString())
+      }));
+    }
+
     const total = await Order.countDocuments(filter);
 
     res.json({
       success: true,
-      data: ordersWithDetails,
+      data: ordersWithReviewStatus, // ⬅️ ĐỔI TỪ ordersWithDetails
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -318,7 +338,12 @@ exports.getUserOrders = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching orders", error: error.message });
+    console.error("getUserOrders error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Error fetching orders", 
+      error: error.message 
+    });
   }
 };
 
