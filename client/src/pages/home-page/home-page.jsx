@@ -264,12 +264,7 @@ export const HomePage = () => {
     if (savedAddr) setAddress(savedAddr);
   }, []);
 
- const toggleFavorite = async (shopId) => {
-  const token = localStorage.getItem("accessToken");
-  if (!token) {
-    toast.error("Vui lòng đăng nhập để thêm yêu thích");
-    return;
-  }
+ const toggleFavorite = async (shopId) => { 
 
   const isFav = favorites.includes(shopId);
 
