@@ -304,7 +304,7 @@ export const DetailPage = () => {
         qty: item.quantity,
         title: item.name,
         price: item.unit_price,
-        img: null,
+        img: item.image_url || null ,
         note: item.note || "",
         is_available: item.is_available,
       }));
@@ -326,7 +326,7 @@ export const DetailPage = () => {
         qty: item.quantity,
         title: item.name,
         price: item.unit_price,
-        img: null,
+        img: item.image_url || null,
         note: item.note || "",
         is_available: item.is_available,
       }));
@@ -347,7 +347,7 @@ export const DetailPage = () => {
         qty: item.quantity,
         title: item.name,
         price: item.unit_price,
-        img: null,
+        img: item.image_url || null,
         note: item.note || "",
         is_available: item.is_available,
       }));
