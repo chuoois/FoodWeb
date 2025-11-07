@@ -231,7 +231,7 @@ export function MyOrderPage() {
         )}
 
         {/* Pagination UI */}
-        {pagination.totalPages > 1 && (
+        {pagination.totalPages >= 1 && (
           <div className="flex justify-center items-center gap-2 mt-6">
             <button
               onClick={() => handlePageChange(pagination.page - 1)}
