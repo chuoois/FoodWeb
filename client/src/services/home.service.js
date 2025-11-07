@@ -1,12 +1,28 @@
 import api from "../lib/axios";
 
 // Lấy danh sách cửa hàng gần vị trí (lat, lng) nhất đinh (3000m)
+// export const getNearbyShops = (lat, lng) => {
+//     return api.get("home/nearby", { params: { lat, lng } });
+// };
+// export const getPopularShops = () => {
+//     return api.get("home/popular");
+// }
+
 export const getNearbyShops = (lat, lng) => {
-    return api.get("home/nearby", { params: { lat, lng } });
+  const token = localStorage.getItem("token");
+  return api.get("home/nearby", {
+    params: { lat, lng },
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
 };
+
 export const getPopularShops = () => {
-    return api.get("home/popular");
-}
+  const token = localStorage.getItem("token");
+  return api.get("home/popular", {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+};
+
 
 export const getShopsByType = (type, lat, lng) => {
     return api.get("home/filter", { params: { type, lat, lng } });

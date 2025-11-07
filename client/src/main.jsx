@@ -7,12 +7,14 @@ import { RouterProvider } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/context/AuthContext";
 import { LoadingProvider } from "@/context/LoadingContext"; 
+import { ChatAI } from "./pages";
 
 createRoot(document.getElementById("root")).render(
     <LoadingProvider> 
       <AuthProvider>
         <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
           <RouterProvider router={router} />
+          <ChatAI />
           <Toaster position="top-right" reverseOrder={false} />
         </GoogleOAuthProvider>
       </AuthProvider>
