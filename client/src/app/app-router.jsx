@@ -51,10 +51,15 @@ import {
   MyOrderDetailPage,
   OwnerDashboardPage,
   CreateVoucherPage,
-  VoucherListPage
+  VoucherListPage,
+  MyProfile,
+  MyAddress,
+  MyChangePass,
+  MyPrivate,
 
 
 } from "@/pages";
+import { MyProfileMainLayout } from "@/components/layouts/MyProfile-layout/MyProfile-main-layout";
 
 export const router = createBrowserRouter([
   {
@@ -92,6 +97,16 @@ export const router = createBrowserRouter([
           { path: "history", element: <HistoryPage /> },
           { path: "favorite", element: <FavoritePage /> },
           { path: "profile", element: <ProfilePage /> },
+        ],
+      },
+      {
+        path: "my-profile",
+        element: <MyProfileMainLayout />,
+        children: [
+          { index: true, element: <MyProfile/> },
+          { path: "address", element: <MyAddress /> },
+          { path: "changepassword", element: <MyChangePass /> },
+          { path: "privacy", element: <MyPrivate /> },
         ],
       },
       {

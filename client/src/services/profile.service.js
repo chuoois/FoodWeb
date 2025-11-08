@@ -1,11 +1,27 @@
+// services/profile.service.js
 import api from "../lib/axios";
 
-// Lấy thông tin profile theo account_id
-export const getProfile = (accountId) => {
-  return api.get(`/auth/profile/${accountId}`);
+export const getProfile = () => {
+  return api.get("/auth/profile");
 };
 
-// Cập nhật thông tin profile
-export const updateProfile = (accountId, data) => {
-  return api.patch(`/auth/profile/${accountId}`, data);
+export const updateProfile = (data) => {
+  return api.patch("/auth/profile", data);
+};
+
+// services/address.service.js
+export const getUserAddresses = () => {
+  return api.get("/auth/addresses");
+};
+
+export const createAddress = (data) => {
+  return api.post("/auth/addresses", data);
+};
+
+export const updateAddress = (addrId, data) => {
+  return api.patch(`/auth/addresses/${addrId}`, data);
+};
+
+export const deleteAddress = (addrId) => {
+  return api.delete(`/auth/addresses/${addrId}`);
 };

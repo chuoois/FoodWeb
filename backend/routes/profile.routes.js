@@ -1,21 +1,17 @@
+// routes/profile.routes.js
 const express = require("express");
 const router = express.Router();
-const { upload } = require("../middleware/uploadImage.middleware");
 const { getProfile, updateProfile } = require("../controller/updateProfile.controller");
-const authenticate = require('../middleware/authenticate.middleware')
+const { getAddresses, createAddress, updateAddress, deleteAddress } = require("../controller/updateProfile.controller");
+const authenticate = require('../middleware/authenticate.middleware');
 
-const checkOwner = (req, res, next) => {
-  const { accountId } = req.user;
-  const targetAccountId = req.params.account_id;
+router.get("/auth/profile", authenticate, getProfile);
+router.patch("/auth/profile", authenticate, updateProfile);
 
-  if (accountId !== targetAccountId) {
-    return res.status(403).json({ message: "No access" });
-  }
-  next();
-};
-
-router.get("/auth/profile/:account_id", authenticate,checkOwner, getProfile);
-//router.patch("/auth/profile/:account_id", upload.single("avatar"), updateProfile);
-router.patch("/auth/profile/:account_id",authenticate,checkOwner, updateProfile);
+// === ADDRESS ===
+router.get("/auth/addresses", authenticate, getAddresses);
+router.post("/auth/addresses", authenticate, createAddress);
+router.patch("/auth/addresses/:addrId", authenticate, updateAddress);
+router.delete("/auth/addresses/:addrId", authenticate, deleteAddress);
 
 module.exports = router;

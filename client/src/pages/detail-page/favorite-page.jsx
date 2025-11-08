@@ -52,17 +52,23 @@ export const FavoritePage = () => {
 
   return (
     <div className="bg-[#FBF4E6] min-h-screen">
+      <div className="bg-orange-500 text-white py-6 px-4">
+          <div className="max-w-4xl mx-auto flex items-center gap-3">
+            <h1 className="text-2xl font-bold">Nhà hàng yêu thích</h1>
+          </div>
+        </div>
       <section className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">
-          Nhà hàng yêu thích
-        </h2>
 
         {favoriteShops.length === 0 ? (
-          <p className="text-gray-600 text-center py-8">Bạn chưa có nhà hàng yêu thích nào.</p>
+          <p className="text-gray-600 text-center py-8">
+            Bạn chưa có nhà hàng yêu thích nào.
+          </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {favoriteShops.map((shop) => {
-              const fullAddress = `${shop.address?.street || ''}, ${shop.address?.district || ''}, ${shop.address?.city || ''}`.trim();
+              const fullAddress = `${shop.address?.street || ""}, ${
+                shop.address?.district || ""
+              }, ${shop.address?.city || ""}`.trim();
               return (
                 <Card
                   key={shop._id}
@@ -71,7 +77,10 @@ export const FavoritePage = () => {
                 >
                   <div className="relative">
                     <img
-                      src={shop.coverUrl || "https://ila.edu.vn/wp-content/uploads/2025/07/ila-food-co-dem-duoc-khong-1.jpg"} // Fallback to default food image
+                      src={
+                        shop.coverUrl ||
+                        "https://ila.edu.vn/wp-content/uploads/2025/07/ila-food-co-dem-duoc-khong-1.jpg"
+                      } // Fallback to default food image
                       alt={shop.name}
                       className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                     />
