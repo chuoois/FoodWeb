@@ -37,7 +37,7 @@ import Cropper from "react-easy-crop";
 import goongjs from "@goongmaps/goong-js";
 
 // Goong Maps API Key
-const GOONG_API_KEY = import.meta.env.VITE_GOONG_API_KEY_ALT;
+const GOONG_API_KEY = import.meta.env.VITE_GOONG_MAP_API_KEY;
 
 // Validation schema
 const validationSchema = Yup.object({
