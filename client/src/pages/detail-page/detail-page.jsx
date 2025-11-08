@@ -119,26 +119,26 @@ export const DetailPage = () => {
 
   // Load feedbacks khi mở popup reviews
   useEffect(() => {
-  if (showReviews && id) {
-    setLoadingReviews(true);
-    getFeedBackByShop(id)
-      .then((response) => {
-        setFeedbacks(response.data.feedbacks || []);
-        // Không set totalReviews ở đây → đã có từ trước
-      })
-      .catch((error) => {
-        console.error("Error fetching feedbacks:", error);
-        toast.error("Không thể tải đánh giá");
-        setFeedbacks([]);
-      })
-      .finally(() => setLoadingReviews(false));
-  } else if (!showReviews) {
-    // Chỉ reset danh sách, KHÔNG reset totalReviews
-    setFeedbacks([]);
-    setLoadingReviews(false);
-    // XÓA DÒNG: setTotalReviews(0);
-  }
-}, [showReviews, id]);
+    if (showReviews && id) {
+      setLoadingReviews(true);
+      getFeedBackByShop(id)
+        .then((response) => {
+          setFeedbacks(response.data.feedbacks || []);
+          // Không set totalReviews ở đây → đã có từ trước
+        })
+        .catch((error) => {
+          console.error("Error fetching feedbacks:", error);
+          toast.error("Không thể tải đánh giá");
+          setFeedbacks([]);
+        })
+        .finally(() => setLoadingReviews(false));
+    } else if (!showReviews) {
+      // Chỉ reset danh sách, KHÔNG reset totalReviews
+      setFeedbacks([]);
+      setLoadingReviews(false);
+      // XÓA DÒNG: setTotalReviews(0);
+    }
+  }, [showReviews, id]);
 
   const toggleFavorite = async (shopId, current) => {
     if (!isLoggedIn) {
@@ -304,7 +304,7 @@ export const DetailPage = () => {
         qty: item.quantity,
         title: item.name,
         price: item.unit_price,
-        img: item.image_url || null ,
+        img: item.image_url || null,
         note: item.note || "",
         is_available: item.is_available,
       }));
@@ -583,8 +583,20 @@ export const DetailPage = () => {
                       className="p-4 bg-gray-50 rounded-2xl"
                     >
                       <div className="flex items-center gap-3 mb-2">
-                        <User className="w-5 h-5 text-gray-400" />
-                        <span className="font-semibold">Khách hàng</span>
+                        {feedback.user?.avatar_url ? (
+                          <img
+                            src={feedback.user.avatar_url}
+                            alt={feedback.user.full_name}
+                            className="w-8 h-8 rounded-full object-cover"
+                          />
+                        ) : (
+                          <User className="w-8 h-8 text-gray-400" />
+                        )}
+
+                        <span className="font-semibold">
+                          {feedback.user.full_name}
+                        </span>
+
                         <div className="flex items-center gap-1 ml-auto">
                           {Array.from({ length: 5 }).map((_, i) => (
                             <Star
@@ -598,6 +610,7 @@ export const DetailPage = () => {
                           ))}
                         </div>
                       </div>
+
                       <p className="text-sm text-gray-600">
                         {feedback.comment}
                       </p>
