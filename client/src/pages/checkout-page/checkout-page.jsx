@@ -20,14 +20,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -76,11 +68,6 @@ export const CheckOutPage = () => {
   // Address
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState("");
-
-  // Dialogs
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [showErrorDialog, setShowErrorDialog] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
 
   // Popup địa chỉ
   const [addressPopup, setAddressPopup] = useState({ isOpen: false, address: null });
@@ -210,9 +197,34 @@ export const CheckOutPage = () => {
   const voucherDiscount = selectedVoucher ? calculateDiscount(selectedVoucher, subtotal) : 0;
   const total = subtotal + shippingFee - voucherDiscount;
 
-  // XÓA MÓN
+  // XÓA MÓN - DÙNG TOAST XÁC NHẬN
   const handleRemoveItem = async (cartItemId) => {
-    if (!window.confirm("Xóa món này?")) return;
+    const toastId = toast(
+      <div>
+        <p>Xóa món này?</p>
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={() => {
+              toast.dismiss(toastId);
+              performRemoveItem(cartItemId);
+            }}
+            className="px-3 py-1 bg-red-500 text-white rounded text-sm"
+          >
+            Xóa
+          </button>
+          <button
+            onClick={() => toast.dismiss(toastId)}
+            className="px-3 py-1 bg-gray-300 rounded text-sm"
+          >
+            Hủy
+          </button>
+        </div>
+      </div>,
+      { duration: 10000 }
+    );
+  };
+
+  const performRemoveItem = async (cartItemId) => {
     try {
       await removeFromCart(cartItemId);
       setCartItems(prev => prev.filter(i => i.cartItemId !== cartItemId));
@@ -253,7 +265,6 @@ export const CheckOutPage = () => {
       return;
     }
 
-    // Xóa bản đồ cũ nếu có
     if (mapRef.current) {
       mapRef.current.remove();
       mapRef.current = null;
@@ -376,7 +387,7 @@ export const CheckOutPage = () => {
       return;
     }
     setIsGettingLocation(true);
-    toast.loading("Đang lấy vị trí...");
+    const loadingToast = toast.loading("Đang lấy vị trí...");
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const lat = pos.coords.latitude;
@@ -386,10 +397,12 @@ export const CheckOutPage = () => {
           mapRef.current.setCenter([lng, lat]);
           markerRef.current.setLngLat([lng, lat]);
         }
+        toast.dismiss(loadingToast);
         toast.success("Đã lấy vị trí!");
         setIsGettingLocation(false);
       },
       (err) => {
+        toast.dismiss(loadingToast);
         toast.error("Không lấy được vị trí: " + err.message);
         setIsGettingLocation(false);
       }
@@ -430,7 +443,6 @@ export const CheckOutPage = () => {
       const newList = res.data.addresses || [];
       setAddresses(newList);
 
-      // Tự động chọn địa chỉ vừa thêm/sửa
       const updatedAddr = newList.find(a =>
         a.address.street === payload.address.street &&
         Math.abs(a.gps.coordinates[1] - payload.gps.lat) < 0.0001 &&
@@ -497,9 +509,7 @@ export const CheckOutPage = () => {
 
       if (selectedPayment === "cash") {
         toast.success("Đặt món thành công!");
-        setShowSuccessDialog(true);
         setTimeout(() => {
-          setShowSuccessDialog(false);
           navigate("/myorder", { replace: true });
         }, 1500);
       } else {
@@ -507,14 +517,14 @@ export const CheckOutPage = () => {
         if (paymentUrl) {
           toast.success("Đang chuyển đến thanh toán...");
           window.open(paymentUrl, "_blank");
+          navigate("/myorder", { replace: true });
         } else {
           throw new Error("Không nhận được link thanh toán");
         }
       }
     } catch (err) {
       const msg = err.response?.data?.message || err.message || "Đặt món thất bại!";
-      setErrorMessage(msg);
-      setShowErrorDialog(true);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -594,7 +604,7 @@ export const CheckOutPage = () => {
 
                 {/* Ghi chú */}
                 <div>
-                  <Label>Ghi chú cho tài xế</Label>
+                  <Label>Ghi Chú Cho Quán</Label>
                   <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Gọi trước khi giao..." />
                 </div>
 
@@ -799,15 +809,6 @@ export const CheckOutPage = () => {
           </div>
         </div>
       )}
-
-      {/* Dialogs */}
-      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent><DialogHeader><DialogTitle>Thành công!</DialogTitle></DialogHeader><DialogFooter><Button onClick={() => navigate("/myorder")}>Xem đơn</Button></DialogFooter></DialogContent>
-      </Dialog>
-
-      <Dialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
-        <DialogContent><DialogHeader><DialogTitle>Lỗi</DialogTitle><DialogDescription>{errorMessage}</DialogDescription></DialogHeader><DialogFooter><Button onClick={() => setShowErrorDialog(false)}>OK</Button></DialogFooter></DialogContent>
-      </Dialog>
     </div>
   );
 };

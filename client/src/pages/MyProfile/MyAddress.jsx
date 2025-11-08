@@ -14,11 +14,8 @@ import { getAddressFromCoordinates, searchAddress } from "@/services/goong.servi
 import toast from "react-hot-toast";
 import goongjs from "@goongmaps/goong-js";
 
-// CSS được load từ index.html → KHÔNG import ở đây
-
-// ĐỌC 2 KEY RIÊNG BIỆT
-const GOONG_MAP_KEY = import.meta.env.VITE_GOONG_MAP_API_KEY;   // Dùng cho bản đồ
-const GOONG_REST_KEY = import.meta.env.VITE_GOONG_API_KEY; // Dùng cho tìm kiếm + detail
+const GOONG_MAP_KEY = import.meta.env.VITE_GOONG_MAP_API_KEY;
+const GOONG_REST_KEY = import.meta.env.VITE_GOONG_API_KEY;
 
 export const MyAddress = () => {
   const [addresses, setAddresses] = useState([]);
@@ -38,12 +35,7 @@ export const MyAddress = () => {
   const markerRef = useRef(null);
   const searchTimeout = useRef(null);
 
-  useEffect(() => {
-    console.log("MAP KEY:", GOONG_MAP_KEY);
-    console.log("REST KEY:", GOONG_REST_KEY);
-  }, []);
-
-  // Khởi tạo Goong Maps (chỉ dùng GOONG_MAP_KEY)
+  // Khởi tạo Goong Maps
   useEffect(() => {
     if (!popup.isOpen || !mapContainerRef.current) return;
     if (!GOONG_MAP_KEY) {
@@ -163,7 +155,7 @@ export const MyAddress = () => {
         return;
       }
       try {
-        const results = await searchAddress(input); // Dùng REST_KEY trong service
+        const results = await searchAddress(input);
         setSuggestions(results);
         setShowSuggestions(true);
       } catch (err) {
@@ -172,7 +164,6 @@ export const MyAddress = () => {
     }, 300);
   };
 
-  // DÙNG GOONG_REST_KEY CHO PLACE DETAIL
   const selectSuggestion = async (suggestion) => {
     if (!GOONG_REST_KEY) {
       toast.error("Thiếu VITE_GOONG_API_KEY");
@@ -245,7 +236,10 @@ export const MyAddress = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.address.street) return toast.error("Vui lòng nhập địa chỉ cụ thể");
+    if (!form.address.street.trim()) {
+      toast.error("Vui lòng nhập địa chỉ cụ thể");
+      return;
+    }
 
     try {
       const payload = {
@@ -254,7 +248,7 @@ export const MyAddress = () => {
           ward: form.address.ward?.trim() || "",
           district: form.address.district?.trim() || "",
           city: form.address.city?.trim() || "",
-          province: form.address.province?.trim() || "Việt Nam"
+          province: "Việt Nam"
         },
         gps: {
           lat: parseFloat(form.gps.lat),
@@ -277,14 +271,45 @@ export const MyAddress = () => {
     }
   };
 
-  const handleDelete = async (addrId) => {
-    if (!confirm("Xóa địa chỉ này?")) return;
+  // XÓA ĐỊA CHỈ - DÙNG TOAST XÁC NHẬN
+  const handleDelete = (addrId) => {
+    const toastId = toast(
+      <div>
+        <p className="mb-3">Xóa địa chỉ này?</p>
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={() => {
+              toast.dismiss(toastId);
+              performDelete(addrId);
+            }}
+            className="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition"
+          >
+            Xóa
+          </button>
+          <button
+            onClick={() => toast.dismiss(toastId)}
+            className="px-3 py-1.5 bg-gray-300 text-gray-700 text-sm rounded hover:bg-gray-400 transition"
+          >
+            Hủy
+          </button>
+        </div>
+      </div>,
+      {
+        duration: 10000,
+        style: {
+          maxWidth: '400px',
+        },
+      }
+    );
+  };
+
+  const performDelete = async (addrId) => {
     try {
       await deleteAddress(addrId);
       toast.success("Xóa thành công!");
       fetchAddresses();
     } catch (err) {
-      toast.error("Lỗi xóa");
+      toast.error("Lỗi xóa địa chỉ");
     }
   };
 
