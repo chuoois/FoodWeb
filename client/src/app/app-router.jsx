@@ -81,7 +81,7 @@ export const router = createBrowserRouter([
         children: [
           { path: "", element: <HomePage /> },
           { path: "myorder", element: <MyOrderPage /> },
-          { path: "myorder:id", element: <MyOrderDetailPage /> },
+          { path: "myorder/:id", element: <MyOrderDetailPage /> },
         ],
       },
       {
