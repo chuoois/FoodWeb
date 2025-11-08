@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Loader,
   Wallet,
+  StickyNote
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -174,6 +175,12 @@ const progressSteps = [
               <Clock size={18} className="text-primary" />
               <span className="text-sm text-gray-600">
                 Thời gian đặt: {formatDate(order.createdAt)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <StickyNote  size={18} className="text-primary" />
+              <span className="text-sm text-gray-600">
+                Ghi chú cho quán: {order.note}
               </span>
             </div>
             <div className="flex items-center gap-2">
