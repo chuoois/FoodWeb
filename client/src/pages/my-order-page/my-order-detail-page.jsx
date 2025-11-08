@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   Loader,
   Wallet,
-  StickyNote
+  StickyNote,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,40 +71,72 @@ export function MyOrderDetailPage() {
 
   // 🎯 Gộp trạng thái
   // 🎯 Gộp trạng thái
-const normalizeStatus = (status) => {
-  switch (status) {
-    case "PENDING_PAYMENT":
-      return { label: "Chờ thanh toán", color: "bg-yellow-100 text-yellow-700" };
-    case "PENDING":
-      return { label: "Chờ xác nhận", color: "bg-gray-100 text-gray-700" };
-    case "CONFIRMED":
-      return { label: "Đã xác nhận", color: "bg-blue-100 text-blue-700" };
-    case "PREPARING":
-      return { label: "Đang chuẩn bị", color: "bg-indigo-100 text-indigo-700" };
-    case "SHIPPING":
-      return { label: "Đang giao", color: "bg-orange-100 text-orange-700" };
-    case "DELIVERED":
-      return { label: "Đã giao", color: "bg-green-100 text-green-700" };
-    case "CANCELLED":
-      return { label: "Đã huỷ", color: "bg-red-100 text-red-700" };
-    case "REFUNDED":
-      return { label: "Đã hoàn tiền", color: "bg-pink-100 text-pink-700" };
-    default:
-      return { label: "Không xác định", color: "bg-gray-100 text-gray-700" };
-  }
-};
+  const normalizeStatus = (status) => {
+    switch (status) {
+      case "PENDING_PAYMENT":
+        return {
+          label: "Chờ thanh toán",
+          color: "bg-yellow-100 text-yellow-700",
+        };
+      case "PENDING":
+        return { label: "Chờ xác nhận", color: "bg-gray-100 text-gray-700" };
+      case "CONFIRMED":
+        return { label: "Đã xác nhận", color: "bg-blue-100 text-blue-700" };
+      case "PREPARING":
+        return {
+          label: "Đang chuẩn bị",
+          color: "bg-indigo-100 text-indigo-700",
+        };
+      case "SHIPPING":
+        return { label: "Đang giao", color: "bg-orange-100 text-orange-700" };
+      case "DELIVERED":
+        return { label: "Đã giao", color: "bg-green-100 text-green-700" };
+      case "CANCELLED":
+        return { label: "Đã huỷ", color: "bg-red-100 text-red-700" };
+      case "REFUNDED":
+        return { label: "Đã hoàn tiền", color: "bg-pink-100 text-pink-700" };
+      default:
+        return { label: "Không xác định", color: "bg-gray-100 text-gray-700" };
+    }
+  };
 
-const statusInfo = normalizeStatus(order.status);
+  const statusInfo = normalizeStatus(order.status);
 
-// ✅ Tiến trình đơn hàng (theo flow thực tế)
-const progressSteps = [
-  { label: "Chờ thanh toán", active: ["PENDING_PAYMENT", "PENDING", "CONFIRMED", "PREPARING", "SHIPPING", "DELIVERED"].includes(order.status) },
-  { label: "Xác nhận", active: ["PENDING", "CONFIRMED", "PREPARING", "SHIPPING", "DELIVERED"].includes(order.status) },
-  { label: "Chuẩn bị", active: ["CONFIRMED", "PREPARING", "SHIPPING", "DELIVERED"].includes(order.status) },
-  { label: "Đang giao", active: ["SHIPPING", "DELIVERED"].includes(order.status) },
-  { label: "Đã giao", active: order.status === "DELIVERED" },
-];
-
+  // ✅ Tiến trình đơn hàng (theo flow thực tế)
+  const progressSteps = [
+    {
+      label: "Chờ thanh toán",
+      active: [
+        "PENDING_PAYMENT",
+        "PENDING",
+        "CONFIRMED",
+        "PREPARING",
+        "SHIPPING",
+        "DELIVERED",
+      ].includes(order.status),
+    },
+    {
+      label: "Xác nhận",
+      active: [
+        "PENDING",
+        "CONFIRMED",
+        "PREPARING",
+        "SHIPPING",
+        "DELIVERED",
+      ].includes(order.status),
+    },
+    {
+      label: "Chuẩn bị",
+      active: ["CONFIRMED", "PREPARING", "SHIPPING", "DELIVERED"].includes(
+        order.status
+      ),
+    },
+    {
+      label: "Đang giao",
+      active: ["SHIPPING", "DELIVERED"].includes(order.status),
+    },
+    { label: "Đã giao", active: order.status === "DELIVERED" },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -113,13 +145,19 @@ const progressSteps = [
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link to="/myorder">
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20"
+              >
                 <ArrowLeft size={24} />
               </Button>
             </Link>
             <h1 className="text-3xl font-bold">Chi Tiết Đơn Hàng</h1>
           </div>
-          <div className={`px-4 py-2 rounded-full font-semibold ${statusInfo.color}`}>
+          <div
+            className={`px-4 py-2 rounded-full font-semibold ${statusInfo.color}`}
+          >
             {statusInfo.label}
           </div>
         </div>
@@ -127,11 +165,12 @@ const progressSteps = [
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-
         {/* Tiến trình */}
         <Card>
           <CardContent className="p-6">
-            <h3 className="font-semibold mb-6 text-center">Tiến trình đơn hàng</h3>
+            <h3 className="font-semibold mb-6 text-center">
+              Tiến trình đơn hàng
+            </h3>
             <div className="flex justify-between items-center">
               {progressSteps.map((step, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center">
@@ -145,7 +184,9 @@ const progressSteps = [
                   {i < progressSteps.length - 1 && (
                     <div
                       className={`h-1 w-full ${
-                        progressSteps[i + 1].active ? "bg-orange-500" : "bg-gray-300"
+                        progressSteps[i + 1].active
+                          ? "bg-orange-500"
+                          : "bg-gray-300"
                       }`}
                     ></div>
                   )}
@@ -177,18 +218,29 @@ const progressSteps = [
                 Thời gian đặt: {formatDate(order.createdAt)}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <StickyNote  size={18} className="text-primary" />
-              <span className="text-sm text-gray-600">
-                Ghi chú cho quán: {order.note}
-              </span>
-            </div>
+            {order.note && (
+              <div className="flex items-start gap-2">
+                <StickyNote size={18} className="text-primary mt-0.5" />
+                <p className="text-sm text-gray-600 break-words">
+                  <span className="font-medium text-gray-700">
+                    Ghi chú cho quán:
+                  </span>{" "}
+                  {order.note}
+                </p>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Wallet size={18} className="text-primary" />
               <span className="text-sm text-gray-600">
                 Phương thức thanh toán:{" "}
-                <strong>{order.payment_method === "PAYOS" ? "PayOS" : "COD"}</strong> (
-                {order.payment_status === "PAID" ? "Đã thanh toán" : "Chưa thanh toán"})
+                <strong>
+                  {order.payment_method === "PAYOS" ? "PayOS" : "COD"}
+                </strong>{" "}
+                (
+                {order.payment_status === "PAID"
+                  ? "Đã thanh toán"
+                  : "Chưa thanh toán"}
+                )
               </span>
             </div>
           </CardContent>
@@ -261,7 +313,9 @@ const progressSteps = [
             )}
             <div className="border-t mt-2 pt-2 flex justify-between text-lg font-bold">
               <span>Tổng cộng</span>
-              <span className="text-orange-500">{formatMoney(order.total_amount)}</span>
+              <span className="text-orange-500">
+                {formatMoney(order.total_amount)}
+              </span>
             </div>
           </CardContent>
         </Card>
