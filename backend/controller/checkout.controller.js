@@ -17,13 +17,6 @@ const payOS = new PayOS({
 });
 
 // =====================================================
-// Tạo mã đơn hàng unique
-// =====================================================
-const generateOrderCode = () => {
-  return `ORD${Date.now()}${Math.floor(Math.random() * 1000)}`;
-};
-
-// =====================================================
 // Hàm tính toán chi tiết đơn hàng
 // =====================================================
 async function calculateOrderData(user_id, shop_id, voucher_id, clientDiscount = 0) {
@@ -53,7 +46,6 @@ async function calculateOrderData(user_id, shop_id, voucher_id, clientDiscount =
       food_id: food._id,
       food_name: food.name,
       food_image_url: food.image_url,
-      food_size: null,
       unit_price: food.price,
       quantity: item.quantity,
       discount_percent: food.discount || 0,
@@ -92,7 +84,7 @@ async function calculateOrderData(user_id, shop_id, voucher_id, clientDiscount =
     }
   }
 
-  const shipping_fee = 20000;
+  const shipping_fee = 10000;
   const total_amount = subtotal - discount_amount + shipping_fee;
 
   return {
@@ -112,8 +104,8 @@ exports.checkout = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { shop_id, delivery_address_id, voucher_id, payment_method, note } =
-      req.body;
+    const { shop_id, delivery_address_id, voucher_id, payment_method, note } = req.body;
+
     if (!req.user || !req.user.accountId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -139,69 +131,11 @@ exports.checkout = async (req, res) => {
       orderDetails,
     } = await calculateOrderData(user._id, shop_id, voucher_id);
 
-    // ✅ Tạo mã order cho PayOS (số nguyên)
+    // ✅ Tạo mã đơn PayOS (số nguyên)
     const orderCode = Math.floor(Date.now() / 1000);
-    // ✅ Mã hiển thị lưu trong DB (đẹp hơn)
     const displayOrderCode = `ORD${orderCode}`;
 
-    // ===== Nếu thanh toán COD =====
-    if (payment_method === "COD") {
-      const order = new Order({
-        order_code: displayOrderCode,
-        customer_id: user._id,
-        shop_id,
-        delivery_address_id,
-        subtotal,
-        discount_amount,
-        shipping_fee,
-        total_amount,
-        voucher_id: voucher_id || null,
-        payment_method,
-        payment_status: "COD_PENDING",
-        status: "PENDING",
-        note,
-      });
-
-      await order.save({ session });
-      orderDetails.forEach((d) => (d.order_id = order._id));
-      await OrderDetail.insertMany(orderDetails, { session });
-      await CartItem.deleteMany(
-        { user_id: user._id, shop_id, status: "ACTIVE" },
-        { session }
-      );
-
-      if (voucher_id) {
-        await Voucher.findByIdAndUpdate(
-          voucher_id,
-          { $inc: { used_count: 1 } },
-          { session }
-        );
-      }
-
-      await session.commitTransaction();
-
-      // Gửi realtime notify cho shop
-      if (orderManager.notifyNewOrder) {
-        orderManager.notifyNewOrder(order);
-      }
-
-      return res.json({ message: "Order created with COD", order });
-    }
-
-    // ===== Nếu thanh toán qua PayOS =====
-    const paymentRes = await payOS.paymentRequests.create({
-      orderCode, // ⚠️ Gửi số nguyên cho PayOS
-      amount: Math.round(total_amount),
-      description: `Order #${displayOrderCode}`,
-      returnUrl: `${process.env.APP_URL}/api/checkout/success?order=${orderCode}`,
-      cancelUrl: `${process.env.APP_URL}/api/checkout/cancel?order=${orderCode}`,
-      items: orderDetails.map((it) => ({
-        name: it.food_name,
-        quantity: it.quantity,
-        price: Math.round(it.unit_price),
-      })),
-    });
-
+    // ✅ Tạo đơn hàng trước (dùng cho cả COD và PayOS)
     const order = new Order({
       order_code: displayOrderCode,
       customer_id: user._id,
@@ -213,16 +147,21 @@ exports.checkout = async (req, res) => {
       total_amount,
       voucher_id: voucher_id || null,
       payment_method,
-      payment_status: "UNPAID",
-      status: "PENDING_PAYMENT",
+      payment_status: payment_method === "COD" ? "COD_PENDING" : "UNPAID",
+      status: payment_method === "COD" ? "PENDING" : "PENDING_PAYMENT",
       note,
     });
 
     await order.save({ session });
+
+    // Gán order_id cho từng item
     orderDetails.forEach((d) => (d.order_id = order._id));
     await OrderDetail.insertMany(orderDetails, { session });
-    await CartItem.deleteMany(
+
+    // Chuyển giỏ hàng sang trạng thái CHECKOUT (không xóa)
+    await CartItem.updateMany(
       { user_id: user._id, shop_id, status: "ACTIVE" },
+      { status: "CHECKOUT" },
       { session }
     );
 
@@ -234,7 +173,30 @@ exports.checkout = async (req, res) => {
       );
     }
 
+    // ===== Nếu là COD =====
+    if (payment_method === "COD") {
+      await session.commitTransaction();
+      if (orderManager.notifyNewOrder) orderManager.notifyNewOrder(order);
+
+      return res.json({ message: "Order created with COD", order });
+    }
+
+    // ===== Nếu là PayOS =====
+    const paymentRes = await payOS.paymentRequests.create({
+      orderCode,
+      amount: Math.round(total_amount),
+      description: `Order ${displayOrderCode}`,
+      returnUrl: `http://localhost:9999/api/checkout/success?order=${displayOrderCode}`,
+      cancelUrl: `http://localhost:9999/api/checkout/cancel?order=${displayOrderCode}`,
+      items: orderDetails.map((it) => ({
+        name: it.food_name,
+        quantity: it.quantity,
+        price: Math.round(it.unit_price),
+      })),
+    });
+
     await session.commitTransaction();
+
     return res.json({
       url: paymentRes.checkoutUrl,
       order,
@@ -268,15 +230,10 @@ exports.checkoutSuccess = async (req, res) => {
 
     if (orderManager.notifyNewOrder) orderManager.notifyNewOrder(order);
 
-    res.send(`
-      <html>
-        <body style="font-family:sans-serif;text-align:center;padding:40px;">
-          <h2>✅ Thanh toán PayOS thành công!</h2>
-          <p>Cảm ơn bạn đã đặt hàng. Mã đơn hàng: <b>${orderCode}</b></p>
-          <p><a href="${process.env.APP_URL}/detail/history">Xem đơn hàng</a></p>
-        </body>
-      </html>
-    `);
+    // ✅ Redirect về frontend cùng thông báo
+    res.redirect(
+      `http://localhost:5173/myorder/${order._id}?status=success&message=Thanh toán thành công`
+    );
   } catch (err) {
     console.error("PayOS success error:", err);
     res.status(500).send("Lỗi xác nhận thanh toán");
@@ -294,6 +251,7 @@ exports.checkoutCancel = async (req, res) => {
 
     if (!order) return res.status(404).send("Order not found");
 
+    // Khôi phục giỏ hàng
     await CartItem.updateMany(
       {
         user_id: order.customer_id,
@@ -303,15 +261,10 @@ exports.checkoutCancel = async (req, res) => {
       { status: "ACTIVE" }
     );
 
-    res.send(`
-      <html>
-        <body style="font-family:sans-serif;text-align:center;padding:40px;">
-          <h2>❌ Thanh toán đã bị hủy!</h2>
-          <p>Mã đơn hàng: <b>${orderCode}</b></p>
-          <p><a href="${process.env.APP_URL}/cart">Quay lại giỏ hàng</a></p>
-        </body>
-      </html>
-    `);
+    // ✅ Redirect về frontend cùng thông báo
+    res.redirect(
+      `http://localhost:5173/myorder?status=cancel&message=Đơn hàng đã bị hủy`
+    );
   } catch (err) {
     console.error("PayOS cancel error:", err);
     res.status(500).send("Lỗi hủy thanh toán");
