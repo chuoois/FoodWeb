@@ -8,7 +8,7 @@ const User = require("../models/user.model");
 const Shop = require("../models/shop.model");
 const UserAddress = require("../models/userAddress.model");
 const Food = require("../models/food.model");
-const orderManager = require("../controller/orderManager.controller")
+const orderManager = require("../controller/orderManager.controller");
 const Feedback = require("../models/feedback.model");
 
 const generateOrderCode = () => {
@@ -136,20 +136,22 @@ exports.updatePaymentStatus = async (req, res) => {
     const { order_code, status } = req.body; // PayOS webhook gửi về
     const order = await Order.findOne({ order_code });
 
-    if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (!order) return res.status(404).json({ message: "Order not found" });
 
-    if (status === 'PAID') {
-      order.payment_status = 'PAID';
-      order.status = 'CONFIRMED';
-    } else if (status === 'CANCELLED') {
-      order.payment_status = 'CANCELLED';
-      order.status = 'CANCELLED';
+    if (status === "PAID") {
+      order.payment_status = "PAID";
+      order.status = "CONFIRMED";
+    } else if (status === "CANCELLED") {
+      order.payment_status = "CANCELLED";
+      order.status = "CANCELLED";
     }
 
     await order.save();
-    res.json({ message: 'Order updated', order });
+    res.json({ message: "Order updated", order });
   } catch (error) {
-    res.status(500).json({ message: 'Error updating payment status', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error updating payment status", error: error.message });
   }
 };
 
@@ -163,20 +165,18 @@ exports.getVouchers = async (req, res) => {
       filter.shop_id = shop_id || shop;
     }
 
-    const vouchers = await Voucher.find(filter)
-      .sort({ created_at: -1 })
-      .lean();
+    const vouchers = await Voucher.find(filter).sort({ created_at: -1 }).lean();
 
     res.status(200).json({
       success: true,
       count: vouchers.length,
-      data: vouchers
+      data: vouchers,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Error fetching vouchers",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -188,7 +188,7 @@ exports.getVouchers = async (req, res) => {
 
 exports.cancelOrder = async (req, res) => {
   try {
-    const { order_id } = req.params; 
+    const { order_id } = req.params;
     const { reason } = req.body; // Lý do hủy (tùy chọn)
     const accountId = req.user.accountId;
 
@@ -197,25 +197,28 @@ exports.cancelOrder = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     // 2. Tìm đơn hàng bằng order_code (đúng field trong model)
-    const order = await Order.findById(order_id).populate("voucher_id")
+    const order = await Order.findById(order_id).populate("voucher_id");
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     // 3. Kiểm tra quyền: chỉ khách hàng đặt đơn mới được hủy
     if (order.customer_id.toString() !== user._id.toString()) {
-      return res.status(403).json({ message: "You can only cancel your own order" });
+      return res
+        .status(403)
+        .json({ message: "You can only cancel your own order" });
     }
 
     // 4. Chỉ hủy được khi status = PENDING
     if (order.status !== "PENDING") {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: "Cannot cancel order. Only PENDING orders can be cancelled.",
-        current_status: order.status
+        current_status: order.status,
       });
     }
 
     // 5. Cập nhật trạng thái + lý do + người hủy
     order.status = "CANCELLED";
-    order.payment_status = order.payment_method === "COD" ? "CANCELLED" : "CANCELLED";
+    order.payment_status =
+      order.payment_method === "COD" ? "CANCELLED" : "CANCELLED";
     order.cancel_reason = reason || "Khách hàng hủy đơn";
     order.cancelled_by = user._id;
 
@@ -224,7 +227,7 @@ exports.cancelOrder = async (req, res) => {
     // 6. Hoàn lại voucher (nếu có)
     if (order.voucher_id) {
       await Voucher.findByIdAndUpdate(order.voucher_id, {
-        $inc: { used_count: -1 }
+        $inc: { used_count: -1 },
       });
     }
 
@@ -234,7 +237,10 @@ exports.cancelOrder = async (req, res) => {
         await orderManager.notifyOrderCancelled(order);
       } else {
         // Fallback: dùng notifyNewOrder với status mới
-        await orderManager.notifyNewOrder({ ...order.toObject(), status: "CANCELLED" });
+        await orderManager.notifyNewOrder({
+          ...order.toObject(),
+          status: "CANCELLED",
+        });
       }
     } catch (notifyErr) {
       console.warn("SSE notify failed (non-critical):", notifyErr.message);
@@ -248,16 +254,15 @@ exports.cancelOrder = async (req, res) => {
         order_code: order.order_code,
         status: order.status,
         cancel_reason: order.cancel_reason,
-        cancelled_at: order.updatedAt
-      }
+        cancelled_at: order.updatedAt,
+      },
     });
-
   } catch (error) {
     console.error("Cancel order error:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Error cancelling order", 
-      error: error.message 
+      message: "Error cancelling order",
+      error: error.message,
     });
   }
 };
@@ -278,7 +283,7 @@ exports.getUserOrders = async (req, res) => {
     const filter = { customer_id: user._id };
     if (status) {
       // Tách chuỗi status thành một mảng và chuyển sang chữ hoa
-      const statusArray = status.split(',').map(s => s.toUpperCase());
+      const statusArray = status.split(",").map((s) => s.toUpperCase());
       filter.status = { $in: statusArray };
     }
 
@@ -297,7 +302,9 @@ exports.getUserOrders = async (req, res) => {
     const ordersWithDetails = await Promise.all(
       orders.map(async (order) => {
         const details = await OrderDetail.find({ order_id: order._id })
-          .select("food_name food_image_url quantity unit_price discount_percent subtotal")
+          .select(
+            "food_name food_image_url quantity unit_price discount_percent subtotal"
+          )
           .lean();
         return { ...order, items: details };
       })
@@ -305,23 +312,23 @@ exports.getUserOrders = async (req, res) => {
 
     // ✅ THÊM LOGIC KIỂM TRA isReviewed
     let ordersWithReviewStatus = ordersWithDetails;
-    
+
     if (ordersWithDetails.length > 0) {
       // Lấy tất cả order IDs
-      const orderIds = ordersWithDetails.map(order => order._id);
-      
+      const orderIds = ordersWithDetails.map((order) => order._id);
+
       // Tìm những order nào đã có feedback
-      const reviewedOrderIds = await Feedback.find({ 
-        order_id: { $in: orderIds } 
-      }).distinct('order_id');
-      
+      const reviewedOrderIds = await Feedback.find({
+        order_id: { $in: orderIds },
+      }).distinct("order_id");
+
       // Convert sang Set để lookup nhanh O(1)
-      const reviewedSet = new Set(reviewedOrderIds.map(id => id.toString()));
-      
+      const reviewedSet = new Set(reviewedOrderIds.map((id) => id.toString()));
+
       // Thêm field isReviewed vào mỗi order
-      ordersWithReviewStatus = ordersWithDetails.map(order => ({
+      ordersWithReviewStatus = ordersWithDetails.map((order) => ({
         ...order,
-        isReviewed: reviewedSet.has(order._id.toString())
+        isReviewed: reviewedSet.has(order._id.toString()),
       }));
     }
 
@@ -339,10 +346,10 @@ exports.getUserOrders = async (req, res) => {
     });
   } catch (error) {
     console.error("getUserOrders error:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Error fetching orders", 
-      error: error.message 
+      message: "Error fetching orders",
+      error: error.message,
     });
   }
 };
@@ -369,7 +376,9 @@ exports.getOrderDetail = async (req, res) => {
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     const items = await OrderDetail.find({ order_id: order._id })
-      .select("food_name food_image_url food_size quantity unit_price discount_percent subtotal note")
+      .select(
+        "food_name food_image_url food_size quantity unit_price discount_percent subtotal note"
+      )
       .lean();
 
     return res.json({
@@ -381,6 +390,69 @@ exports.getOrderDetail = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Error fetching order detail",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * 📊 Lấy tất cả đơn hàng đã hoàn thành (dành cho MANAGER-FINANCE)
+ * GET /finance/orders?shop_id=&page=&limit=
+ */
+exports.getAllCompletedOrders = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, shop_id } = req.query;
+    const skip = (page - 1) * limit;
+
+    // ⚡ Chỉ lấy đơn hàng hoàn thành
+    const filter = { status: "DELIVERED" };
+    if (shop_id) filter.shop_id = shop_id;
+
+    const orders = await Order.find(filter)
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate({
+        path: "shop_id",
+        select: "name logoUrl coverUrl address owner",
+        populate: {
+          path: "owner", // đây là field owner trong Shop
+          select: "full_name email", // lấy tên, email, avatar, tùy ý
+        },
+      })
+      .populate("customer_id", "full_name email")
+      .populate("voucher_id", "code discount_value discount_type")
+      .lean();
+
+    // Lấy chi tiết món ăn
+    const ordersWithDetails = await Promise.all(
+      orders.map(async (order) => {
+        const details = await OrderDetail.find({ order_id: order._id })
+          .select(
+            "food_name food_image_url quantity unit_price discount_percent subtotal"
+          )
+          .lean();
+        return { ...order, items: details };
+      })
+    );
+
+    const total = await Order.countDocuments(filter);
+
+    res.json({
+      success: true,
+      data: ordersWithDetails,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("getAllCompletedOrders error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching completed orders",
       error: error.message,
     });
   }

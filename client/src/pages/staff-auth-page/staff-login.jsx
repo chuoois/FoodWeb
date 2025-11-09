@@ -1,29 +1,33 @@
-import { useState, useContext } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Eye, EyeOff, Mail, Lock, UserLock } from "lucide-react"
-import { useFormik } from "formik"
-import * as Yup from "yup"
-import toast from "react-hot-toast"
-import { login, getRoleNameById } from "@/services/auth.service"
-import Cookies from "js-cookie"
-import { AuthContext } from "@/context/AuthContext"
-import { jwtDecode } from "jwt-decode"
+import { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Eye, EyeOff, Mail, Lock, UserLock } from "lucide-react";
+import { useFormik } from "formik";
+import * as Yup from "yup";
+import toast from "react-hot-toast";
+import { login, getRoleNameById } from "@/services/auth.service";
+import Cookies from "js-cookie";
+import { AuthContext } from "@/context/AuthContext";
+import { jwtDecode } from "jwt-decode";
 
 export function StaffLogin() {
-  const [showPassword, setShowPassword] = useState(false)
-  const navigate = useNavigate()
-  const { login: loginContext } = useContext(AuthContext)
+  const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
+  const { login: loginContext } = useContext(AuthContext);
 
-  const savedEmail = Cookies.get("rememberedEmail") || ""
+  const savedEmail = Cookies.get("rememberedEmail") || "";
 
   const validationSchema = Yup.object({
-    email: Yup.string().email("Email không hợp lệ").required("Vui lòng nhập email"),
-    password: Yup.string().min(6, "Mật khẩu tối thiểu 6 ký tự").required("Vui lòng nhập mật khẩu"),
-  })
+    email: Yup.string()
+      .email("Email không hợp lệ")
+      .required("Vui lòng nhập email"),
+    password: Yup.string()
+      .min(6, "Mật khẩu tối thiểu 6 ký tự")
+      .required("Vui lòng nhập mật khẩu"),
+  });
 
   const formik = useFormik({
     initialValues: {
@@ -34,33 +38,39 @@ export function StaffLogin() {
     validationSchema,
     onSubmit: async (values, { setSubmitting }) => {
       try {
-        const res = await login(values)
-        const decoded = jwtDecode(res.data.token)
+        const res = await login(values);
+        const decoded = jwtDecode(res.data.token);
 
-        const responseRole = await getRoleNameById({ id: decoded.roleId })
-        const roleName = responseRole.data.name
+        const responseRole = await getRoleNameById({ id: decoded.roleId });
+        const roleName = responseRole.data.name;
 
-        if (roleName === "ADMIN") {
-          toast.success("Đăng nhập thành công!")
-          loginContext(res.data.token)
+        if (roleName === "ADMIN" || roleName === "MANAGER-FINANCE") {
+          toast.success("Đăng nhập thành công!");
+          loginContext(res.data.token);
 
           if (values.rememberMe) {
-            Cookies.set("rememberedEmail", values.email, { expires: 7 })
+            Cookies.set("rememberedEmail", values.email, { expires: 7 });
           } else {
-            Cookies.remove("rememberedEmail")
+            Cookies.remove("rememberedEmail");
           }
-          navigate("/admin/list-user")
-          return
+
+          if (roleName === "ADMIN") {
+            navigate("/admin/list-user");
+          } else if (roleName === "MANAGER-FINANCE") {
+            navigate("/finance-manager/manager");
+          }
+
+          return;
         } else {
-          navigate("/403-forbidden")
+          navigate("/403-forbidden");
         }
       } catch (error) {
-        toast.error(error.response?.data?.message || "Đăng nhập thất bại")
+        toast.error(error.response?.data?.message || "Đăng nhập thất bại");
       } finally {
-        setSubmitting(false)
+        setSubmitting(false);
       }
     },
-  })
+  });
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 p-4">
@@ -68,7 +78,7 @@ export function StaffLogin() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg">
-            < UserLock className="w-8 h-8 text-white" />
+            <UserLock className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-800">
             Yummy<span className="text-orange-600">Go</span>
@@ -84,13 +94,20 @@ export function StaffLogin() {
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-orange-100">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Đăng nhập</h2>
-            <p className="text-sm text-gray-600">Chào mừng bạn đến với YummyGo Staff Portal</p>
+            <p className="text-sm text-gray-600">
+              Chào mừng bạn đến với YummyGo Staff Portal
+            </p>
           </div>
 
           <form onSubmit={formik.handleSubmit} className="space-y-5">
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
+              <Label
+                htmlFor="email"
+                className="text-sm font-medium text-gray-700"
+              >
+                Email
+              </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <Input
@@ -111,7 +128,12 @@ export function StaffLogin() {
 
             {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-gray-700">Mật khẩu</Label>
+              <Label
+                htmlFor="password"
+                className="text-sm font-medium text-gray-700"
+              >
+                Mật khẩu
+              </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <Input
@@ -129,7 +151,11 @@ export function StaffLogin() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
               {formik.touched.password && formik.errors.password && (
@@ -144,7 +170,9 @@ export function StaffLogin() {
                   id="rememberMe"
                   name="rememberMe"
                   checked={formik.values.rememberMe}
-                  onCheckedChange={(checked) => formik.setFieldValue("rememberMe", checked)}
+                  onCheckedChange={(checked) =>
+                    formik.setFieldValue("rememberMe", checked)
+                  }
                 />
                 <label
                   htmlFor="rememberMe"
@@ -169,22 +197,24 @@ export function StaffLogin() {
             >
               {formik.isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
-
-
           </form>
-
-
 
           {/* Footer Note */}
           <div className="mt-6 pt-6 border-t border-gray-100">
             <p className="text-xs text-center text-gray-500 leading-relaxed">
               Bằng cách tiếp tục, bạn đồng ý với{" "}
-              <Link to="/terms" className="text-orange-600 hover:underline">Điều khoản dịch vụ</Link> và{" "}
-              <Link to="/privacy" className="text-orange-600 hover:underline">Chính sách bảo mật</Link> của chúng tôi.
+              <Link to="/terms" className="text-orange-600 hover:underline">
+                Điều khoản dịch vụ
+              </Link>{" "}
+              và{" "}
+              <Link to="/privacy" className="text-orange-600 hover:underline">
+                Chính sách bảo mật
+              </Link>{" "}
+              của chúng tôi.
             </p>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

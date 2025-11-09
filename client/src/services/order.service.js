@@ -20,3 +20,8 @@ export const getUserOrders = (params) => {
 export const getOrderDetail = (orderId) => {
   return api.get(`/orders/${orderId}`);
 };
+
+export const getAllCompletedOrders = (params) => {
+  return api.get("/getAllOrders", { params });
+};
+

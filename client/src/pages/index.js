@@ -23,6 +23,7 @@ export * from './store-director-manage-dashboard'
 export * from './manager-staff-create-voucher'
 export * from './manager-staff-list-voucher'
 export * from './MyProfile'
+export * from './manager-finance'
 
 
 

@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const {getVouchers, cancelOrder, getUserOrders, getOrderDetail} = require('../controller/order.controller')
+const {getVouchers, cancelOrder, getUserOrders, getOrderDetail, getAllCompletedOrders} = require('../controller/order.controller')
 const authenticate = require('../middleware/authenticate.middleware')
 const authorize = require('../middleware/authorize.middleware')
 
@@ -13,6 +13,8 @@ router.get("/orders/:id", authenticate, authorize("CUSTOMER"), getOrderDetail);
 router.patch("/orders/:order_id/cancel",authenticate, authorize("CUSTOMER"),cancelOrder)
 
 router.get("/vouchers", authenticate, authorize("CUSTOMER"), getVouchers);
+
+router.get("/getAllOrders", authenticate, authorize("MANAGER-FINANCE"), getAllCompletedOrders);
 
 module.exports = router;
  
