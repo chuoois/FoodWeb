@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Search, Loader2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +51,7 @@ export const AccPendingManagement = () => {
 
   const itemsPerPage = 10;
 
-  // Gọi API lấy danh sách tài khoản
+  // Gọi API lấy danh sách tài khoản (chỉ PENDING + các trạng thái khác nếu cần)
   const fetchAccounts = async () => {
     try {
       setLoading(true);
@@ -73,26 +73,24 @@ export const AccPendingManagement = () => {
     }
   };
 
-  // FIX: Thêm searchQuery, statusFilter, roleFilter vào deps để trigger fetch khi filter thay đổi
   useEffect(() => {
     fetchAccounts();
-  }, [currentPage, searchQuery, statusFilter, roleFilter]); // <-- Thay đổi ở đây
+  }, [currentPage, searchQuery, statusFilter, roleFilter]);
 
-  // Reset về trang 1 khi filter thay đổi (giữ nguyên)
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, roleFilter]);
 
-  // Xử lý đổi trạng thái
+  // Xử lý đổi trạng thái (dùng chung API)
   const handleStatusChange = async () => {
     setIsUpdating(true);
     try {
       await updateAccountStatus(selectedAccount._id);
       toast.success(
-        `Đã cập nhật trạng thái tài khoản ${selectedAccount.email}`
+        `Đã ${selectedAccount.status === "PENDING" ? "kích hoạt" : selectedAccount.status === "ACTIVE" ? "vô hiệu hóa" : "kích hoạt"} tài khoản ${selectedAccount.email}`
       );
       setDialogOpen(false);
-      fetchAccounts(); // Refresh lại danh sách
+      fetchAccounts();
     } catch (error) {
       toast.error("Không thể cập nhật trạng thái. Vui lòng thử lại.");
     } finally {
@@ -116,7 +114,6 @@ export const AccPendingManagement = () => {
     return styles[status] || styles.INACTIVE;
   };
 
-  // Xử lý thay đổi trang
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -132,10 +129,10 @@ export const AccPendingManagement = () => {
               <Users className="h-6 w-6 text-white" />
             </div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
-              Quản Lý Tài Khoản
+              Quản Lý Tài Khoản Chờ Duyệt
             </h1>
           </div>
-          <p className="text-gray-600 ml-11">Quản lý và theo dõi tất cả tài khoản trong hệ thống</p>
+          <p className="text-gray-600 ml-11">Duyệt và kích hoạt các tài khoản mới đăng ký</p>
         </div>
 
         {/* Filters */}
@@ -157,11 +154,11 @@ export const AccPendingManagement = () => {
                   <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
-                  <SelectItem value="all" className="text-gray-900">Tất cả trạng thái</SelectItem>
-                  <SelectItem value="ACTIVE" className="text-gray-900">Active</SelectItem>
-                  <SelectItem value="INACTIVE" className="text-gray-900">Inactive</SelectItem>
-                  <SelectItem value="PENDING" className="text-gray-900">Pending</SelectItem>
-                  <SelectItem value="BANNED" className="text-gray-900">Banned</SelectItem>
+                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                  <SelectItem value="BANNED">Banned</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={roleFilter} onValueChange={setRoleFilter} disabled={loading}>
@@ -169,7 +166,7 @@ export const AccPendingManagement = () => {
                   <SelectValue placeholder="Vai trò" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
-                  <SelectItem value="all" className="text-gray-900">Tất cả vai trò</SelectItem>
+                  <SelectItem value="all">Tất cả vai trò</SelectItem>
                   {roles.map((role) => (
                     <SelectItem key={role._id} value={role._id} className="text-gray-900">
                       {role.name}
@@ -228,9 +225,11 @@ export const AccPendingManagement = () => {
                     <TableCell className="text-gray-600">
                       {new Date(account.createdAt).toLocaleDateString("vi-VN")}
                     </TableCell>
+
+                    {/* HÀNH ĐỘNG: Chỉ hiện nút phù hợp với trạng thái */}
                     <TableCell className="text-right">
-                      {(account.status === "ACTIVE" ||
-                        account.status === "INACTIVE") && (
+                      {/* PENDING → Nút Kích hoạt */}
+                      {account.status === "PENDING" && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -238,12 +237,42 @@ export const AccPendingManagement = () => {
                             setSelectedAccount(account);
                             setDialogOpen(true);
                           }}
-                          className="h-8 text-xs text-gray-700 hover:bg-orange-500/10 hover:text-orange-600 transition-all"
+                          className="h-8 text-xs text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-600 transition-all"
                           disabled={isUpdating}
                         >
-                          {account.status === "ACTIVE"
-                            ? "Vô hiệu hóa"
-                            : "Kích hoạt"}
+                          Kích hoạt
+                        </Button>
+                      )}
+
+                      {/* ACTIVE → Nút Vô hiệu hóa */}
+                      {account.status === "ACTIVE" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedAccount(account);
+                            setDialogOpen(true);
+                          }}
+                          className="h-8 text-xs text-red-700 hover:bg-red-500/10 hover:text-red-600 transition-all"
+                          disabled={isUpdating}
+                        >
+                          Vô hiệu hóa
+                        </Button>
+                      )}
+
+                      {/* INACTIVE → Nút Kích hoạt */}
+                      {account.status === "INACTIVE" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedAccount(account);
+                            setDialogOpen(true);
+                          }}
+                          className="h-8 text-xs text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-600 transition-all"
+                          disabled={isUpdating}
+                        >
+                          Kích hoạt
                         </Button>
                       )}
                     </TableCell>
@@ -285,7 +314,11 @@ export const AccPendingManagement = () => {
                       <PaginationLink
                         isActive={currentPage === page}
                         onClick={() => handlePageChange(page)}
-                        className={`cursor-pointer transition-all ${currentPage === page ? "bg-orange-500 text-white" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"}`}
+                        className={`cursor-pointer transition-all ${
+                          currentPage === page
+                            ? "bg-orange-500 text-white"
+                            : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                        }`}
                       >
                         {page}
                       </PaginationLink>
@@ -311,21 +344,39 @@ export const AccPendingManagement = () => {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="bg-white border-gray-200 shadow-xl">
             <DialogHeader>
-              <DialogTitle className="text-gray-900 text-xl">Xác nhận đổi trạng thái</DialogTitle>
+              <DialogTitle className="text-gray-900 text-xl">Xác nhận hành động</DialogTitle>
               <DialogDescription className="text-gray-600 mt-2">
-                Bạn có chắc muốn đổi trạng thái tài khoản{" "}
+                Bạn có chắc muốn{" "}
+                <span className="font-semibold text-orange-600">
+                  {selectedAccount?.status === "PENDING"
+                    ? "kích hoạt"
+                    : selectedAccount?.status === "ACTIVE"
+                    ? "vô hiệu hóa"
+                    : "kích hoạt"}
+                </span>{" "}
+                tài khoản{" "}
                 <span className="font-semibold text-gray-900">{selectedAccount?.email}</span>?
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-3">
-              <Button variant="ghost" onClick={() => setDialogOpen(false)} className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-all">
+              <Button
+                variant="ghost"
+                onClick={() => setDialogOpen(false)}
+                className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-all"
+              >
                 Hủy
               </Button>
-              <Button onClick={handleStatusChange} disabled={isUpdating} className="bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg">
-                {isUpdating && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Xác nhận
+              <Button
+                onClick={handleStatusChange}
+                disabled={isUpdating}
+                className="bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg"
+              >
+                {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {selectedAccount?.status === "PENDING"
+                  ? "Kích hoạt"
+                  : selectedAccount?.status === " ACTIVE"
+                  ? "Vô hiệu hóa"
+                  : "Kích hoạt"}
               </Button>
             </DialogFooter>
           </DialogContent>

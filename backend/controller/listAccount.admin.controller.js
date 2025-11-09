@@ -92,11 +92,15 @@ const updateAccountStatus = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy tài khoản" });
     }
 
-    if (account.status === "PENDING") {
-      return res.status(400).json({ message: "Không thể cập nhật trạng thái từ PENDING" });
+    // Chuyển trạng thái: ACTIVE <-> INACTIVE
+    // Nếu đang PENDING, có thể đổi thành ACTIVE luôn
+    let newStatus;
+    if (account.status === "ACTIVE") {
+      newStatus = "INACTIVE";
+    } else {
+      newStatus = "ACTIVE";
     }
 
-    const newStatus = account.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
     const updatedAccount = await Account.findByIdAndUpdate(
       accountId,
       { status: newStatus },
@@ -108,6 +112,7 @@ const updateAccountStatus = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
 
 
 const updateAccountRole = async (req, res) => {
