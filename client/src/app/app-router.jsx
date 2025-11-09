@@ -142,10 +142,10 @@ export const router = createBrowserRouter([
         path: "finance-manager",
         element: <ManagerFinanceMain />,
         children: [
-          { path: "manager", element: <ManagerFinanceDashboard /> }, // Trang tổng quan tài chính
-          { path: "orders", element: <FinanceOrdersPage /> }, // Đơn hàng hoàn thành
-          { path: "revenue", element: <FinanceRevenuePage /> }, // Doanh thu cửa hàng
-          { path: "shops", element: <FinanceShopsPage /> }, // Danh sách cửa hàng
+          { path: "manager", element: <ManagerFinanceDashboard /> }, 
+          { path: "orders", element: <FinanceOrdersPage /> }, 
+          { path: "revenue", element: <FinanceRevenuePage /> }, 
+          { path: "shops", element: <FinanceShopsPage /> }, 
         ],
       },
       {
