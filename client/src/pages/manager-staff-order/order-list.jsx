@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Package, X, Loader2, Clock, CheckCircle2, Truck, PackageCheck, XCircle,Eye } from "lucide-react"
+import { Package, X, Loader2, Clock, CheckCircle2, Truck, PackageCheck, XCircle, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
@@ -170,39 +170,49 @@ export function OrdersList() {
     mountedRef.current = true
 
     // Kết nối SSE, truyền callback merge
-    const es = connectOrderSSE((msg) => {
-      // msg có thể là { type: "orders", data: [...] } hoặc single object
-      try {
-        if (!msg) return
+   const es = connectOrderSSE((msg) => {
+  try {
+    if (!msg) return
 
-        // Nếu backend gửi event kiểu { type, data }
-        if (msg.type === "orders" && Array.isArray(msg.data)) {
-          // merge mọi phần tử (không overwrite toàn bộ nếu API đã tải)
-          const normalized = msg.data
-            .filter(Boolean)
-            .map((o) => ({ ...o, created_at: o.created_at || new Date().toISOString() }))
-          setOrders((prev) => {
-            const map = new Map(prev.map((p) => [p._id, p]))
-            normalized.forEach((o) => {
-              map.set(o._id, { ...(map.get(o._id) || {}), ...o })
-            })
-            const merged = Array.from(map.values()).sort(sortByCreatedDesc)
-            return merged.slice(0, 200)
-          })
-          return
+    switch (msg.type) {
+      case "orders": {
+        const normalized = msg.data
+          .filter(Boolean)
+          .map((o) => ({ ...o, created_at: o.created_at || new Date().toISOString() }))
+        setOrders((prev) => {
+          const map = new Map(prev.map((p) => [p._id, p]))
+          normalized.forEach((o) => map.set(o._id, { ...(map.get(o._id) || {}), ...o }))
+          return Array.from(map.values()).sort(sortByCreatedDesc)
+        })
+        break
+      }
+
+      case "new_order":
+      case "order_updated": {
+        const incoming = msg.data
+        if (Array.isArray(incoming)) {
+          incoming.forEach((o) => mergeOrderFromSSE(o))
+        } else {
+          mergeOrderFromSSE(incoming)
         }
+        break
+      }
 
-        // Nếu backend gửi single order object
+      default: {
+        // fallback cho trường hợp event không có type
         const incoming = msg.data ?? msg
         if (Array.isArray(incoming)) {
           incoming.forEach((o) => mergeOrderFromSSE(o))
         } else {
           mergeOrderFromSSE(incoming)
         }
-      } catch (err) {
-        console.error("⚠️ Lỗi xử lý SSE message:", err)
       }
-    })
+    }
+  } catch (err) {
+    console.error("⚠️ Lỗi xử lý SSE message:", err)
+  }
+})
+
 
     eventSourceRef.current = es
 
@@ -323,6 +333,7 @@ export function OrdersList() {
                   <TableHead>Mã đơn</TableHead>
                   <TableHead>Cửa hàng</TableHead>
                   <TableHead>Ngày đặt</TableHead>
+                  <TableHead>Thanh toán</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Tổng tiền</TableHead>
                   <TableHead>Thao tác</TableHead>
@@ -346,6 +357,13 @@ export function OrdersList() {
                         {order.shop_id?.name ?? order.shop?.name ?? "-"}
                       </TableCell>
                       <TableCell className="text-sm">{formatDate(order.created_at)}</TableCell>
+                      {/* ✅ Thêm phương thức thanh toán */}
+                      <TableCell className="text-center align-middle font-bold">
+                        {order.payment_method
+                          ? order.payment_method.replace(/_/g, " ")
+                          : "Chưa có"}
+                      </TableCell>
+
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell className="font-semibold text-green-600">
                         {safeNumber(order.total_amount).toLocaleString("vi-VN")}đ

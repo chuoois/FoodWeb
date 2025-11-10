@@ -64,23 +64,29 @@ const fetchShopOrders = async (staffId, query = {}) => {
   // Lấy chi tiết món ăn
   const orderIds = orders.map((o) => o._id);
   const orderDetails = await OrderDetail.find({ order_id: { $in: orderIds } })
-    .select("order_id food_name quantity")
+    .select("order_id food_name quantity food_image_url")
     .lean();
 
   const orderNameMap = {};
   const orderQuantity = {};
-  orderDetails.forEach((detail) => {
-    if (!orderNameMap[detail.order_id]) orderNameMap[detail.order_id] = [];
-    orderNameMap[detail.order_id].push(detail.food_name);
-    if (!orderQuantity[detail.order_id]) orderQuantity[detail.order_id] = [];
-    orderQuantity[detail.order_id].push(detail.quantity);
-  });
+  const orderImages = {};
+orderDetails.forEach((detail) => {
+  const id = detail.order_id.toString();
+  if (!orderNameMap[id]) orderNameMap[id] = [];
+  if (!orderQuantity[id]) orderQuantity[id] = [];
+  if (!orderImages[id]) orderImages[id] = [];
 
-  const ordersWithNames = orders.map((order) => ({
-    ...order,
-    order_name: orderNameMap[order._id]?.join(", ") || "",
-    quantity: orderQuantity[order._id]?.join(", ") || "",
-  }));
+  orderNameMap[id].push(detail.food_name);
+  orderQuantity[id].push(detail.quantity);
+  orderImages[id].push(detail.food_image_url);
+});
+
+const ordersWithNames = orders.map((order) => ({
+  ...order,
+  order_name: orderNameMap[order._id.toString()]?.join(", ") || "",
+  quantity: orderQuantity[order._id.toString()]?.join(", ") || "",
+  images: orderImages[order._id.toString()] || [],
+}));
 
   const totalPages = Math.ceil(total / limit);
 
@@ -265,13 +271,38 @@ res.write(`data: ${JSON.stringify({
 
 OrderManagerController.notifyNewOrder = async (order) => {
   try {
+    // Lấy order kèm populate như fetchShopOrders
+    const populatedOrder = await Order.findById(order._id)
+      .populate("customer_id", "full_name phone")
+      .populate("shop_id", "name image_url")
+      .populate("delivery_address_id", "address recipient_name phone")
+      .lean();
+
+    // Lấy chi tiết món ăn
+    const orderDetails = await OrderDetail.find({ order_id: order._id })
+      .select("order_id food_name quantity food_image_url unit_price discount_percent note")
+      .lean();
+
+    const order_name = orderDetails.map(d => d.food_name).join(", ");
+    const quantity = orderDetails.map(d => d.quantity).join(", ");
+    const images = orderDetails.map(d => d.food_image_url);
+
+    const orderWithDetails = {
+      ...populatedOrder,
+      details: orderDetails,
+      order_name,
+      quantity,
+      images,
+    };
+
     await broadcastToShopManagers(order.shop_id, {
       type: "new_order",
-      data: order.toObject ? order.toObject() : order,
+      data: orderWithDetails,
     });
   } catch (error) {
     console.error("SSE Notify Error:", error);
   }
 };
+
 
 module.exports = OrderManagerController;

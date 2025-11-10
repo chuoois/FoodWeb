@@ -45,23 +45,31 @@ const STATUS_CONFIG = {
 
 export function OrderDetailDialog({ order, isOpen, onClose }) {
   // ✅ Xử lý danh sách món ăn kể cả khi không có order.details
-  const [orderDetails] = useState(
-    Array.isArray(order.details) && order.details.length > 0
-      ? order.details
-      : [
-        {
-          _id: order._id,
-          order_name: order.order_name || "Không có tên món",
-          quantity: Number(order.quantity) || 0,
-          unit_price:
-            order.subtotal && order.quantity
-              ? Number(order.subtotal) / Number(order.quantity)
-              : Number(order.subtotal) || 0,
-          discount_percent: 0,
-          note: order.note || "",
-        },
-      ]
-  )
+  const [orderDetails] = useState(() => {
+  if (Array.isArray(order.details) && order.details.length > 0) {
+    return order.details;
+  }
+
+  // ✅ Tự động tách tên món, số lượng và ảnh thành từng dòng riêng
+  const names = order.order_name ? order.order_name.split(",").map(n => n.trim()) : [];
+  const quantities = order.quantity ? order.quantity.split(",").map(q => q.trim()) : [];
+  const images = Array.isArray(order.images) ? order.images : [];
+
+  // ✅ Gộp lại thành danh sách món chi tiết
+  return names.map((name, index) => ({
+    _id: `${order._id}-${index}`,
+    food_name: name,
+    quantity: Number(quantities[index]) || 1,
+    unit_price:
+      order.subtotal && names.length > 0
+        ? Number(order.subtotal) / names.length
+        : Number(order.subtotal) || 0,
+    discount_percent: 0,
+    note: order.note || "",
+    food_image_url: images[index] || "",
+  }));
+});
+
 
   const formatDate = (date) => {
     if (!date) return "-"
@@ -164,6 +172,7 @@ export function OrderDetailDialog({ order, isOpen, onClose }) {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
+                     <TableHead className="font-semibold w-[80px] text-center">Ảnh</TableHead>
                       <TableHead className="font-semibold">Tên món</TableHead>
                       <TableHead className="text-center font-semibold">SL</TableHead>
                       <TableHead className="text-center font-semibold">Đơn giá</TableHead>
@@ -177,26 +186,33 @@ export function OrderDetailDialog({ order, isOpen, onClose }) {
                           detail.unit_price -
                           (detail.unit_price * (detail.discount_percent || 0)) / 100
                         return (
-                          <TableRow key={detail._id}>
-                            <TableCell className="font-medium">
-                              {detail.food_name || detail.order_name}
-                            </TableCell>
-                            <TableCell className="text-center">{detail.quantity}</TableCell>
-                            <TableCell className="text-center">
-                              <p className="font-medium">
-                                {detail.unit_price.toLocaleString("vi-VN")}đ
-                              </p>
-                              {detail.discount_percent > 0 && (
-                                <p className="text-xs text-orange-600">
-                                  -{detail.discount_percent}%
-                                </p>
-                              )}
-                            </TableCell>
+                      <TableRow key={detail._id}>
+  <TableCell className="text-center">
+    <img
+      src={detail.food_image_url || "/images/no-image.png"}
+      alt={detail.food_name || "Món ăn"}
+      className="w-14 h-14 object-cover rounded-md border"
+    />
+  </TableCell>
 
-                            <TableCell className="text-center font-medium">
-                              {detail.note || "Ghi chú trống"}
-                            </TableCell>
-                          </TableRow>
+  <TableCell className="font-medium">
+    {detail.food_name || detail.order_name}
+  </TableCell>
+  <TableCell className="text-center">{detail.quantity}</TableCell>
+  <TableCell className="text-center">
+    <p className="font-medium">
+      {detail.unit_price.toLocaleString("vi-VN")}đ
+    </p>
+    {detail.discount_percent > 0 && (
+      <p className="text-xs text-orange-600">
+        -{detail.discount_percent}%
+      </p>
+    )}
+  </TableCell>
+  <TableCell className="text-center font-medium">
+    {detail.note || "Ghi chú trống"}
+  </TableCell>
+</TableRow>
                         )
                       })
                     ) : (
