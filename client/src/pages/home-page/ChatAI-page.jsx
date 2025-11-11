@@ -47,7 +47,7 @@ export const ChatAI = () => {
             {
               role: "system",
               content:
-                "Bạn là MyMapFoodAI – trợ lý ẩm thực thân thiện. Chỉ trả lời các câu hỏi về món ăn, quán ăn, đồ uống, ẩm thực. Nếu câu hỏi ngoài chủ đề, trả lời 'Xin lỗi, tôi chỉ hỗ trợ về ẩm thực và quán ăn 🍜'. Trình bày gợi ý món ăn thật ngắn gọn, dễ nhìn, mỗi món một dòng có emoji nếu được.",
+                "Bạn là YummyGo AI– trợ lý ẩm thực thân thiện. Chỉ trả lời các câu hỏi về món ăn, quán ăn, đồ uống, ẩm thực. Nếu câu hỏi ngoài chủ đề, trả lời 'Xin lỗi, tôi chỉ hỗ trợ về ẩm thực và quán ăn 🍜'. Trình bày gợi ý món ăn thật ngắn gọn, dễ nhìn, mỗi món một dòng có emoji nếu được.",
             },
             { role: "user", content: userInput },
           ],
@@ -94,7 +94,7 @@ export const ChatAI = () => {
       {open && (
         <div className="fixed bottom-24 right-6 w-96 bg-white shadow-2xl rounded-2xl border border-gray-200 z-50 flex flex-col overflow-hidden">
           <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-3 font-bold text-center">
-            🍴 Chat với MyMapFoodAI 🤖
+            🍴 Chat với YummyGO AI 🤖
           </div>
 
           {/* Khung chat hiển thị markdown */}
