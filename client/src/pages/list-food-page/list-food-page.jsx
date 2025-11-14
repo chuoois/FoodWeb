@@ -51,6 +51,7 @@ export function FoodListPage() {
   // ✨ Thêm mới: Dialog chi tiết món ăn
   const [openDetailDialog, setOpenDetailDialog] = useState(false);
   const [formData, setFormData] = useState({});
+  const [categories, setCategories] = useState([]);
   const debouncedSearch = useDebounce(search, 500);
 
 
@@ -62,7 +63,7 @@ export function FoodListPage() {
       price: food.price,
       discount: food.discount || 0,
       is_available: food.is_available,
-      category_id: food.category_id?._id || "",
+      category_name: food.category_id?.name || "",
       options: food.options || [],
     });
     setOpenDetailDialog(true);
@@ -138,12 +139,15 @@ export function FoodListPage() {
     try {
       toast.loading("Đang cập nhật món ăn...", { id: "update-food" });
 
-      const res = await updateFood(selectedFood._id, formData);
+      const payload = {
+        ...formData,
+        category_name: formData.category_name,  // 👈 đảm bảo gửi tên danh mục
+      };
 
-      // Giả sử API trả về { data: {...food} }
+      const res = await updateFood(selectedFood._id, payload);
+
       const updatedFood = res.data?.data || res.data;
 
-      // Cập nhật danh sách món trong state
       setFoods((prev) =>
         prev.map((f) => (f._id === selectedFood._id ? updatedFood : f))
       );
@@ -460,6 +464,16 @@ export function FoodListPage() {
                   value={formData.name}
                   onChange={handleChange}
                   className="w-full border p-2 rounded-md"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Danh mục</label>
+                <input
+                  name="category_name"
+                  value={formData.category_name}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded-md"
+                  placeholder="Nhập danh mục mới..."
                 />
               </div>
 

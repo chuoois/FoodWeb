@@ -8,8 +8,10 @@ import {
   Phone,
   MapPin,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export const FooterHome = () => {
+  const navigate = useNavigate();
   return (
     <footer className="bg-[#FBF8F1] text-[#333]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -102,7 +104,7 @@ export const FooterHome = () => {
               <li className="flex items-start space-x-2">
                 <MapPin className="w-4 h-4 text-primary mt-0.5" />
                 <span className="text-[#555]">
-                  123 Nguyễn Huệ, Quận 1, TP.HCM
+                  Thạch Hòa,Thạch Thất,Hà Nội
                 </span>
               </li>
             </ul>
@@ -115,13 +117,21 @@ export const FooterHome = () => {
               Đăng ký để nhận thông tin khuyến mãi và món ăn mới nhất
             </p>
             <div className="space-y-2">
-              <input
-                placeholder="Nhập email của bạn"
-                className="w-full px-3 py-2 rounded bg-white border border-[#ddd] text-[#333] placeholder:text-[#888] focus:outline-none"
-              />
-              <button className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold py-2 rounded">
+
+              <button
+                className="
+              w-full 
+              bg-gradient-to-r from-orange-500 to-red-500 
+              text-white font-semibold py-2 rounded 
+              transition-all duration-300 
+              hover:scale-105 
+              hover:shadow-lg hover:shadow-orange-400/50 "
+                                                        
+                onClick={() => navigate("/auth/register")}
+              >
                 Đăng ký
               </button>
+
             </div>
           </div>
         </div>

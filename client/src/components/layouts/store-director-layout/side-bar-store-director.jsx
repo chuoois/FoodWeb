@@ -30,7 +30,6 @@ export function SidebarStoreDirectorLayout({ children }) {
   const navigation = [
     { name: "Trang chủ", href: "/store-director/manage/home", icon: Home },
     { name: "Dashboard", href: "/store-director/manage/dashboard", icon: LayoutDashboard },
-    { name: "Doanh thu", href: "/store-director/manage/revenue", icon: BarChart3 },
     { name: "Tạo quản lý", href: "/store-director/manage/create-staff", icon: UserPlus },
     { name: "Quản lý tài khoản", href: "/store-director/manage/account-staff", icon: UsersRound },
     { name: "Tạo cửa hàng", href: "/store-director/manage/create-shop", icon: Store },
@@ -106,22 +105,8 @@ export function SidebarStoreDirectorLayout({ children }) {
 
           {/* Bottom Actions */}
           <div className="border-t border-border p-3 space-y-1">
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 text-muted-foreground hover:bg-accent hover:text-foreground"
-              onClick={handleProfile}
-            >
-              <Settings className="h-5 w-5" />
-              <span className="text-sm font-medium">Cài đặt</span>
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 text-muted-foreground hover:bg-accent hover:text-foreground"
-              onClick={handleSupport}
-            >
-              <HelpCircle className="h-5 w-5" />
-              <span className="text-sm font-medium">Hỗ trợ</span>
-            </Button>
+           
+            
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
