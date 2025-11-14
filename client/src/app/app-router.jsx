@@ -152,11 +152,12 @@ export const router = createBrowserRouter([
         path: "store-director/manage",
         element: <StoreDirectorLayout />,
         children: [
+          { path: "home", element: <  ManagerHomePage /> },
           { path: "dashboard", element: <OwnerDashboardPage /> },
           { path: "create-shop", element: < CreateShopPage /> },
           { path: "create-staff", element: <CreateEmployeePage /> },
           { path: "account-staff", element: < ManageAccount /> },
-          { path: "revenue", element: <div>Revenue</div> },
+         
           { path: "approval", element: < ShopListApprovePage /> },
           { path: "shops/:shopId/detail", element: <ShopDetailPage /> },
         ],
