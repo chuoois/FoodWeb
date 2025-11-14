@@ -90,32 +90,66 @@ async function calculateOrderData(user_id, shop_id, voucher_id, clientDiscount =
 }
 
 // =====================================================
-// ✅ API CHÍNH: CHECKOUT (COD hoặc PayOS)
+// API CHÍNH: CHECKOUT (COD hoặc PayOS)
 // =====================================================
 exports.checkout = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-  
+
   try {
     const { shop_id, delivery_address_id, voucher_id, payment_method, note } = req.body;
-    
+
     if (!req.user || !req.user.accountId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    
+
     const accountId = req.user.accountId;
     const user = await User.findOne({ account_id: accountId });
     if (!user) throw new Error("User not found");
-    
+
+    // BẮT BUỘC: KIỂM TRA HỒ SƠ
+    if (!user.full_name?.trim()) {
+      return res.status(400).json({
+        message: "Vui lòng cập nhật họ tên trong hồ sơ trước khi đặt hàng",
+      });
+    }
+
+    if (!user.phone?.trim()) {
+      return res.status(400).json({
+        message: "Vui lòng cập nhật số điện thoại trong hồ sơ trước khi đặt hàng",
+      });
+    }
+
+    // LẤY ĐỊA CHỈ GIAO HÀNG
     const address = await UserAddress.findOne({
       _id: delivery_address_id,
       user: user._id,
     });
     if (!address) throw new Error("Delivery address not found");
-    
+
+    // LẤY CỬA HÀNG
     const shop = await Shop.findById(shop_id);
     if (!shop) throw new Error("Shop not found");
-    
+
+    // VALIDATE KHOẢNG CÁCH GIAO HÀNG (≤ 5KM)
+    const shopLocation = {
+      lat: shop.gps.coordinates[1],
+      lng: shop.gps.coordinates[0],
+    };
+    const deliveryLocation = {
+      lat: address.gps.coordinates[1],
+      lng: address.gps.coordinates[0],
+    };
+    const distance = calculateDistance(shopLocation, deliveryLocation);
+    const MAX_DISTANCE_KM = 5;
+
+    if (distance > MAX_DISTANCE_KM) {
+      return res.status(400).json({
+        message: `Chỉ giao hàng trong bán kính ${MAX_DISTANCE_KM}km từ quán. Khoảng cách hiện tại: ${distance.toFixed(1)}km`,
+      });
+    }
+
+    // TÍNH TOÁN ĐƠN HÀNG
     const {
       subtotal,
       discount_amount,
@@ -123,10 +157,11 @@ exports.checkout = async (req, res) => {
       total_amount,
       orderDetails,
     } = await calculateOrderData(user._id, shop_id, voucher_id);
-    
+
     const orderCode = Math.floor(Date.now() / 1000);
     const displayOrderCode = `ORD${orderCode}`;
-    
+
+    // TẠO ĐƠN HÀNG
     const order = new Order({
       order_code: displayOrderCode,
       customer_id: user._id,
@@ -142,18 +177,20 @@ exports.checkout = async (req, res) => {
       status: payment_method === "COD" ? "PENDING" : "PENDING_PAYMENT",
       note,
     });
-    
+
     await order.save({ session });
-    
+
+    // LƯU CHI TIẾT
     orderDetails.forEach((d) => (d.order_id = order._id));
     await OrderDetail.insertMany(orderDetails, { session });
-    
-    // ✅ THAY ĐỔI: XÓA HẲN thay vì chuyển sang CHECKOUT
+
+    // XÓA GIỎ HÀNG
     await CartItem.deleteMany(
       { user_id: user._id, shop_id, status: "ACTIVE" },
       { session }
     );
-    
+
+    // TĂNG VOUCHER USED COUNT
     if (voucher_id) {
       await Voucher.findByIdAndUpdate(
         voucher_id,
@@ -161,15 +198,15 @@ exports.checkout = async (req, res) => {
         { session }
       );
     }
-    
-    // ===== Nếu là COD =====
+
+    // COD: HOÀN TẤT
     if (payment_method === "COD") {
       await session.commitTransaction();
       if (orderManager.notifyNewOrder) orderManager.notifyNewOrder(order);
       return res.json({ message: "Order created with COD", order });
     }
-    
-    // ===== Nếu là PayOS =====
+
+    // PAYOS: TẠO LINK THANH TOÁN
     const paymentRes = await payOS.paymentRequests.create({
       orderCode,
       amount: Math.round(total_amount),
@@ -182,9 +219,9 @@ exports.checkout = async (req, res) => {
         price: Math.round(it.unit_price),
       })),
     });
-    
+
     await session.commitTransaction();
-    
+
     return res.json({
       url: paymentRes.checkoutUrl,
       order,
@@ -192,7 +229,7 @@ exports.checkout = async (req, res) => {
     });
   } catch (err) {
     await session.abortTransaction();
-    console.error("❌ Checkout Error:", err);
+    console.error("Checkout Error:", err);
     res.status(500).json({
       message: err.message || "Checkout failed",
       error: process.env.NODE_ENV === "development" ? err.stack : undefined,
@@ -268,3 +305,27 @@ exports.checkoutCancel = async (req, res) => {
     res.status(500).send("Lỗi hủy thanh toán");
   }
 };
+
+// =====================================================
+// HÀM TÍNH KHOẢNG CÁCH (Haversine - km)
+// =====================================================
+function calculateDistance(coord1, coord2) {
+  const toRad = (value) => (value * Math.PI) / 180;
+  const R = 6371; // Bán kính Trái Đất
+
+  const lat1 = coord1.lat, lon1 = coord1.lng;
+  const lat2 = coord2.lat, lon2 = coord2.lng;
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}

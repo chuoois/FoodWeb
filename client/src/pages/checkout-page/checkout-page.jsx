@@ -43,6 +43,7 @@ import {
   searchAddress,
 } from "@/services/goong.service";
 import goongjs from "@goongmaps/goong-js";
+import { getProfile } from "@/services/profile.service"; // Thêm dòng này
 
 const GOONG_MAP_KEY = import.meta.env.VITE_GOONG_MAP_API_KEY;
 const GOONG_REST_KEY = import.meta.env.VITE_GOONG_API_KEY;
@@ -68,6 +69,10 @@ export const CheckOutPage = () => {
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherError, setVoucherError] = useState("");
 
+  const [deliveryDistance, setDeliveryDistance] = useState(null);
+  const [canDeliver, setCanDeliver] = useState(true);
+
+
   // Address
   const [addresses, setAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState("");
@@ -91,6 +96,23 @@ export const CheckOutPage = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+  const [profileChecked, setProfileChecked] = useState(false); // Thêm dòng này
+
+  // GỌI PROFILE ĐỂ BACKEND CHECK (chỉ 1 lần)
+  useEffect(() => {
+    const checkProfile = async () => {
+      if (!user?.id) return;
+      try {
+        await getProfile(); // Gọi API → backend tự check
+        setProfileChecked(true);
+      } catch (err) {
+        // Backend sẽ trả lỗi 400 nếu thiếu tên/sđt → không cần xử lý
+        setProfileChecked(true);
+      }
+    };
+    checkProfile();
+  }, [user?.id]);
 
   const mapRef = useRef(null);
   const markerRef = useRef(null);
@@ -558,6 +580,27 @@ export const CheckOutPage = () => {
     }
   };
 
+  // TÍnh khoảng cách 
+  useEffect(() => {
+    if (!selectedAddressId || !shop?.gps) return;
+
+    const addr = addresses.find((a) => a._id === selectedAddressId);
+    if (!addr?.gps?.coordinates) return;
+
+    const shopLoc = {
+      lat: shop.gps.coordinates[1],
+      lng: shop.gps.coordinates[0],
+    };
+    const userLoc = {
+      lat: addr.gps.coordinates[1],
+      lng: addr.gps.coordinates[0],
+    };
+
+    const distance = calculateDistance(shopLoc, userLoc).toFixed(1);
+    setDeliveryDistance(distance);
+    setCanDeliver(distance <= 5);
+  }, [selectedAddressId, addresses, shop]);
+
   return (
     <div className="bg-gradient-to-b from-orange-50 to-white min-h-screen py-6">
       <div className="max-w-7xl mx-auto px-4">
@@ -623,6 +666,7 @@ export const CheckOutPage = () => {
                 </div>
 
                 {/* Hiển thị địa chỉ đã chọn */}
+                {/* Hiển thị địa chỉ đã chọn */}
                 {selectedAddressId && (
                   <div className="p-4 bg-gray-50 rounded-lg border">
                     <p className="font-medium flex items-center gap-2">
@@ -635,6 +679,26 @@ export const CheckOutPage = () => {
                           ?.address
                       )}
                     </p>
+
+                    {/* THÊM ĐOẠN NÀY VÀO ĐÂY */}
+                    {deliveryDistance !== null && (
+                      <div
+                        className={`p-3 mt-3 rounded-lg border flex items-center gap-2 text-sm
+        ${
+          canDeliver
+            ? "bg-green-50 border-green-200 text-green-700"
+            : "bg-red-50 border-red-200 text-red-700"
+        }
+      `}
+                      >
+                        <Navigation className="w-4 h-4" />
+                        <span>
+                          Khoảng cách: <strong>{deliveryDistance} km</strong>
+                          {!canDeliver && " → Chỉ giao trong 5km"}
+                        </span>
+                      </div>
+                    )}
+                    {/* KẾT THÚC THÊM */}
                   </div>
                 )}
 
@@ -869,11 +933,20 @@ export const CheckOutPage = () => {
 
                 <Button
                   size="lg"
-                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-6"
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500"
                   onClick={handlePlaceOrder}
-                  disabled={loading || !selectedAddressId}
+                  disabled={
+                    loading ||
+                    !selectedAddressId ||
+                    !profileChecked ||
+                    !canDeliver
+                  }
                 >
-                  {loading ? "Đang xử lý..." : "Đặt món ngay"}
+                  {loading
+                    ? "Đang xử lý..."
+                    : !canDeliver
+                    ? `Quá xa (${deliveryDistance}km)`
+                    : "Đặt món ngay"}
                 </Button>
               </CardContent>
             </Card>
