@@ -206,6 +206,24 @@ const updateFood = async (req, res) => {
     if (!food) {
       return res.status(404).json({ message: "Món ăn không tồn tại hoặc không thuộc cửa hàng của bạn" });
     }
+    // ⭐ Thêm phần xử lý category_name
+    if (updateData.category_name) {
+      let category = await FoodCategory.findOne({
+        name: updateData.category_name,
+        shop_id
+      });
+
+      if (!category) {
+        category = await FoodCategory.create({
+          shop_id,
+          name: updateData.category_name
+        });
+      }
+
+      updateData.category_id = category._id;
+      delete updateData.category_name;
+    }
+
 
     // Nếu cập nhật tên món, kiểm tra trùng lặp
     if (updateData.name && updateData.name !== food.name) {

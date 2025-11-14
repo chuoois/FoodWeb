@@ -84,14 +84,18 @@ export function OrdersList() {
     if (!incoming.created_at) incoming.created_at = new Date().toISOString()
 
     setOrders((prev) => {
-      // Nếu prev rỗng, trả về mảng 1 phần tử
       const idx = prev.findIndex((o) => o._id === incoming._id)
+
+      // Nếu là đơn hàng mới hoàn toàn → chuyển về page 1
+      if (idx === -1) {
+        setPage(1)
+      }
+
       if (idx !== -1) {
         const clone = [...prev]
         clone[idx] = { ...clone[idx], ...incoming }
         return clone.sort(sortByCreatedDesc)
       } else {
-        // push mới lên đầu, giữ tối đa 200 item để tránh phình bộ nhớ
         const merged = [incoming, ...prev]
         merged.sort(sortByCreatedDesc)
         return merged.slice(0, 200)
@@ -170,48 +174,48 @@ export function OrdersList() {
     mountedRef.current = true
 
     // Kết nối SSE, truyền callback merge
-   const es = connectOrderSSE((msg) => {
-  try {
-    if (!msg) return
+    const es = connectOrderSSE((msg) => {
+      try {
+        if (!msg) return
 
-    switch (msg.type) {
-      case "orders": {
-        const normalized = msg.data
-          .filter(Boolean)
-          .map((o) => ({ ...o, created_at: o.created_at || new Date().toISOString() }))
-        setOrders((prev) => {
-          const map = new Map(prev.map((p) => [p._id, p]))
-          normalized.forEach((o) => map.set(o._id, { ...(map.get(o._id) || {}), ...o }))
-          return Array.from(map.values()).sort(sortByCreatedDesc)
-        })
-        break
-      }
+        switch (msg.type) {
+          case "orders": {
+            const normalized = msg.data
+              .filter(Boolean)
+              .map((o) => ({ ...o, created_at: o.created_at || new Date().toISOString() }))
+            setOrders((prev) => {
+              const map = new Map(prev.map((p) => [p._id, p]))
+              normalized.forEach((o) => map.set(o._id, { ...(map.get(o._id) || {}), ...o }))
+              return Array.from(map.values()).sort(sortByCreatedDesc)
+            })
+            break
+          }
 
-      case "new_order":
-      case "order_updated": {
-        const incoming = msg.data
-        if (Array.isArray(incoming)) {
-          incoming.forEach((o) => mergeOrderFromSSE(o))
-        } else {
-          mergeOrderFromSSE(incoming)
+          case "new_order":
+          case "order_updated": {
+            const incoming = msg.data
+            if (Array.isArray(incoming)) {
+              incoming.forEach((o) => mergeOrderFromSSE(o))
+            } else {
+              mergeOrderFromSSE(incoming)
+            }
+            break
+          }
+
+          default: {
+            // fallback cho trường hợp event không có type
+            const incoming = msg.data ?? msg
+            if (Array.isArray(incoming)) {
+              incoming.forEach((o) => mergeOrderFromSSE(o))
+            } else {
+              mergeOrderFromSSE(incoming)
+            }
+          }
         }
-        break
+      } catch (err) {
+        console.error("⚠️ Lỗi xử lý SSE message:", err)
       }
-
-      default: {
-        // fallback cho trường hợp event không có type
-        const incoming = msg.data ?? msg
-        if (Array.isArray(incoming)) {
-          incoming.forEach((o) => mergeOrderFromSSE(o))
-        } else {
-          mergeOrderFromSSE(incoming)
-        }
-      }
-    }
-  } catch (err) {
-    console.error("⚠️ Lỗi xử lý SSE message:", err)
-  }
-})
+    })
 
 
     eventSourceRef.current = es

@@ -27,7 +27,6 @@ export function ManagerSidebar({ children }) {
 
   const navigation = [
     { name: "Trang chủ", href: "/manager-staff/manage/home", icon: Home },
-    { name: "Dashboard", href: "#", icon: LayoutDashboard },
     { name: "Danh sách đồ ăn", href: "/manager-staff/manage/list-food", icon: List },
     { name: "Tạo món ăn", href: "/manager-staff/manage/create-food", icon: Plus },
     { name: "Danh sách đơn hàng", href: "/manager-staff/manage/list-order", icon: Package },
@@ -107,22 +106,8 @@ export function ManagerSidebar({ children }) {
 
           {/* Bottom Actions */}
           <div className="border-t border-border p-3 space-y-1">
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 text-muted-foreground hover:bg-accent hover:text-foreground"
-              onClick={handleProfile}
-            >
-              <Settings className="h-5 w-5" />
-              <span className="text-sm font-medium">Cài đặt</span>
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 text-muted-foreground hover:bg-accent hover:text-foreground"
-              onClick={handleSupport}
-            >
-              <HelpCircle className="h-5 w-5" />
-              <span className="text-sm font-medium">Hỗ trợ</span>
-            </Button>
+           
+            
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
