@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Store, Calendar, DollarSign, ChevronDown, ChevronUp, Download, CheckCircle2, Clock } from "lucide-react"
+import { Store, Calendar, DollarSign, ChevronDown, ChevronUp, Download, CheckCircle2 } from "lucide-react"
 import { format, startOfMonth, endOfMonth, isWithinInterval } from "date-fns"
 import { getAllCompletedOrders } from "@/services/order.service"
 import * as XLSX from "xlsx"
@@ -56,7 +56,7 @@ export function FinanceShopsPage() {
         setLoading(true)
         const response = await getAllCompletedOrders({ limit: 10000 })
         const orders = response.data.data.filter(
-          (o) => o.shop_id && o.status === "DELIVERED"
+          (o) => o.shop_id && o.status === "DELIVERED" && o.payment_method === "PAYOS" // CHỈ LẤY ĐƠN PAYOS
         )
 
         const shopMap = new Map()
@@ -66,7 +66,7 @@ export function FinanceShopsPage() {
           const date = new Date(order.createdAt)
           const yearMonth = format(date, "yyyy-MM")
           const day = format(date, "yyyy-MM-dd")
-          const amount = order.subtotal
+          const amount = order.subtotal // chỉ dùng subtotal
 
           const shopKey = shop._id
           if (!shopMap.has(shopKey)) {
@@ -188,7 +188,7 @@ export function FinanceShopsPage() {
             "Chủ quán": shop.ownerName,
             "Tháng": format(new Date(month.yearMonth + "-01"), "MM/yyyy"),
             "Ngày": format(new Date(day.date), "dd/MM/yyyy"),
-            "Doanh thu (subtotal)": day.amount,
+            "Doanh thu PAYOS (subtotal)": day.amount,
             "Trạng thái chuyển": status?.confirmed ? "ĐÃ CHUYỂN" : "CHƯA CHUYỂN",
             "Ngày chuyển": status?.confirmed ? format(new Date(status.date), "dd/MM/yyyy HH:mm") : "",
           })
@@ -198,8 +198,8 @@ export function FinanceShopsPage() {
 
     const ws = XLSX.utils.json_to_sheet(data)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "HoanTienShop")
-    XLSX.writeFile(wb, `Hoan_Tien_Shop_${format(new Date(), "yyyyMMdd_HHmm")}.xlsx`)
+    XLSX.utils.book_append_sheet(wb, ws, "HoanTienShop_PAYOS")
+    XLSX.writeFile(wb, `Hoan_Tien_Shop_PAYOS_${format(new Date(), "yyyyMMdd_HHmm")}.xlsx`)
   }
 
   const formatCurrency = (amount) =>
@@ -254,7 +254,7 @@ export function FinanceShopsPage() {
             <div className="flex items-end">
               <Button onClick={exportToExcel} className="w-full">
                 <Download className="w-4 h-4 mr-2" />
-                Xuất Excel
+                Xuất Excel (PAYOS)
               </Button>
             </div>
           </div>
@@ -266,7 +266,7 @@ export function FinanceShopsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-3 text-2xl">
             <DollarSign className="w-8 h-8" />
-            Tổng tiền cần hoàn trả
+            Tổng tiền cần hoàn trả (chỉ PAYOS)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -287,7 +287,7 @@ export function FinanceShopsPage() {
         {filteredData.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center text-gray-500">
-              Không có dữ liệu trong khoảng thời gian này
+              Không có đơn PAYOS nào trong khoảng thời gian này
             </CardContent>
           </Card>
         ) : (
@@ -320,7 +320,7 @@ export function FinanceShopsPage() {
                         <p className="text-2xl font-bold text-green-600">
                           {formatCurrency(shop.total)}
                         </p>
-                        <p className="text-xs text-gray-500">Tổng cần hoàn</p>
+                        <p className="text-xs text-gray-500">Tổng PAYOS cần hoàn</p>
                       </div>
 
                       {/* Trạng thái + Nút xác nhận */}

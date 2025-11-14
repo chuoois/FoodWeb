@@ -33,7 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Pagination } from "@/components/ui/pagination"
-import { CheckSquare, Search, Calendar, Store, User, Package } from "lucide-react"
+import { CheckSquare, Search, Calendar, Store, User, Package, DollarSign } from "lucide-react"
 import { getAllCompletedOrders } from "@/services/order.service"
 
 const ITEMS_PER_PAGE = 10
@@ -59,6 +59,10 @@ export function FinanceOrdersPage() {
 
   const formatDate = (date) =>
     format(new Date(date), "dd/MM/yyyy HH:mm")
+
+  // Helper: class màu cho COD / PAYOS
+  const amountColorClass = (method) =>
+    method === "COD" ? "text-red-600" : "text-green-600"
 
   // Fetch data
   useEffect(() => {
@@ -126,6 +130,19 @@ export function FinanceOrdersPage() {
 
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE)
 
+  // Tổng hợp doanh thu theo phương thức
+  const { codTotal, payosTotal } = useMemo(() => {
+    const cod = filteredOrders
+      .filter((o) => o.payment_method === "COD")
+      .reduce((sum, o) => sum + o.total_amount, 0)
+
+    const payos = filteredOrders
+      .filter((o) => o.payment_method === "PAYOS")
+      .reduce((sum, o) => sum + o.total_amount, 0)
+
+    return { codTotal: cod, payosTotal: payos }
+  }, [filteredOrders])
+
   if (loading) {
     return (
       <div className="p-6 space-y-6">
@@ -157,13 +174,25 @@ export function FinanceOrdersPage() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <CheckSquare className="w-7 h-7 text-green-500" />
-          Đơn hàng hoàn thành
-          <Badge variant="secondary" className="ml-2">
-            {filteredOrders.length} đơn
-          </Badge>
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <CheckSquare className="w-7 h-7 text-green-500" />
+            Đơn hàng hoàn thành
+            <Badge variant="secondary" className="ml-2">
+              {filteredOrders.length} đơn
+            </Badge>
+          </h1>
+          <div className="flex gap-3 mt-2 text-sm">
+            <Badge className="bg-red-500 text-white flex items-center gap-1">
+              <DollarSign className="w-3 h-3" />
+              COD: {formatVND(codTotal)}
+            </Badge>
+            <Badge className="bg-green-500 text-white flex items-center gap-1">
+              <DollarSign className="w-3 h-3" />
+              PAYOS: {formatVND(payosTotal)}
+            </Badge>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
@@ -171,7 +200,7 @@ export function FinanceOrdersPage() {
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top- 3 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Tìm mã đơn, khách hàng..."
                 value={searchTerm}
@@ -211,12 +240,15 @@ export function FinanceOrdersPage() {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" onClick={() => {
-              setSearchTerm("")
-              setSelectedShop("all")
-              setDateFilter("all")
-              setCurrentPage(1)
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm("")
+                setSelectedShop("all")
+                setDateFilter("all")
+                setCurrentPage(1)
+              }}
+            >
               Xóa bộ lọc
             </Button>
           </div>
@@ -231,6 +263,7 @@ export function FinanceOrdersPage() {
               <TableHeader>
                 <TableRow className="bg-gray-50">
                   <TableHead className="font-bold">Mã đơn</TableHead>
+                  <TableHead className="font-bold">Đơn</TableHead>
                   <TableHead>Cửa hàng</TableHead>
                   <TableHead>Khách hàng</TableHead>
                   <TableHead>Ngày đặt</TableHead>
@@ -241,7 +274,7 @@ export function FinanceOrdersPage() {
               <TableBody>
                 {paginatedOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                       Không tìm thấy đơn hàng nào
                     </TableCell>
                   </TableRow>
@@ -258,6 +291,21 @@ export function FinanceOrdersPage() {
                       <TableCell className="font-mono font-semibold text-blue-600">
                         {order.order_code}
                       </TableCell>
+
+                      {/* CỘT ĐƠN */}
+                      <TableCell>
+                        <Badge
+                          variant={order.payment_method === "COD" ? "destructive" : "default"}
+                          className={
+                            order.payment_method === "COD"
+                              ? "bg-red-500 text-white"
+                              : "bg-green-500 text-white"
+                          }
+                        >
+                          {order.payment_method === "COD" ? "COD" : "PAYOS"}
+                        </Badge>
+                      </TableCell>
+
                       <TableCell className="max-w-xs">
                         <div className="flex items-center gap-2">
                           <Store className="w-4 h-4 text-gray-400" />
@@ -266,21 +314,22 @@ export function FinanceOrdersPage() {
                           </span>
                         </div>
                       </TableCell>
+
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <User className="w-4 h-4 text-gray-400" />
                           {order.customer_id?.full_name || "Khách lẻ"}
                         </div>
                       </TableCell>
+
                       <TableCell className="whitespace-nowrap text-sm">
                         {formatDate(order.createdAt)}
                       </TableCell>
+
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Package className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm">
-                            {order.items.length} món
-                          </span>
+                          <span className="text-sm">{order.items.length} món</span>
                           {order.items.length > 0 && (
                             <img
                               src={order.items[0].food_image_url}
@@ -290,7 +339,13 @@ export function FinanceOrdersPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right font-bold text-lg text-green-600">
+
+                      {/* CỘT TỔNG TIỀN – MÀU ĐỎ CHO COD */}
+                      <TableCell
+                        className={`text-right font-bold text-lg ${amountColorClass(
+                          order.payment_method
+                        )}`}
+                      >
                         {formatVND(order.total_amount)}
                       </TableCell>
                     </TableRow>
@@ -341,8 +396,7 @@ export function FinanceOrdersPage() {
             <div className="space-y-6 mt-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">Cửa hàng:</span>{" "}
-                  {selectedOrder.shop_id?.name}
+                  <span className="font-medium">Cửa hàng:</span> {selectedOrder.shop_id?.name}
                 </div>
                 <div>
                   <span className="font-medium">Khách hàng:</span>{" "}
@@ -353,11 +407,42 @@ export function FinanceOrdersPage() {
                   {formatDate(selectedOrder.createdAt)}
                 </div>
                 <div>
+                  <span className="font-medium">Phương thức:</span>{" "}
+                  <Badge
+                    variant={selectedOrder.payment_method === "COD" ? "destructive" : "default"}
+                    className={
+                      selectedOrder.payment_method === "COD"
+                        ? "bg-red-500 text-white"
+                        : "bg-green-500 text-white"
+                    }
+                  >
+                    {selectedOrder.payment_method === "COD" ? "COD (Quán thu)" : "PAYOS (Web thu)"}
+                  </Badge>
+                </div>
+                <div>
                   <span className="font-medium">Phí ship:</span>{" "}
                   {formatVND(selectedOrder.shipping_fee)}
                 </div>
+                <div>
+                  <span className="font-medium">Trạng thái TT:</span>{" "}
+                  <Badge
+                    variant={
+                      selectedOrder.payment_status === "PAID" ||
+                      selectedOrder.payment_status === "COD_PENDING"
+                        ? "default"
+                        : "secondary"
+                    }
+                  >
+                    {selectedOrder.payment_status === "PAID"
+                      ? "Đã thanh toán"
+                      : selectedOrder.payment_status === "COD_PENDING"
+                      ? "Chờ thu hộ"
+                      : selectedOrder.payment_status}
+                  </Badge>
+                </div>
               </div>
 
+              {/* Danh sách món ăn */}
               <div>
                 <h4 className="font-semibold mb-3 flex items-center gap-2">
                   <Package className="w-5 h-5" />
@@ -400,7 +485,8 @@ export function FinanceOrdersPage() {
               <div className="border-t pt-4">
                 <div className="flex justify-between text-lg font-bold">
                   <span>Tổng cộng</span>
-                  <span className="text-green-600">
+                  {/* MÀU ĐỎ CHO COD trong dialog (tùy chọn) */}
+                  <span className={amountColorClass(selectedOrder.payment_method)}>
                     {formatVND(selectedOrder.total_amount)}
                   </span>
                 </div>
