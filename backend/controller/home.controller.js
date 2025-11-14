@@ -13,6 +13,47 @@ const DEFAULT_LOCATION = {
     lng: parseFloat(process.env.DEFAULT_LNG || '105.5262')
 };
 
+const getShopsByRate = async (req, res) => {
+  try {
+    // 1️⃣ Lấy danh sách shop active, sort theo rating giảm dần
+    const shops = await Shop.find({ status: "ACTIVE" })
+      .sort({ rating: -1 })
+      .limit(20)
+      .lean();
+
+    // 2️⃣ Xác định user từ accountId
+    let favoriteShopIds = [];
+    if (req.user && req.user.accountId) {
+      const accountId = req.user.accountId;
+      const user = await User.findOne({ account_id: accountId });
+
+      if (user) {
+        // 3️⃣ Lấy danh sách shop yêu thích
+        const favorites = await Favorite.find({ user: user._id })
+          .select("shop")
+          .lean();
+        favoriteShopIds = favorites.map(f => f.shop.toString());
+      }
+    }
+
+    // 4️⃣ Gắn thêm cờ isFavorite
+    const shopsWithFavorite = shops.map(shop => ({
+      ...shop,
+      isFavorite: favoriteShopIds.includes(shop._id.toString()),
+    }));
+
+    // 5️⃣ Trả về kết quả
+    res.json({
+      success: true,
+      count: shopsWithFavorite.length,
+      shops: shopsWithFavorite,
+    });
+  } catch (err) {
+    console.error("getShopsByRate error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 const getNearbyShopsByCoords = async (req, res) => {
   try {
     const limit = 20;
@@ -55,47 +96,6 @@ const getNearbyShopsByCoords = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-const getShopsByRate = async (req, res) => {
-  try {
-    // 1️⃣ Lấy danh sách shop active, sort theo rating giảm dần
-    const shops = await Shop.find({ status: "ACTIVE" })
-      .sort({ rating: -1 })
-      .limit(20)
-      .lean();
-
-    // 2️⃣ Xác định user từ accountId
-    let favoriteShopIds = [];
-    if (req.user && req.user.accountId) {
-      const accountId = req.user.accountId;
-      const user = await User.findOne({ account_id: accountId });
-
-      if (user) {
-        // 3️⃣ Lấy danh sách shop yêu thích
-        const favorites = await Favorite.find({ user: user._id })
-          .select("shop")
-          .lean();
-        favoriteShopIds = favorites.map(f => f.shop.toString());
-      }
-    }
-
-    // 4️⃣ Gắn thêm cờ isFavorite
-    const shopsWithFavorite = shops.map(shop => ({
-      ...shop,
-      isFavorite: favoriteShopIds.includes(shop._id.toString()),
-    }));
-
-    // 5️⃣ Trả về kết quả
-    res.json({
-      success: true,
-      count: shopsWithFavorite.length,
-      shops: shopsWithFavorite,
-    });
-  } catch (err) {
-    console.error("getShopsByRate error:", err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
 
 const searchHome = async (req, res) => {
     try {
@@ -146,7 +146,6 @@ const getShopsByType = async (req, res) => {
         res.status(500).json({ success: false, message: err.message });
     }
 };
-
 
 const getShopsById = async (req, res) => {
     try {
@@ -283,59 +282,150 @@ const getRandomShops = async (req, res) => {
 };
 
 
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3;
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+};
+
 const searchShopsAndFoods = async (req, res) => {
   try {
-    const { query } = req.query;
-    if (!query)
-      return res.status(400).json({ success: false, message: "Thiếu từ khóa tìm kiếm" });
+    const { query, lat, lng } = req.query;
 
-    // === TÌM SHOP THEO TÊN ===
-    const shops = await Shop.find({
+    if (!query || query.trim() === "") {
+      return res.status(400).json({ success: false, message: "Thiếu từ khóa tìm kiếm" });
+    }
+
+    const userLat = lat ? parseFloat(lat) : null;
+    const userLng = lng ? parseFloat(lng) : null;
+
+    if ((lat && isNaN(userLat)) || (lng && isNaN(userLng))) {
+      return res.status(400).json({ success: false, message: "Tọa độ không hợp lệ" });
+    }
+
+    const hasLocation = userLat !== null && userLng !== null;
+    const radiusInMeters = 5000;
+
+    // 1. Tìm shop theo tên + trong 5km
+    let shopFilter = {
       name: { $regex: query, $options: "i" },
-      status: "ACTIVE"
-    })
-      .select("name logoUrl coverUrl rating")
+      status: "ACTIVE",
+      isDeleted: { $ne: true },
+    };
+
+    if (hasLocation) {
+      shopFilter.gps = {
+        $near: {
+          $geometry: { type: "Point", coordinates: [userLng, userLat] },
+          $maxDistance: radiusInMeters,
+        },
+      };
+    }
+
+    const shops = await Shop.find(shopFilter)
+      .select("name logoUrl coverUrl rating address gps")
       .limit(5)
       .lean();
 
-    const formattedShops = shops.map((s) => ({
-      type: "shop",
-      id: s._id,
-      name: s.name,
-      image: s.logoUrl || s.coverUrl || "/placeholder.svg",
-      rating: s.rating ?? 0
-    }));
+    const formattedShops = shops.map((s) => {
+      let distance = null;
+      if (hasLocation && s.gps?.coordinates) {
+        const [shopLng, shopLat] = s.gps.coordinates;
+        distance = Math.round(calculateDistance(userLat, userLng, shopLat, shopLng));
+      }
+      return {
+        type: "shop",
+        id: s._id,
+        name: s.name,
+        image: s.logoUrl || s.coverUrl || "/placeholder.svg",
+        rating: s.rating ?? 0,
+        address: s.address ? `${s.address.street}, ${s.address.ward}, ${s.address.district}` : "",
+        distance,
+      };
+    });
 
-    // === TÌM FOOD THEO TÊN HOẶC MÔ TẢ ===
-    const foods = await Food.find({
+    // 2. Tìm food: CHỈ từ shop trong 5km + có tên khớp
+    let validShopIds = shops.map(s => s._id);
+
+    if (hasLocation && validShopIds.length < 5) {
+      const nearbyShops = await Shop.find({
+        status: "ACTIVE",
+        isDeleted: { $ne: true },
+        name: { $regex: query, $options: "i" }, // BẮT BUỘC
+        gps: {
+          $near: {
+            $geometry: { type: "Point", coordinates: [userLng, userLat] },
+            $maxDistance: radiusInMeters,
+          },
+        },
+      })
+        .select("_id")
+        .limit(20)
+        .lean();
+
+      validShopIds = [...new Set([...validShopIds, ...nearbyShops.map(s => s._id)])];
+    }
+
+    const foodFilter = {
       $or: [
         { name: { $regex: query, $options: "i" } },
         { description: { $regex: query, $options: "i" } }
       ],
-      is_available: true
-    })
+      is_available: true,
+      isDeleted: { $ne: true },
+    };
+
+    if (hasLocation && validShopIds.length > 0) {
+      foodFilter.shop_id = { $in: validShopIds };
+    }
+
+    const foods = await Food.find(foodFilter)
       .select("name image_url price discount shop_id")
-      .populate("shop_id", "name")
-      .limit(5)
+      .populate({
+        path: "shop_id",
+        select: "name gps address",
+        match: { status: "ACTIVE", isDeleted: { $ne: true } },
+      })
+      .limit(10)
       .lean();
 
-    const formattedFoods = foods.map((f) => ({
-      type: "food",
-      id: f._id,
-      name: f.name,
-      image: f.image_url || "/placeholder.svg",
-      price: f.price,
-      discount: f.discount,
-      shopName: f.shop_id?.name || "Không rõ",
-      shopId: f.shop_id?._id,
-    }));
+    const formattedFoods = foods
+      .filter(f => f.shop_id !== null)
+      .slice(0, 5)
+      .map((f) => {
+        let distance = null;
+        if (hasLocation && f.shop_id?.gps?.coordinates) {
+          const [shopLng, shopLat] = f.shop_id.gps.coordinates;
+          distance = Math.round(calculateDistance(userLat, userLng, shopLat, shopLng));
+        }
+        return {
+          type: "food",
+          id: f._id,
+          name: f.name,
+          image: f.image_url || "/placeholder.svg",
+          price: f.price,
+          discount: f.discount,
+          shopName: f.shop_id.name,
+          shopId: f.shop_id._id,
+          distance,
+        };
+      });
 
     res.status(200).json({
       success: true,
-      data: [...formattedShops, ...formattedFoods]
+      data: [...formattedShops, ...formattedFoods],
+      userLocation: hasLocation ? { lat: userLat, lng: userLng } : null,
     });
   } catch (error) {
-    console.error("Lỗi khi tìm kiếm:", error);
+    console.error("Lỗi tìm kiếm:", error);
     res.status(500).json({ success: false, message: "Lỗi server" });
   }
 };

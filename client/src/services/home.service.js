@@ -32,8 +32,9 @@ export const getShopById = (shopId) => {
     return api.get(`home/shop/${shopId}`);
 }
 
-export const searchShopsAndFoods = (query) => {
-    return api.get("home/search-all", { params: { query } });
+// home.service.js
+export const searchShopsAndFoods = (searchParams) => {
+  return api.get("home/search-all", { params: searchParams });
 };
 
 export const searchHome = (q, lat, lng, options) => {
