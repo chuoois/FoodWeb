@@ -83,7 +83,6 @@ export const HomePage = () => {
       .then((res) => {
         if (res.data?.shops) {
           setPopularShops(res.data.shops);
-          // ✅ Đồng bộ favorites từ API (shop nào isFavorite = true)
           const favs = res.data.shops
             .filter((s) => s.isFavorite)
             .map((s) => s._id);
@@ -93,7 +92,68 @@ export const HomePage = () => {
       .catch((err) => console.error("Lỗi tải quán phổ biến:", err));
   }, []);
 
-  // === TÌM KIẾM GỢI Ý ĐỊA CHỈ (chỉ khi >= 2 ký tự) ===
+  // === TỰ ĐỘNG TẢI QUÁN GẦN KHI VÀO TRANG ===
+  useEffect(() => {
+    const initLocationAndShops = async () => {
+      let lat, lng;
+      const savedLocation = sessionStorage.getItem("userLocation");
+      const savedAddress = sessionStorage.getItem("userAddress");
+
+      if (savedLocation) {
+        try {
+          const loc = JSON.parse(savedLocation);
+          lat = loc.lat;
+          lng = loc.lng;
+          if (savedAddress) setAddress(savedAddress);
+        } catch (e) {
+          console.error("Lỗi parse userLocation:", e);
+        }
+      }
+
+      // Nếu không có tọa độ → dùng mặc định
+      if (!lat || !lng) {
+        lat = parseFloat(import.meta.env.VITE_DEFAULT_LAT || "21.0135");
+        lng = parseFloat(import.meta.env.VITE_DEFAULT_LNG || "105.5262");
+
+        try {
+          const addrData = await getAddressFromCoordinates(lat, lng);
+          const fullAddr = [
+            addrData.street,
+            addrData.ward,
+            addrData.district,
+            addrData.city,
+          ].filter(Boolean).join(", ");
+          setAddress(fullAddr);
+          sessionStorage.setItem("userAddress", fullAddr);
+        } catch (err) {
+          console.error("Lỗi lấy địa chỉ mặc định:", err);
+          const fallback = "Khu vực Hà Nội";
+          setAddress(fallback);
+          sessionStorage.setItem("userAddress", fallback);
+        }
+
+        sessionStorage.setItem("userLocation", JSON.stringify({ lat, lng }));
+      }
+
+      // Gọi API lấy quán gần
+      try {
+        const res = await getNearbyShops(lat, lng);
+        if (res.data?.shops) {
+          setNearbyShops(res.data.shops);
+          const favs = res.data.shops
+            .filter((s) => s.isFavorite)
+            .map((s) => s._id);
+          setFavorites(favs);
+        }
+      } catch (err) {
+        console.error("Lỗi load nearby shops ban đầu:", err);
+      }
+    };
+
+    initLocationAndShops();
+  }, []);
+
+  // === TÌM KIẾM GỢI Ý ĐỊA CHỈ ===
   useEffect(() => {
     const query = debouncedAddress.trim();
 
@@ -146,18 +206,12 @@ export const HomePage = () => {
     setLoading(true);
 
     try {
-      // Lấy chi tiết địa điểm
       const detailResponse = await fetch(
-        `https://rsapi.goong.io/Place/Detail?place_id=${
-          suggestion.place_id
-        }&api_key=${import.meta.env.VITE_GOONG_API_KEY}`
+        `https://rsapi.goong.io/Place/Detail?place_id=${suggestion.place_id}&api_key=${import.meta.env.VITE_GOONG_API_KEY}`
       );
       const detailData = await detailResponse.json();
 
-      if (
-        detailData.status !== "OK" ||
-        !detailData.result?.geometry?.location
-      ) {
+      if (detailData.status !== "OK" || !detailData.result?.geometry?.location) {
         throw new Error("Không lấy được tọa độ");
       }
 
@@ -165,28 +219,21 @@ export const HomePage = () => {
       const loc = { lat, lng };
       sessionStorage.setItem("userLocation", JSON.stringify(loc));
 
-      // Lấy địa chỉ chi tiết từ tọa độ
       const addressData = await getAddressFromCoordinates(lat, lng);
       const fullAddress = [
         addressData.street,
         addressData.ward,
         addressData.district,
         addressData.city,
-      ]
-        .filter(Boolean)
-        .join(", ");
+      ].filter(Boolean).join(", ");
 
       setAddress(fullAddress);
       sessionStorage.setItem("userAddress", fullAddress);
 
-      // Lấy quán gần
       const res = await getNearbyShops(lat, lng);
       if (res.data?.shops) {
         setNearbyShops(res.data.shops);
-        // ✅ Đồng bộ favorites từ shop gần
-        const favs = res.data.shops
-          .filter((s) => s.isFavorite)
-          .map((s) => s._id);
+        const favs = res.data.shops.filter((s) => s.isFavorite).map((s) => s._id);
         setFavorites(favs);
       }
     } catch (err) {
@@ -222,9 +269,7 @@ export const HomePage = () => {
             addressData.ward,
             addressData.district,
             addressData.city,
-          ]
-            .filter(Boolean)
-            .join(", ");
+          ].filter(Boolean).join(", ");
 
           setAddress(fullAddress);
           sessionStorage.setItem("userAddress", fullAddress);
@@ -232,10 +277,7 @@ export const HomePage = () => {
           const res = await getNearbyShops(lat, lng);
           if (res.data?.shops) {
             setNearbyShops(res.data.shops);
-            // ✅ Đồng bộ favorites từ shop gần
-            const favs = res.data.shops
-              .filter((s) => s.isFavorite)
-              .map((s) => s._id);
+            const favs = res.data.shops.filter((s) => s.isFavorite).map((s) => s._id);
             setFavorites(favs);
           }
         } catch (err) {
@@ -258,21 +300,10 @@ export const HomePage = () => {
     );
   }, []);
 
-  // === KHỞI TẠO TỪ SESSIONSTORAGE ===
-  useEffect(() => {
-    const savedAddr = sessionStorage.getItem("userAddress");
-    if (savedAddr) setAddress(savedAddr);
-  }, []);
-
+  // === THÊM/YÊU THÍCH ===
   const toggleFavorite = async (shopId) => {
     const token = localStorage.getItem("token");
-
-    if (
-      !token ||
-      token === "undefined" ||
-      token === "null" ||
-      token.trim() === ""
-    ) {
+    if (!token || token === "undefined" || token === "null" || token.trim() === "") {
       toast.error("Vui lòng đăng nhập để thêm yêu thích");
       return;
     }
@@ -313,8 +344,7 @@ export const HomePage = () => {
           <div className="space-y-8">
             <div className="space-y-4">
               <h1 className="text-5xl lg:text-6xl font-bold text-foreground leading-tight">
-                Giao hàng nhanh,{" "}
-                <span className="text-orange-500">mọi lúc!</span>
+                Giao hàng nhanh, <span className="text-orange-500">mọi lúc!</span>
               </h1>
               <p className="text-lg text-muted-foreground leading-relaxed max-w-lg">
                 {heroContent.description}
@@ -348,17 +378,12 @@ export const HomePage = () => {
                 </button>
               </div>
 
-              {/* Thông báo input ngắn */}
-              {address.length > 0 &&
-                address.length < 2 &&
-                !loading &&
-                !isLocating && (
-                  <div className="text-xs text-gray-500 px-2 mt-1">
-                    Nhập ít nhất 2 ký tự để tìm kiếm...
-                  </div>
-                )}
+              {address.length > 0 && address.length < 2 && !loading && !isLocating && (
+                <div className="text-xs text-gray-500 px-2 mt-1">
+                  Nhập ít nhất 2 ký tự để tìm kiếm...
+                </div>
+              )}
 
-              {/* Loading */}
               {(loading || isLocating) && (
                 <div className="text-sm text-orange-500 px-2 flex items-center gap-2">
                   <div className="animate-spin w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full"></div>
@@ -366,7 +391,6 @@ export const HomePage = () => {
                 </div>
               )}
 
-              {/* Gợi ý */}
               {suggestions.length > 0 && !loading && !isLocating && (
                 <ul className="absolute z-20 w-full bg-white border rounded-lg shadow-xl mt-1 max-h-64 overflow-y-auto">
                   {suggestions.map((s) => (
@@ -375,30 +399,22 @@ export const HomePage = () => {
                       onClick={() => handleSelect(s)}
                       className="px-4 py-3 hover:bg-orange-50 cursor-pointer border-b last:border-b-0 transition"
                     >
-                      <div className="font-medium text-gray-800">
-                        {s.main_text}
-                      </div>
+                      <div className="font-medium text-gray-800">{s.main_text}</div>
                       {s.secondary_text && (
-                        <div className="text-xs text-gray-500">
-                          {s.secondary_text}
-                        </div>
+                        <div className="text-xs text-gray-500">{s.secondary_text}</div>
                       )}
                     </li>
                   ))}
                 </ul>
               )}
 
-              {/* Không có gợi ý */}
               {suggestions.length === 0 &&
                 debouncedAddress.length >= 2 &&
                 !loading &&
                 !isLocating && (
                   <div className="text-sm text-gray-500 px-2 italic">
                     Không tìm thấy. Hãy thử nhập chi tiết hơn hoặc
-                    <button
-                      onClick={handleGetLocation}
-                      className="underline ml-1 text-orange-500"
-                    >
+                    <button onClick={handleGetLocation} className="underline ml-1 text-orange-500">
                       dùng vị trí hiện tại
                     </button>
                   </div>
@@ -408,20 +424,12 @@ export const HomePage = () => {
 
           {/* Carousel */}
           <div className="relative">
-            <Carousel
-              opts={{ align: "center", loop: true }}
-              plugins={[Autoplay({ delay: 3500 })]}
-              className="w-full"
-            >
+            <Carousel opts={{ align: "center", loop: true }} plugins={[Autoplay({ delay: 3500 })]} className="w-full">
               <CarouselContent>
                 {heroSlides.map((slide) => (
                   <CarouselItem key={slide.id}>
                     <div className="relative w-full h-96 rounded-3xl overflow-hidden shadow-2xl shadow-orange-200 transform hover:scale-105 transition-transform duration-500">
-                      <img
-                        src={slide.image}
-                        alt={slide.alt}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={slide.image} alt={slide.alt} className="w-full h-full object-cover" />
                     </div>
                   </CarouselItem>
                 ))}
@@ -435,9 +443,7 @@ export const HomePage = () => {
 
       {/* Danh mục */}
       <section className="max-w-7xl mx-auto px-6 py-10">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">
-          Bộ sưu tập món ăn
-        </h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Bộ sưu tập món ăn</h2>
         <div className="grid grid-cols-2 gap-4">
           {foodCategories.map((cat) => (
             <Link
@@ -451,13 +457,9 @@ export const HomePage = () => {
                   alt={cat.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
-                <div
-                  className={`absolute inset-0 bg-gradient-to-r ${cat.color} opacity-60`}
-                />
+                <div className={`absolute inset-0 bg-gradient-to-r ${cat.color} opacity-60`} />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <h3 className="text-white text-xl font-bold px-4">
-                    {cat.name}
-                  </h3>
+                  <h3 className="text-white text-xl font-bold px-4">{cat.name}</h3>
                 </div>
               </div>
             </Link>
@@ -465,14 +467,43 @@ export const HomePage = () => {
         </div>
       </section>
 
-      {/* Quán ăn gần bạn */}
-      {address && nearbyShops.length > 0 ? (
+      {/* === QUÁN ĂN GẦN BẠN / QUÁN NGON HOT === */}
+      {sessionStorage.getItem("userLocation") ? (
+        <>
+          {nearbyShops.length > 0 ? (
+            <section className="max-w-7xl mx-auto px-6 py-10">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">Quán ăn gần bạn</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {nearbyShops.map((shop) => (
+                  <ShopCard
+                    key={shop._id}
+                    shop={shop}
+                    favorites={favorites}
+                    toggleFavorite={toggleFavorite}
+                    navigate={navigate}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : (
+            <section className="max-w-7xl mx-auto px-6 py-10">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">Quán ăn gần bạn</h2>
+              <div className="text-center py-12 bg-white rounded-xl shadow-sm">
+                <p className="text-gray-600 text-lg font-medium">
+                  Không có quán ăn nào trong bán kính 5km
+                </p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Hãy thử di chuyển đến khu vực đông đúc hơn hoặc chọn địa chỉ khác.
+                </p>
+              </div>
+            </section>
+          )}
+        </>
+      ) : popularShops.length > 0 ? (
         <section className="max-w-7xl mx-auto px-6 py-10">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">
-            Quán ăn gần bạn
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Quán ngon hot</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {nearbyShops.map((shop) => (
+            {popularShops.map((shop) => (
               <ShopCard
                 key={shop._id}
                 shop={shop}
@@ -485,24 +516,7 @@ export const HomePage = () => {
         </section>
       ) : (
         <section className="max-w-7xl mx-auto px-6 py-10">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">
-            Quán ngon hot
-          </h2>
-          {popularShops.length === 0 ? (
-            <p className="text-gray-500 italic">Đang tải quán nổi bật...</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {popularShops.map((shop) => (
-                <ShopCard
-                  key={shop._id}
-                  shop={shop}
-                  favorites={favorites}
-                  toggleFavorite={toggleFavorite}
-                  navigate={navigate}
-                />
-              ))}
-            </div>
-          )}
+          <p className="text-gray-500 italic text-center">Đang tải quán ăn...</p>
         </section>
       )}
     </div>
@@ -539,15 +553,11 @@ const ShopCard = ({ shop, favorites, toggleFavorite, navigate }) => (
     </div>
 
     <div className="p-4">
-      <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">
-        {shop.name}
-      </h3>
+      <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2 text-sm">{shop.name}</h3>
 
       <div className="flex items-center gap-2 mb-2">
         <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-        <span className="text-sm font-medium">
-          {shop.rating?.toFixed(1) || "N/A"}
-        </span>
+        <span className="text-sm font-medium">{shop.rating?.toFixed(1) || "N/A"}</span>
       </div>
 
       <p className="text-xs text-gray-600 mb-2 line-clamp-1">

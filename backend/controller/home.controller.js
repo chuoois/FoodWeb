@@ -55,6 +55,47 @@ const getNearbyShopsByCoords = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+const getShopsByRate = async (req, res) => {
+  try {
+    // 1️⃣ Lấy danh sách shop active, sort theo rating giảm dần
+    const shops = await Shop.find({ status: "ACTIVE" })
+      .sort({ rating: -1 })
+      .limit(20)
+      .lean();
+
+    // 2️⃣ Xác định user từ accountId
+    let favoriteShopIds = [];
+    if (req.user && req.user.accountId) {
+      const accountId = req.user.accountId;
+      const user = await User.findOne({ account_id: accountId });
+
+      if (user) {
+        // 3️⃣ Lấy danh sách shop yêu thích
+        const favorites = await Favorite.find({ user: user._id })
+          .select("shop")
+          .lean();
+        favoriteShopIds = favorites.map(f => f.shop.toString());
+      }
+    }
+
+    // 4️⃣ Gắn thêm cờ isFavorite
+    const shopsWithFavorite = shops.map(shop => ({
+      ...shop,
+      isFavorite: favoriteShopIds.includes(shop._id.toString()),
+    }));
+
+    // 5️⃣ Trả về kết quả
+    res.json({
+      success: true,
+      count: shopsWithFavorite.length,
+      shops: shopsWithFavorite,
+    });
+  } catch (err) {
+    console.error("getShopsByRate error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 
 const searchHome = async (req, res) => {
     try {
@@ -104,47 +145,6 @@ const getShopsByType = async (req, res) => {
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
-};
-
-const getShopsByRate = async (req, res) => {
-  try {
-    // 1️⃣ Lấy danh sách shop active, sort theo rating giảm dần
-    const shops = await Shop.find({ status: "ACTIVE" })
-      .sort({ rating: -1 })
-      .limit(20)
-      .lean();
-
-    // 2️⃣ Xác định user từ accountId
-    let favoriteShopIds = [];
-    if (req.user && req.user.accountId) {
-      const accountId = req.user.accountId;
-      const user = await User.findOne({ account_id: accountId });
-
-      if (user) {
-        // 3️⃣ Lấy danh sách shop yêu thích
-        const favorites = await Favorite.find({ user: user._id })
-          .select("shop")
-          .lean();
-        favoriteShopIds = favorites.map(f => f.shop.toString());
-      }
-    }
-
-    // 4️⃣ Gắn thêm cờ isFavorite
-    const shopsWithFavorite = shops.map(shop => ({
-      ...shop,
-      isFavorite: favoriteShopIds.includes(shop._id.toString()),
-    }));
-
-    // 5️⃣ Trả về kết quả
-    res.json({
-      success: true,
-      count: shopsWithFavorite.length,
-      shops: shopsWithFavorite,
-    });
-  } catch (err) {
-    console.error("getShopsByRate error:", err);
-    res.status(500).json({ success: false, message: err.message });
-  }
 };
 
 
