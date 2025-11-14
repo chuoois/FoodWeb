@@ -25,22 +25,20 @@ async function calculateOrderData(user_id, shop_id, voucher_id, clientDiscount =
     shop_id,
     status: "ACTIVE",
   }).populate("food_id");
-
+  
   if (cartItems.length === 0) throw new Error("Cart is empty");
-
+  
   let subtotal = 0;
   const orderDetails = [];
-
+  
   for (const item of cartItems) {
     const food = item.food_id;
     if (!food || !food.is_available) {
       throw new Error(`Food ${food?.name || "unknown"} is not available`);
     }
-
-    const itemSubtotal =
-      food.price * item.quantity * (1 - (food.discount || 0) / 100);
+    const itemSubtotal = food.price * item.quantity * (1 - (food.discount || 0) / 100);
     subtotal += itemSubtotal;
-
+    
     orderDetails.push({
       order_id: null,
       food_id: food._id,
@@ -53,15 +51,13 @@ async function calculateOrderData(user_id, shop_id, voucher_id, clientDiscount =
       note: item.note,
     });
   }
-
-  // --- ƯU TIÊN DÙNG discount_amount TỪ CLIENT ---
+  
   let discount_amount = clientDiscount;
-
-  // --- Nếu không có clientDiscount → tự tính từ voucher_id ---
+  
   if (!discount_amount && voucher_id && mongoose.Types.ObjectId.isValid(voucher_id)) {
     const voucher = await Voucher.findById(voucher_id);
     const now = new Date();
-
+    
     if (
       voucher &&
       voucher.is_active &&
@@ -74,19 +70,16 @@ async function calculateOrderData(user_id, shop_id, voucher_id, clientDiscount =
         discount_amount = parseFloat(voucher.discount_value);
       } else if (voucher.discount_type === "PERCENT") {
         discount_amount = (subtotal * parseFloat(voucher.discount_value)) / 100;
-        if (
-          voucher.max_discount &&
-          discount_amount > parseFloat(voucher.max_discount)
-        ) {
+        if (voucher.max_discount && discount_amount > parseFloat(voucher.max_discount)) {
           discount_amount = parseFloat(voucher.max_discount);
         }
       }
     }
   }
-
+  
   const shipping_fee = 10000;
   const total_amount = subtotal - discount_amount + shipping_fee;
-
+  
   return {
     subtotal,
     discount_amount,
@@ -102,27 +95,27 @@ async function calculateOrderData(user_id, shop_id, voucher_id, clientDiscount =
 exports.checkout = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-
+  
   try {
     const { shop_id, delivery_address_id, voucher_id, payment_method, note } = req.body;
-
+    
     if (!req.user || !req.user.accountId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-
+    
     const accountId = req.user.accountId;
     const user = await User.findOne({ account_id: accountId });
     if (!user) throw new Error("User not found");
-
+    
     const address = await UserAddress.findOne({
       _id: delivery_address_id,
       user: user._id,
     });
     if (!address) throw new Error("Delivery address not found");
-
+    
     const shop = await Shop.findById(shop_id);
     if (!shop) throw new Error("Shop not found");
-
+    
     const {
       subtotal,
       discount_amount,
@@ -130,12 +123,10 @@ exports.checkout = async (req, res) => {
       total_amount,
       orderDetails,
     } = await calculateOrderData(user._id, shop_id, voucher_id);
-
-    // ✅ Tạo mã đơn PayOS (số nguyên)
+    
     const orderCode = Math.floor(Date.now() / 1000);
     const displayOrderCode = `ORD${orderCode}`;
-
-    // ✅ Tạo đơn hàng trước (dùng cho cả COD và PayOS)
+    
     const order = new Order({
       order_code: displayOrderCode,
       customer_id: user._id,
@@ -151,20 +142,18 @@ exports.checkout = async (req, res) => {
       status: payment_method === "COD" ? "PENDING" : "PENDING_PAYMENT",
       note,
     });
-
+    
     await order.save({ session });
-
-    // Gán order_id cho từng item
+    
     orderDetails.forEach((d) => (d.order_id = order._id));
     await OrderDetail.insertMany(orderDetails, { session });
-
-    // Chuyển giỏ hàng sang trạng thái CHECKOUT (không xóa)
-    await CartItem.updateMany(
+    
+    // ✅ THAY ĐỔI: XÓA HẲN thay vì chuyển sang CHECKOUT
+    await CartItem.deleteMany(
       { user_id: user._id, shop_id, status: "ACTIVE" },
-      { status: "CHECKOUT" },
       { session }
     );
-
+    
     if (voucher_id) {
       await Voucher.findByIdAndUpdate(
         voucher_id,
@@ -172,15 +161,14 @@ exports.checkout = async (req, res) => {
         { session }
       );
     }
-
+    
     // ===== Nếu là COD =====
     if (payment_method === "COD") {
       await session.commitTransaction();
       if (orderManager.notifyNewOrder) orderManager.notifyNewOrder(order);
-
       return res.json({ message: "Order created with COD", order });
     }
-
+    
     // ===== Nếu là PayOS =====
     const paymentRes = await payOS.paymentRequests.create({
       orderCode,
@@ -194,9 +182,9 @@ exports.checkout = async (req, res) => {
         price: Math.round(it.unit_price),
       })),
     });
-
+    
     await session.commitTransaction();
-
+    
     return res.json({
       url: paymentRes.checkoutUrl,
       order,
@@ -225,12 +213,11 @@ exports.checkoutSuccess = async (req, res) => {
       { payment_status: "PAID", status: "CONFIRMED" },
       { new: true }
     );
-
+    
     if (!order) return res.status(404).send("Order not found");
-
+    
     if (orderManager.notifyNewOrder) orderManager.notifyNewOrder(order);
-
-    // ✅ Redirect về frontend cùng thông báo
+    
     res.redirect(
       `http://localhost:5173/myorder/${order._id}?status=success&message=Thanh toán thành công`
     );
@@ -248,22 +235,33 @@ exports.checkoutCancel = async (req, res) => {
       { payment_status: "CANCELLED", status: "CANCELLED" },
       { new: true }
     );
-
+    
     if (!order) return res.status(404).send("Order not found");
-
-    // Khôi phục giỏ hàng
-    await CartItem.updateMany(
-      {
-        user_id: order.customer_id,
-        shop_id: order.shop_id,
-        status: "CHECKOUT",
-      },
-      { status: "ACTIVE" }
-    );
-
-    // ✅ Redirect về frontend cùng thông báo
+    
+    // ✅ THÊM: Khôi phục lại giỏ hàng từ OrderDetail
+    const orderDetails = await OrderDetail.find({ order_id: order._id });
+    
+    const cartItems = orderDetails.map(detail => ({
+      user_id: order.customer_id,
+      shop_id: order.shop_id,
+      food_id: detail.food_id,
+      quantity: detail.quantity,
+      note: detail.note,
+      status: "ACTIVE",
+    }));
+    
+    await CartItem.insertMany(cartItems);
+    
+    // ✅ Hoàn lại voucher nếu có
+    if (order.voucher_id) {
+      await Voucher.findByIdAndUpdate(
+        order.voucher_id,
+        { $inc: { used_count: -1 } }
+      );
+    }
+    
     res.redirect(
-      `http://localhost:5173/myorder?status=cancel&message=Đơn hàng đã bị hủy`
+      `http://localhost:5173/checkout?shop_id=${order.shop_id}&status=cancel&message=Đơn hàng đã bị hủy`
     );
   } catch (err) {
     console.error("PayOS cancel error:", err);
