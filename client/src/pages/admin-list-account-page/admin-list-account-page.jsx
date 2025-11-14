@@ -110,7 +110,8 @@ export const AccountManagement = () => {
     const styles = {
       ACTIVE: "bg-green-100 text-green-700 border border-green-200 shadow-sm",
       INACTIVE: "bg-gray-100 text-gray-600 border border-gray-200 shadow-sm",
-      PENDING: "bg-yellow-100 text-yellow-700 border border-yellow-200 shadow-sm",
+      PENDING:
+        "bg-yellow-100 text-yellow-700 border border-yellow-200 shadow-sm",
       BANNED: "bg-red-100 text-red-700 border border-red-200 shadow-sm",
     };
     return styles[status] || styles.INACTIVE;
@@ -135,7 +136,9 @@ export const AccountManagement = () => {
               Quản Lý Tài Khoản
             </h1>
           </div>
-          <p className="text-gray-600 ml-11">Quản lý và theo dõi tất cả tài khoản trong hệ thống</p>
+          <p className="text-gray-600 ml-11">
+            Quản lý và theo dõi tất cả tài khoản trong hệ thống
+          </p>
         </div>
 
         {/* Filters */}
@@ -152,29 +155,55 @@ export const AccountManagement = () => {
               />
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Select value={statusFilter} onValueChange={setStatusFilter} disabled={loading}>
+              <Select
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+                disabled={loading}
+              >
                 <SelectTrigger className="w-full sm:w-[180px] bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-orange-500">
                   <SelectValue placeholder="Trạng thái" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
-                  <SelectItem value="all" className="text-gray-900">Tất cả trạng thái</SelectItem>
-                  <SelectItem value="ACTIVE" className="text-gray-900">Active</SelectItem>
-                  <SelectItem value="INACTIVE" className="text-gray-900">Inactive</SelectItem>
-                  <SelectItem value="PENDING" className="text-gray-900">Pending</SelectItem>
-                  <SelectItem value="BANNED" className="text-gray-900">Banned</SelectItem>
+                  <SelectItem value="all" className="text-gray-900">
+                    Tất cả trạng thái
+                  </SelectItem>
+                  <SelectItem value="ACTIVE" className="text-gray-900">
+                    Active
+                  </SelectItem>
+                  <SelectItem value="INACTIVE" className="text-gray-900">
+                    Inactive
+                  </SelectItem>
+                  <SelectItem value="PENDING" className="text-gray-900">
+                    Pending
+                  </SelectItem>
+                  <SelectItem value="BANNED" className="text-gray-900">
+                    Banned
+                  </SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={roleFilter} onValueChange={setRoleFilter} disabled={loading}>
+              <Select
+                value={roleFilter}
+                onValueChange={setRoleFilter}
+                disabled={loading}
+              >
                 <SelectTrigger className="w-full sm:w-[180px] bg-white border-gray-300 text-gray-900 focus:ring-2 focus:ring-orange-500">
                   <SelectValue placeholder="Vai trò" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
-                  <SelectItem value="all" className="text-gray-900">Tất cả vai trò</SelectItem>
-                  {roles.map((role) => (
-                    <SelectItem key={role._id} value={role._id} className="text-gray-900">
-                      {role.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all" className="text-gray-900">
+                    Tất cả vai trò
+                  </SelectItem>
+                  {roles
+                    .filter((role) => role.name.toLowerCase() !== "admin") // Loại bỏ role Admin
+                    .map((role) => (
+                      <SelectItem
+                        key={role._id}
+                        value={role._id}
+                        className="text-gray-900"
+                      >
+                        {role.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -186,12 +215,24 @@ export const AccountManagement = () => {
           <Table>
             <TableHeader>
               <TableRow className="border-gray-200 hover:bg-transparent bg-gray-50">
-                <TableHead className="text-gray-700 font-semibold">Email</TableHead>
-                <TableHead className="text-gray-700 font-semibold">Provider</TableHead>
-                <TableHead className="text-gray-700 font-semibold">Trạng thái</TableHead>
-                <TableHead className="text-gray-700 font-semibold">Vai trò</TableHead>
-                <TableHead className="text-gray-700 font-semibold">Ngày tạo</TableHead>
-                <TableHead className="text-gray-700 font-semibold text-right">Hành động</TableHead>
+                <TableHead className="text-gray-700 font-semibold">
+                  Email
+                </TableHead>
+                <TableHead className="text-gray-700 font-semibold">
+                  Provider
+                </TableHead>
+                <TableHead className="text-gray-700 font-semibold">
+                  Trạng thái
+                </TableHead>
+                <TableHead className="text-gray-700 font-semibold">
+                  Vai trò
+                </TableHead>
+                <TableHead className="text-gray-700 font-semibold">
+                  Ngày tạo
+                </TableHead>
+                <TableHead className="text-gray-700 font-semibold text-right">
+                  Hành động
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -203,15 +244,25 @@ export const AccountManagement = () => {
                 </TableRow>
               ) : accounts.length === 0 ? (
                 <TableRow className="hover:bg-transparent border-gray-200">
-                  <TableCell colSpan={6} className="h-32 text-center text-gray-500">
+                  <TableCell
+                    colSpan={6}
+                    className="h-32 text-center text-gray-500"
+                  >
                     Không tìm thấy tài khoản nào
                   </TableCell>
                 </TableRow>
               ) : (
                 accounts.map((account) => (
-                  <TableRow key={account._id} className="border-gray-200 hover:bg-gray-50 transition-all duration-200">
-                    <TableCell className="font-semibold text-gray-900">{account.email}</TableCell>
-                    <TableCell className="text-gray-600 capitalize">{account.provider}</TableCell>
+                  <TableRow
+                    key={account._id}
+                    className="border-gray-200 hover:bg-gray-50 transition-all duration-200"
+                  >
+                    <TableCell className="font-semibold text-gray-900">
+                      {account.email}
+                    </TableCell>
+                    <TableCell className="text-gray-600 capitalize">
+                      {account.provider}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span
@@ -224,7 +275,9 @@ export const AccountManagement = () => {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-gray-600">{getRoleName(account.role_id)}</TableCell>
+                    <TableCell className="text-gray-600">
+                      {getRoleName(account.role_id)}
+                    </TableCell>
                     <TableCell className="text-gray-600">
                       {new Date(account.createdAt).toLocaleDateString("vi-VN")}
                     </TableCell>
@@ -285,7 +338,11 @@ export const AccountManagement = () => {
                       <PaginationLink
                         isActive={currentPage === page}
                         onClick={() => handlePageChange(page)}
-                        className={`cursor-pointer transition-all ${currentPage === page ? "bg-orange-500 text-white" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"}`}
+                        className={`cursor-pointer transition-all ${
+                          currentPage === page
+                            ? "bg-orange-500 text-white"
+                            : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                        }`}
                       >
                         {page}
                       </PaginationLink>
@@ -311,17 +368,30 @@ export const AccountManagement = () => {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="bg-white border-gray-200 shadow-xl">
             <DialogHeader>
-              <DialogTitle className="text-gray-900 text-xl">Xác nhận đổi trạng thái</DialogTitle>
+              <DialogTitle className="text-gray-900 text-xl">
+                Xác nhận đổi trạng thái
+              </DialogTitle>
               <DialogDescription className="text-gray-600 mt-2">
                 Bạn có chắc muốn đổi trạng thái tài khoản{" "}
-                <span className="font-semibold text-gray-900">{selectedAccount?.email}</span>?
+                <span className="font-semibold text-gray-900">
+                  {selectedAccount?.email}
+                </span>
+                ?
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-3">
-              <Button variant="ghost" onClick={() => setDialogOpen(false)} className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-all">
+              <Button
+                variant="ghost"
+                onClick={() => setDialogOpen(false)}
+                className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-all"
+              >
                 Hủy
               </Button>
-              <Button onClick={handleStatusChange} disabled={isUpdating} className="bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg">
+              <Button
+                onClick={handleStatusChange}
+                disabled={isUpdating}
+                className="bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg"
+              >
                 {isUpdating && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
