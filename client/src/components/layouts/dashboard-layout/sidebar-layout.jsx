@@ -46,7 +46,7 @@ export const SidebarAdmin = () => {
 
   const handleLogout = () => {
     logout();
-    navigate("/auth/login");
+    navigate("/staff/auth/login");
   };
 
   const handleProfile = () => navigate("/profile");
